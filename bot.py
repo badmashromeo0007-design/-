@@ -1,7 +1,7 @@
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-TOKEN = "8831853256:AAESPYjPMepmgvKkGTYJDDGyYaOXif-S-jE"
+TOKEN = "8831853256:AAESznbr52yif_PK47rXYzkTp5siAdloKAw
 bot = telebot.TeleBot(TOKEN)
 
 PRICE_STANDARD = 50

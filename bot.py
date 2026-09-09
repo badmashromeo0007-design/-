@@ -2,8 +2,8 @@ import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 TOKEN = "8831853256:AAESznbr52yif_PK47rXYzkTp5siAdloKAw"
-
 bot = telebot.TeleBot(TOKEN)
+bot.remove_webhook()
 
 PRICE_STANDARD = 50
 PRICE_PREMIUM = 80
@@ -13,12 +13,12 @@ CHANNEL_ID = -1001234567890
 def send_welcome(message):
     markup = InlineKeyboardMarkup()
     markup.add(
-        InlineKeyboardButton("🎬 Super Yoddha (₹50)", callback_data="buy_50"),
+        InlineKeyboardButton("🎬 EP 3496 - 3503 (₹50)", callback_data="buy_50"),
         InlineKeyboardButton("🔥 Special Episode (₹80)", callback_data="buy_80")
     )
     bot.send_message(
-        message.chat.id, 
-        "स्वागत है! 'Super Yoddha' ऑडियो सीरीज़ के एपिसोड्स खरीदने के लिए नीचे दिए गए विकल्प चुनें:", 
+        message.chat.id,
+        "स्वागत है! 'Super Yoddha' ऑडियो सीरीज़ के एपिसोड्स खरीदने के लिए नीचे दिए गए विकल्प चुनें:",
         reply_markup=markup
     )
 
@@ -28,7 +28,7 @@ def handle_payment_choice(call):
     bot.answer_callback_query(call.id, f"चुना गया मूल्य: ₹{amount}")
     bot.send_message(
         call.message.chat.id,
-        f"कृपया ₹{amount} का भुगतान करें और स्क्रीनशॉट भेजें। भुगतान सत्यापित होने के बाद आपको चैनल का सिंगल-यूज़ लिंक मिल जाएगा।"
+        f"कृपया ₹{amount} का भुगतान करें और स्क्रीनशॉट भेजें।"
     )
 
 if __name__ == "__main__":

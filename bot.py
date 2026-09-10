@@ -24,7 +24,7 @@ def keep_alive():
 # --- 2. Telegram Bot Configuration ---
 API_TOKEN = '8831853256:AAGummjGke8vPpQ85EkWYTBzig5vh291XG8'
 MAIN_CHANNEL_ID = '-1004382767346' 
-EPISODES_CHANNEL_ID = '-100xxxxxxxxxx' # Apne full episodes wale channel ki ID daalein
+EPISODES_CHANNEL_ID = '-100xxxxxxxxxx' 
 
 ADMIN_USERNAME = "ROMEO_KERKETTA"
 
@@ -159,10 +159,7 @@ def callback_query(call):
         markup = InlineKeyboardMarkup()
         markup.add(InlineKeyboardButton("🔙 Back to Menu", callback_data="main_menu"))
         
-        try:
-            bot.delete_message(call.message.chat.id, call.message.message_id)
-        except Exception:
-            pass
+        # Yahan message delete hone ki wajah se error aa raha tha, ise hata diya gaya hai taaki photo safe aaye
         bot.send_photo(call.message.chat.id, photo=QR_IMAGE_URL, caption=caption_text, parse_mode="Markdown", reply_markup=markup)
 
     elif call.data == "pkg_full_30":
@@ -178,10 +175,6 @@ def callback_query(call):
         markup = InlineKeyboardMarkup()
         markup.add(InlineKeyboardButton("🔙 Back to Menu", callback_data="main_menu"))
         
-        try:
-            bot.delete_message(call.message.chat.id, call.message.message_id)
-        except Exception:
-            pass
         bot.send_photo(call.message.chat.id, photo=QR_IMAGE_URL, caption=caption_text, parse_mode="Markdown", reply_markup=markup)
 
 def auto_remind_channel():

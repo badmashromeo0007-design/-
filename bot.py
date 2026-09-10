@@ -14,7 +14,7 @@ RENDER_URL = 'https://badmash-tr95.onrender.com'
 MAIN_CHANNEL_LINK = 'https://t.me/+gy0gavj0e112Th1'
 DEFAULT_EPISODE_LINK = 'https://t.me/c/Viclctru-0YFT1i'
 BOT_PROFILE_LINK = 'https://t.me/TheSuperYoddhabot'
-ADMIN_USER_ID = 123456789  # Yeh automatic aapka ID chat mein dikha dega jab aap command use karenge
+ADMIN_USER_ID = 123456789  # Command chalate hi bot aapko aapki asli ID chat mein bata dega
 ADMIN_USERNAME = "ROMEO_KERNKETA"
 YOUR_UPI_ID = "badmashromeo0007@okaxis"
 PAYEE_NAME = "ROMEO"
@@ -64,8 +64,9 @@ except Exception as e:
 
 @bot.message_handler(commands=['setlink'])
 def set_episode_link_command(message):
+    # Agar aap admin nahi hain toh bot aapka user ID bata dega
     if message.from_user.id != ADMIN_USER_ID:
-        bot.reply_to(message, f"⚠️ Yeh command sirf Admin ke liye hai!\nAapka Telegram User ID yeh hai: `{message.from_user.id}`\nIsse code mein `ADMIN_USER_ID` ki jagah daal dein.", parse_mode="Markdown")
+        bot.reply_to(message, f"⚠️ Yeh command sirf Admin ke liye hai!\nAapka Telegram User ID yeh hai: `{message.from_user.id}`\nIsse copy karke code mein `ADMIN_USER_ID = ...` ki jagah daal dein.", parse_mode="Markdown")
         return
     
     parts = message.text.split(maxsplit=1)
@@ -80,7 +81,7 @@ def set_episode_link_command(message):
 @bot.message_handler(commands=['getlink'])
 def get_episode_link_command(message):
     if message.from_user.id != ADMIN_USER_ID:
-        bot.reply_to(message, f"⚠️ Yeh command sirf Admin ke liye hai!\nAapka Telegram User ID yeh hai: `{message.from_user.id}`\nIsse code mein `ADMIN_USER_ID` ki jagah daal dein.", parse_mode="Markdown")
+        bot.reply_to(message, f"⚠️ Yeh command sirf Admin ke liye hai!\nAapka Telegram User ID yeh hai: `{message.from_user.id}`\nIsse copy karke code mein `ADMIN_USER_ID = ...` ki jagah daal dein.", parse_mode="Markdown")
         return
     current_link = get_current_episode_link()
     bot.reply_to(message, f"🔗 Current Episode Link:\n{current_link}")
@@ -155,7 +156,7 @@ def handle_callback(call):
         bot.edit_message_text(welcome_text, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="Markdown")
 
 @bot.message_handler(func=lambda message: True)
-def handle_ai_chat(message):
+def handle_ai_chat(message: telebot.types.Message):
     try:
         response = ai_client.generate_content(message.text)
         bot.reply_to(message, response.text)

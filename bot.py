@@ -1,8 +1,6 @@
 import os
-import time
-from datetime import datetime
-from threading import Thread
 from flask import Flask
+from threading import Thread
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, BotCommand
 
@@ -24,11 +22,8 @@ def keep_alive():
 
 # --- 2. Telegram Bot Configuration ---
 API_TOKEN = '8831853256:AAGummjGke8vPpQ85EkWYTBzig5vh291XG8'
-MAIN_CHANNEL_ID = '-1004382767346' 
 EPISODES_INVITE_LINK = 'https://t.me/+rViclcLru-0yYTI1'
-
 ADMIN_USERNAME = "ROMEO_KERKETTA"
-BOT_USERNAME = "Romeo_pay_bot" 
 
 bot = telebot.TeleBot(API_TOKEN)
 
@@ -45,8 +40,6 @@ FULL_TITLE = "EPISODE 3503 → 3510"
 TOTAL_EPISODES = "TOTAL — 8 EPISODES"
 PRICE_TEXT = "PRICE — ₹30 ONLY"
 QR_IMAGE_URL = "https://i.ibb.co/3m3vL05/1000018603.png"
-
-last_channel_msg_id = None
 
 def get_start_caption():
     return (
@@ -90,49 +83,9 @@ def handle_payment_screenshot(message):
         reply_markup=markup
     )
 
-def auto_remind_channel():
-    global last_channel_msg_id
-    while True:
-        try:
-            current_hour = datetime.now().hour
-            
-            # Raat 10:00 PM (22) se subah 8:00 AM (8) ke beech har 1 ghante (3600 sec) me reminder
-            # Baaki din mein har 10 minute (600 sec) me reminder
-            if current_hour >= 22 or current_hour < 8:
-                sleep_time = 3600 
-            else:
-                sleep_time = 600  
-                
-            if last_channel_msg_id:
-                try:
-                    bot.delete_message(MAIN_CHANNEL_ID, last_channel_msg_id)
-                except Exception as e:
-                    print(f"Purana message delete karne mein error: {e}")
-
-            channel_message = (
-                f"🎧 **{FULL_TITLE}**\n\n"
-                f"📦 **{TOTAL_EPISODES}**\n\n"
-                f"💰 **{PRICE_TEXT}**\n\n"
-                f"⚡ **TURANT MILEGA**\n\n"
-                f"📩 **DM —** [THE SUPER YODDHA Bot]({f'https://t.me/{BOT_USERNAME}'})"
-            )
-            sent_msg = bot.send_message(MAIN_CHANNEL_ID, channel_message, parse_mode="Markdown")
-            last_channel_msg_id = sent_msg.message_id
-            print("✅ Main channel par reminder post bhej diya gaya hai!")
-            
-            time.sleep(sleep_time)
-        except Exception as e:
-            print(f"⚠️ Channel reminder error: {e}")
-            time.sleep(60)
-
 if __name__ == "__main__":
     keep_alive()
     print("🤖 Bot successfully start ho raha hai... 🚀")
-    
-    channel_thread = Thread(target=auto_remind_channel)
-    channel_thread.daemon = True
-    channel_thread.start()
-    
     bot.remove_webhook()
     bot.infinity_polling(skip_pending=True)
     

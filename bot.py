@@ -1,35 +1,29 @@
+import os
 import telebot
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+from telebot import types
 
-TOKEN = "8831853256:AAESznbr52yif_PK47rXYzkTp5siAdloKAw"
+TOKEN = os.getenv("BOT_TOKEN", "8831853256:AAFCFchvQVxwz9v_ACuhsL8ITSsNKpJ74nY")
+
 bot = telebot.TeleBot(TOKEN)
-bot.remove_webhook()
 
-PRICE_STANDARD = 50
-PRICE_PREMIUM = 80
-CHANNEL_ID = -1001234567890
+# 409 Conflict error ko hatane ke liye webhook remove kar rahe hain
+try:
+    bot.remove_webhook()
+except Exception as e:
+    print(f"Error removing webhook: {e}")
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    markup = InlineKeyboardMarkup()
-    markup.add(
-        InlineKeyboardButton("🎬 EP 3496 - 3503 (₹50)", callback_data="buy_50"),
-        InlineKeyboardButton("🔥 Special Episode (₹80)", callback_data="buy_80")
-    )
-    bot.send_message(
-        message.chat.id,
-        "स्वागत है! 'Super Yoddha' ऑडियो सीरीज़ के एपिसोड्स खरीदने के लिए नीचे दिए गए विकल्प चुनें:",
-        reply_markup=markup
-    )
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
+    btn_ep = types.KeyboardButton("EP 3496 - 3503")
+    markup.add(btn_ep)
+    
+    bot.reply_to(message, "Hello! Choose an option from the menu below:", reply_markup=markup)
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith("buy_"))
-def handle_payment_choice(call):
-    amount = PRICE_STANDARD if call.data == "buy_50" else PRICE_PREMIUM
-    bot.answer_callback_query(call.id, f"चुना गया मूल्य: ₹{amount}")
-    bot.send_message(
-        call.message.chat.id,
-        f"कृपया ₹{amount} का भुगतान करें और स्क्रीनशॉट भेजें।"
-    )
+@bot.message_handler(func=lambda message: message.text == "EP 3496 - 3503")
+def handle_ep_menu(message):
+    bot.reply_to(message, "Aapne **EP 3496 - 3503** select kiya hai. Yahan aapka content/menu open ho gaya hai!")
 
 if __name__ == "__main__":
+    print("Bot is starting polling...")
     bot.infinity_polling()

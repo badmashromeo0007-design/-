@@ -4,21 +4,24 @@ import time
 import telebot
 from flask import Flask, request
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, BotCommand
+from google import genai
 
 API_TOKEN = '8831853256:AAFOYW-K73PXAc8hHSJ1QvuVGBqudEU3fnY'
+GEMINI_API_KEY = 'AQ.Ab8RN6KJCiUJrMwS6JrsCkSP_Hfd9ZRH0wb_qoKrgZCX4MPSdg'  # Aapki Gemini API Key yahan set kar di gayi hai
 RENDER_URL = 'https://badmash-trp9.onrender.com' 
 
-# Default Links
-MAIN_CHANNEL_LINK = 'https://t.me/+gy8gewj0snllZThl'       # Main Channel Link
-DEFAULT_EPISODE_LINK = 'https://t.me/+rViclcLru-0yYTI1'   # Default Episode Link
-BOT_PROFILE_LINK = 'https://t.me/TheSuperYoddhaBot'         # Bot ka direct link
-
+# Links & Admin Configuration
+MAIN_CHANNEL_LINK = 'https://t.me/+gy8gewj0snllZThl'
+DEFAULT_EPISODE_LINK = 'https://t.me/+rViclcLru-0yYTI1'
+BOT_PROFILE_LINK = 'https://t.me/TheSuperYoddhaBot'
+ADMIN_USER_ID = 123456789  # Apna real Telegram User ID yahan daalein
 ADMIN_USERNAME = "ROMEO_KERKETTA"
 YOUR_UPI_ID = 'badmashromeo0007@okaxis'
 PAYEE_NAME = "ROMEO"
 
 app = Flask(__name__)
 bot = telebot.TeleBot(API_TOKEN)
+ai_client = genai.Client(api_key=GEMINI_API_KEY)
 
 user_states = {}
 DATA_FILE = "user_data.json"
@@ -36,7 +39,6 @@ def save_data(data):
     with open(DATA_FILE, "w") as f:
         json.dump(data, f)
 
-# Dynamic Episode Link save karne ke liye helper functions
 def get_current_episode_link():
     db = load_data()
     global_stats = db.get("global_stats", {})
@@ -66,10 +68,9 @@ try:
 except Exception as e:
     print(f"Menu commands error: {e}")
 
-# Admin command: Roz naya episode link set karne ke liye
 @bot.message_handler(commands=['setlink'])
 def set_episode_link_command(message):
-    if message.from_user.username != ADMIN_USERNAME:
+    if message.from_user.id != ADMIN_USER_ID:
         bot.reply_to(message, "⚠️ Yeh command sirf Admin ke liye hai!")
         return
     
@@ -82,15 +83,26 @@ def set_episode_link_command(message):
     set_current_episode_link(new_link)
     bot.reply_to(message, f"✅ **Naya Episode Link Successfully Set Ho Gaya Hai!**\n\n🔗 `{new_link}`", parse_mode="Markdown")
 
-# Admin command: Check karne ke liye ki abhi kaun sa link set hai
 @bot.message_handler(commands=['getlink'])
 def get_episode_link_command(message):
-    if message.from_user.username != ADMIN_USERNAME:
+    if message.from_user.id != ADMIN_USER_ID:
         bot.reply_to(message, "⚠️ Yeh command sirf Admin ke liye hai!")
         return
     
     current_link = get_current_episode_link()
     bot.reply_to(message, f"🔗 **Current Active Episode Link:**\n{current_link}", parse_mode="Markdown")
+
+@bot.message_handler(func=lambda message: message.from_user.id == ADMIN_USER_ID, content_types=['photo', 'video', 'document', 'audio'])
+def forward_admin_media_to_channel(message):
+    try:
+        bot.copy_message(
+            chat_id=MAIN_CHANNEL_LINK, 
+            from_chat_id=message.chat.id, 
+            message_id=message.message_id
+        )
+        bot.reply_to(message, "✅ Media successfully Main Channel par bhej diya gaya hai!")
+    except Exception as e:
+        bot.reply_to(message, f"❌ Channel par bhejte waqt error aaya:\n`{e}`", parse_mode="Markdown")
 
 @bot.message_handler(commands=['start', 'menu'])
 def send_welcome(message):
@@ -103,7 +115,6 @@ def send_welcome(message):
     streak = user_info.get("streak", 0)
     
     total_buyers = get_total_unique_buyers(db)
-    
     global_offers_open = total_buyers >= 10
     user_knows_offer = global_offers_open and streak >= 6
 
@@ -139,6 +150,22 @@ def send_welcome(message):
         parse_mode="Markdown",
         reply_markup=markup
     )
+
+# 🤖 Gemini AI Text Handler: Jab koi random text bhejega, AI smart reply dega
+@bot.message_handler(func=lambda message: True, content_types=['text'])
+def handle_ai_chat(message):
+    if message.from_user.id == ADMIN_USER_ID:
+        bot.reply_to(message, "ℹ️ Link set karne ke liye `/setlink <link>` use karein, ya menu ke liye `/menu` bhejein.", parse_mode="Markdown")
+        return
+    
+    try:
+        response = ai_client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=f"You are a helpful assistant for 'The Super Yoddha' audio series bot on Telegram. Reply nicely and briefly to this user message in Hinglish: {message.text}"
+        )
+        bot.reply_to(message, response.text)
+    except Exception as e:
+        send_welcome(message)
 
 @bot.callback_query_handler(func=lambda call: call.data == 'start_bargain')
 def start_bargain(call):
@@ -325,11 +352,7 @@ def verify_payment_click(call):
     )
     
     markup = InlineKeyboardMarkup(row_width=1)
-    
-    # Active Dynamic Episode Link
     markup.add(InlineKeyboardButton("🎬 Aaj Ka Episode Dekhein (Turant Kholen)", url=active_episode_link))
-    
-    # Bot par wapas aane ka link
     markup.add(InlineKeyboardButton("🤖 Bot Par Wapas Jayein", url=BOT_PROFILE_LINK))
     
     if total_buyers >= 10 and streak >= 6:
@@ -363,7 +386,7 @@ def webhook():
 
 @app.route('/')
 def home():
-    return "Bot Webhook Server with Dynamic Link Command is running! 🚀"
+    return "Bot with Gemini AI & Admin Panel is running! 🚀"
 
 if __name__ == "__main__":
     bot.remove_webhook()
@@ -373,4 +396,4 @@ if __name__ == "__main__":
     
     port = int(os.environ.get('PORT', 8080))
     app.run(host='0.0.0.0', port=port)
-            
+    

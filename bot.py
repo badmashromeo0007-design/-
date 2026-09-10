@@ -30,10 +30,8 @@ bot = telebot.TeleBot(API_TOKEN)
 def send_main_menu(chat_id, message_id=None):
     markup = InlineKeyboardMarkup(row_width=1)
     
-    # Package Buttons
+    # Sirf naya package button aur menu button
     markup.add(
-        InlineKeyboardButton("🎧 EP: 3487 - 3491 (₹50)", callback_data="pkg_3487_3491"),
-        InlineKeyboardButton("🎧 EP: 3491 - 3495 (₹80)", callback_data="pkg_3491_3495"),
         InlineKeyboardButton("🎧 EP: 3504 - 3510 (₹70)", callback_data="pkg_3504_3510"),
         InlineKeyboardButton("🚀 Start / Menu", callback_data="main_menu")
     )
@@ -65,58 +63,43 @@ def callback_query(call):
         bot.answer_callback_query(call.id)
         send_main_menu(call.message.chat.id, call.message.message_id)
         
-    elif call.data.startswith("pkg_"):
-        bot.answer_callback_query(call.id, "Package selected!")
+    elif call.data == "pkg_3504_3510":
+        bot.answer_callback_query(call.id, "QR Code & Details loaded!")
         
-        # Package ke hisab se exact details aur response text
-        if "3504_3510" in call.data:
-            response = (
-                "🎧 **EPISODE 3504 → 3510** 🚀\n\n"
-                "📦 **TOTAL — 7 EPISODES** 📚\n\n"
-                "💰 **PRICE — ₹70 ONLY** 💵\n\n"
-                "⚡ **TURANT MILEGA** 🔥\n\n"
-                "📩 **DM:** @ROMEO_KERKETTA"
-            )
-        elif "3491_3495" in call.data:
-            response = (
-                "🎧 **EPISODE 3491 → 3495** 🚀\n\n"
-                "📦 **TOTAL — 5 EPISODES** 📚\n\n"
-                "💰 **PRICE — ₹80 ONLY** 💵\n\n"
-                "⚡ **TURANT MILEGA** 🔥\n\n"
-                "📩 **DM:** @ROMEO_KERKETTA"
-            )
-        else:
-            response = (
-                "🎧 **EPISODE 3487 → 3491** 🚀\n\n"
-                "📦 **TOTAL — 5 EPISODES** 📚\n\n"
-                "💰 **PRICE — ₹50 ONLY** 💵\n\n"
-                "⚡ **TURANT MILEGA** 🔥\n\n"
-                "📩 **DM:** @ROMEO_KERKETTA"
-            )
-            
+        # Scanner image URL (Aapke diye gaye Google Pay QR code ki link)
+        qr_image_url = "https://i.ibb.co/3m3vL05/1000018603.png"
+        
+        caption_text = (
+            "🎧 **SUPER YODDHA — Audio Series** 🚀\n\n"
+            "📦 **EPISODE:** 3504 → 3510 (Total 7 Episodes)\n"
+            "💰 **PRICE:** ₹70 ONLY\n\n"
+            "⚡ **TURANT MILEGA!**\n\n"
+            "📲 **Payment karne ke liye upar diye gaye QR Code par Scan karke ₹70 pay karein.**\n"
+            "📸 Payment karne ke baad screenshot yahan bhejen:\n"
+            "📩 **Admin DM:** @ROMEO_KERKETTA"
+        )
+        
         markup = InlineKeyboardMarkup()
-        markup.add(InlineKeyboardButton("⭐ Pay with Stars / Order Now", callback_data="pay_stars"))
         markup.add(InlineKeyboardButton("🔙 Back to Menu", callback_data="main_menu"))
         
         try:
-            bot.edit_message_text(response, call.message.chat.id, call.message.message_id, parse_mode="Markdown", reply_markup=markup)
+            # Purana text message delete karke QR code aur caption bhetega
+            bot.delete_message(call.message.chat.id, call.message.message_id)
         except Exception:
-            bot.send_message(call.message.chat.id, response, parse_mode="Markdown", reply_markup=markup)
-
-    elif call.data == "pay_stars":
-        bot.answer_callback_query(call.id, "Processing...")
-        text_message = (
-            "⭐ **PAYMENT & DELIVERY** 💳\n\n"
-            "🛡️ Episodes pane ke liye turant yahan message karein:\n"
-            "📩 **Admin DM:** @ROMEO_KERKETTA"
+            pass
+            
+        bot.send_photo(
+            chat_id=call.message.chat.id,
+            photo=qr_image_url,
+            caption=caption_text,
+            parse_mode="Markdown",
+            reply_markup=markup
         )
-        bot.send_message(call.message.chat.id, text_message, parse_mode="Markdown")
 
 # --- 3. Main Execution with Flask Keep Alive ---
 if __name__ == "__main__":
     keep_alive()
     print("🤖 Bot successfully start ho raha hai... 🚀")
-    # Conflict error se bachne ke liye webhook remove karke polling start karenge
     bot.remove_webhook()
     bot.infinity_polling(skip_pending=True)
     

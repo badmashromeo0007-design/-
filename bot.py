@@ -1,4 +1,5 @@
 import os
+import json
 import time
 import telebot
 from flask import Flask, request
@@ -7,7 +8,11 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, BotCommand
 API_TOKEN = '8831853256:AAFOYW-K73PXAc8hHSJ1QvuVGBqudEU3fnY'
 RENDER_URL = 'https://badmash-trp9.onrender.com' 
 
-EPISODES_INVITE_LINK = 'https://t.me/+rViclcLru-0yYTI1'
+# Default Links
+MAIN_CHANNEL_LINK = 'https://t.me/+gy8gewj0snllZThl'       # Main Channel Link
+DEFAULT_EPISODE_LINK = 'https://t.me/+rViclcLru-0yYTI1'   # Default Episode Link
+BOT_PROFILE_LINK = 'https://t.me/TheSuperYoddhaBot'         # Bot ka direct link
+
 ADMIN_USERNAME = "ROMEO_KERKETTA"
 YOUR_UPI_ID = 'badmashromeo0007@okaxis'
 PAYEE_NAME = "ROMEO"
@@ -16,30 +21,116 @@ app = Flask(__name__)
 bot = telebot.TeleBot(API_TOKEN)
 
 user_states = {}
+DATA_FILE = "user_data.json"
+
+def load_data():
+    if os.path.exists(DATA_FILE):
+        try:
+            with open(DATA_FILE, "r") as f:
+                return json.load(f)
+        except:
+            return {}
+    return {}
+
+def save_data(data):
+    with open(DATA_FILE, "w") as f:
+        json.dump(data, f)
+
+# Dynamic Episode Link save karne ke liye helper functions
+def get_current_episode_link():
+    db = load_data()
+    global_stats = db.get("global_stats", {})
+    return global_stats.get("current_episode_link", DEFAULT_EPISODE_LINK)
+
+def set_current_episode_link(link):
+    db = load_data()
+    if "global_stats" not in db:
+        db["global_stats"] = {}
+    db["global_stats"]["current_episode_link"] = link
+    save_data(db)
+
+def get_total_unique_buyers(db):
+    buyers_count = 0
+    for uid, info in db.items():
+        if uid != "global_stats" and info.get("purchases", 0) > 0:
+            buyers_count += 1
+    return buyers_count
 
 try:
     bot.set_my_commands([
         BotCommand("start", "🚀 Choose Pack & Pay"),
-        BotCommand("menu", "🎛 Open Menu")
+        BotCommand("menu", "🎛 Open Menu"),
+        BotCommand("setlink", "🔗 Set New Episode Link (Admin)"),
+        BotCommand("getlink", "🔍 Check Current Episode Link (Admin)")
     ])
 except Exception as e:
     print(f"Menu commands error: {e}")
 
+# Admin command: Roz naya episode link set karne ke liye
+@bot.message_handler(commands=['setlink'])
+def set_episode_link_command(message):
+    if message.from_user.username != ADMIN_USERNAME:
+        bot.reply_to(message, "⚠️ Yeh command sirf Admin ke liye hai!")
+        return
+    
+    parts = message.text.split(maxsplit=1)
+    if len(parts) < 2:
+        bot.reply_to(message, "⚠️ Kripya link bhi dein.\nUsage: `/setlink https://t.me/...`", parse_mode="Markdown")
+        return
+    
+    new_link = parts[1].strip()
+    set_current_episode_link(new_link)
+    bot.reply_to(message, f"✅ **Naya Episode Link Successfully Set Ho Gaya Hai!**\n\n🔗 `{new_link}`", parse_mode="Markdown")
+
+# Admin command: Check karne ke liye ki abhi kaun sa link set hai
+@bot.message_handler(commands=['getlink'])
+def get_episode_link_command(message):
+    if message.from_user.username != ADMIN_USERNAME:
+        bot.reply_to(message, "⚠️ Yeh command sirf Admin ke liye hai!")
+        return
+    
+    current_link = get_current_episode_link()
+    bot.reply_to(message, f"🔗 **Current Active Episode Link:**\n{current_link}", parse_mode="Markdown")
+
 @bot.message_handler(commands=['start', 'menu'])
 def send_welcome(message):
     user_states.pop(message.chat.id, None)
+    user_id_str = str(message.from_user.id)
+    db = load_data()
+    
+    user_info = db.get(user_id_str, {"purchases": 0, "streak": 0, "last_date": ""})
+    purchases = user_info.get("purchases", 0)
+    streak = user_info.get("streak", 0)
+    
+    total_buyers = get_total_unique_buyers(db)
+    
+    global_offers_open = total_buyers >= 10
+    user_knows_offer = global_offers_open and streak >= 6
+
     markup = InlineKeyboardMarkup(row_width=1)
-    markup.add(
-        InlineKeyboardButton("🔥 Buy Episodes Pack (₹150)", callback_data="pay_150"),
-        InlineKeyboardButton("⚡ Buy Full Pack (₹180)", callback_data="pay_180"),
-        InlineKeyboardButton("🤝 Mulbhav Karein (Budget Kam Hai?)", callback_data="start_bargain"),
-        InlineKeyboardButton("💬 Admin se Sampark Karein", url=f"https://t.me/{ADMIN_USERNAME}")
-    )
+    
+    if user_knows_offer:
+        markup.add(
+            InlineKeyboardButton("🔥 Buy Episodes Pack (₹150)", callback_data="pay_150"),
+            InlineKeyboardButton("⚡ Buy Full Pack (₹180)", callback_data="pay_180"),
+            InlineKeyboardButton("🤝 Secret Mulbhav Karein", callback_data="start_bargain")
+        )
+        status_text = f"🌟 **Special Loyalty Status Active!** (Streak: {streak}/6 din)"
+    else:
+        markup.add(
+            InlineKeyboardButton("⚡ Buy Episodes Pack (₹180)", callback_data="pay_180")
+        )
+        status_text = f"🎧 Apni pasand ke episodes turant prapt karein."
+    
+    markup.add(InlineKeyboardButton("📢 Join The Super Yoddha Main Channel", url=MAIN_CHANNEL_LINK))
+    
+    if purchases >= 5:
+        markup.add(InlineKeyboardButton("💬 Admin se Sampark Karein", url=f"https://t.me/{ADMIN_USERNAME}"))
     
     welcome_text = (
-        f"🎧 **THE SUPER YODDHA EPISODES**\n\n"
-        f"Standard Price: **₹180** | Special Pack: **₹150**\n"
-        f"Agar budget kam hai, toh **'Mulbhav Karein'** button par click karke aap price kam kara sakte hain! 👇"
+        f"🎬 **THE SUPER YODDHA EPISODES**\n\n"
+        f"{status_text}\n\n"
+        f"Neeche diye gaye button par click karke payment karein aur instant access payen: 👇"
     )
     
     bot.send_message(
@@ -51,7 +142,14 @@ def send_welcome(message):
 
 @bot.callback_query_handler(func=lambda call: call.data == 'start_bargain')
 def start_bargain(call):
-    # Step 1: Sabse pehle 150 ka offer dikhao
+    db = load_data()
+    user_id_str = str(call.from_user.id)
+    user_info = db.get(user_id_str, {})
+    
+    if get_total_unique_buyers(db) < 10 or user_info.get("streak", 0) < 6:
+        bot.answer_callback_query(call.id, "⚠️ Yeh secret feature abhi aapke liye available nahi hai!", show_alert=True)
+        return
+        
     user_states[call.message.chat.id] = {"step": "bargain_150"}
     
     markup = InlineKeyboardMarkup(row_width=1)
@@ -61,21 +159,19 @@ def start_bargain(call):
         InlineKeyboardButton("❌ Cancel", callback_data="cancel_custom")
     )
     
-    bot.edit_message_text(
-        chat_id=call.message.chat.id,
-        message_id=call.message.message_id,
-        text=(
-            f"🤝 **Mulbhav (Step 1)**\n\n"
-            f"Theek hai, hum aapke liye price kam kar dete hain.\n"
-            f"Kya aap **₹150** mein yeh pack lena chahenge?"
-        ),
-        parse_mode="Markdown",
-        reply_markup=markup
-    )
+    try:
+        bot.edit_message_text(
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            text="🤝 **Secret Mulbhav (Step 1)**\n\nKya aap **₹150** mein yeh pack lena chahenge?",
+            parse_mode="Markdown",
+            reply_markup=markup
+        )
+    except Exception:
+        pass
 
 @bot.callback_query_handler(func=lambda call: call.data == 'ask_120')
 def ask_120(call):
-    # Step 2: Jab user bole paise kam hain, toh 120 do
     user_states[call.message.chat.id] = {"step": "bargain_120"}
     
     markup = InlineKeyboardMarkup(row_width=1)
@@ -85,21 +181,19 @@ def ask_120(call):
         InlineKeyboardButton("❌ Cancel", callback_data="cancel_custom")
     )
     
-    bot.edit_message_text(
-        chat_id=call.message.chat.id,
-        message_id=call.message.message_id,
-        text=(
-            f"🤝 **Mulbhav (Step 2)**\n\n"
-            f"Chaliye aapke liye price aur thoda kam kar dete hain.\n"
-            f"Kya aap **₹120** mein maan jayenge?"
-        ),
-        parse_mode="Markdown",
-        reply_markup=markup
-    )
+    try:
+        bot.edit_message_text(
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            text="🤝 **Secret Mulbhav (Step 2)**\n\nChaliye price aur thoda kam kar dete hain.\nKya aap **₹120** mein maan jayenge?",
+            parse_mode="Markdown",
+            reply_markup=markup
+        )
+    except Exception:
+        pass
 
 @bot.callback_query_handler(func=lambda call: call.data == 'ask_100')
 def ask_100(call):
-    # Step 3: Aakhri limit 100
     user_states[call.message.chat.id] = {"step": "bargain_100"}
     
     markup = InlineKeyboardMarkup(row_width=1)
@@ -108,17 +202,16 @@ def ask_100(call):
         InlineKeyboardButton("❌ Cancel", callback_data="cancel_custom")
     )
     
-    bot.edit_message_text(
-        chat_id=call.message.chat.id,
-        message_id=call.message.message_id,
-        text=(
-            f"🤝 **Mulbhav (Final Step)**\n\n"
-            f"Yeh hamari sabse aakhri aur minimum limit hai.\n"
-            f"Kya aap **₹100** mein lena chahenge? (Isse kam mein dena sambhav nahi hai)."
-        ),
-        parse_mode="Markdown",
-        reply_markup=markup
-    )
+    try:
+        bot.edit_message_text(
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            text="🤝 **Secret Mulbhav (Final Step)**\n\nYeh hamari sabse aakhri aur minimum limit hai.\nKya aap **₹100** mein lena chahenge?",
+            parse_mode="Markdown",
+            reply_markup=markup
+        )
+    except Exception:
+        pass
 
 @bot.callback_query_handler(func=lambda call: call.data in ['accept_150', 'accept_120', 'accept_100'])
 def accept_bargain_amount(call):
@@ -137,24 +230,27 @@ def accept_bargain_amount(call):
     markup.add(
         InlineKeyboardButton(f"💳 Pay ₹{amount} (Direct UPI App)", url=upi_intent_url),
         InlineKeyboardButton("🔄 Payment Ho Gayi? Link Lein", callback_data=f"verify_{amount}_{unique_txn_id}"),
-        InlineKeyboardButton("🔙 Menu Par Wapas Jayein", callback_data="cancel_custom")
+        InlineKeyboardButton("🔙 Menu Par Jayein", callback_data="cancel_custom")
     )
     
-    bot.edit_message_text(
-        chat_id=call.message.chat.id,
-        message_id=call.message.message_id,
-        text=(
-            f"👍 Theek hai! Aapka **₹{amount}** ka deal fix ho gaya hai.\n\n"
-            f"1️⃣ Neeche diye gaye **'Pay ₹{amount}'** button par click karke payment poori karein.\n"
-            f"2️⃣ Payment ke baad **'Payment Ho Gayi? Link Lein'** dabayein."
-        ),
-        parse_mode="Markdown",
-        reply_markup=markup
-    )
+    try:
+        bot.edit_message_text(
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            text=f"👍 Theek hai! Aapka **₹{amount}** ka deal fix ho gaya hai.\n\n1️⃣ Neeche diye gaye **'Pay ₹{amount}'** button par click karke payment poori karein.\n2️⃣ Payment ke baad **'Payment Ho Gayi? Link Lein'** dabayein.",
+            parse_mode="Markdown",
+            reply_markup=markup
+        )
+    except Exception:
+        pass
 
 @bot.callback_query_handler(func=lambda call: call.data == 'cancel_custom')
 def cancel_custom(call):
     user_states.pop(call.message.chat.id, None)
+    try:
+        bot.delete_message(call.message.chat.id, call.message.message_id)
+    except Exception:
+        pass
     send_welcome(call.message)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('pay_'))
@@ -175,42 +271,85 @@ def handle_payment_selection(call):
         InlineKeyboardButton("🔄 Payment Ho Gayi? Link Lein", callback_data=f"verify_{amount}_{unique_txn_id}")
     )
     
-    bot.edit_message_text(
-        chat_id=call.message.chat.id,
-        message_id=call.message.message_id,
-        text=(
-            f"💰 **Aapne ₹{amount} ka pack select kiya hai.**\n\n"
-            f"1️⃣ Upar diye gaye **'Pay ₹{amount}'** button par click karke payment poori karein.\n"
-            f"2️⃣ Payment ke baad **'Payment Ho Gayi? Link Lein'** dabayein."
-        ),
-        parse_mode="Markdown",
-        reply_markup=markup
-    )
+    try:
+        bot.edit_message_text(
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            text=f"💰 **Aapne ₹{amount} ka pack select kiya hai.**\n\n1️⃣ Upar diye gaye **'Pay ₹{amount}'** button par click karke payment poori karein.\n2️⃣ Payment ke baad **'Payment Ho Gayi? Link Lein'** dabayein.",
+            parse_mode="Markdown",
+            reply_markup=markup
+        )
+    except Exception:
+        pass
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('verify_'))
 def verify_payment_click(call):
     parts = call.data.split('_')
     amount = parts[1]
     
+    user_id_str = str(call.from_user.id)
+    db = load_data()
+    
+    current_date = time.strftime("%Y-%m-%d")
+    user_info = db.get(user_id_str, {"purchases": 0, "streak": 0, "last_date": ""})
+    
+    last_date = user_info.get("last_date", "")
+    streak = user_info.get("streak", 0)
+    purchases = user_info.get("purchases", 0)
+    
+    if last_date != current_date:
+        yesterday = time.strftime("%Y-%m-%d", time.localtime(time.time() - 86400))
+        if last_date == yesterday:
+            streak += 1
+        elif last_date == "":
+            streak = 1
+        else:
+            streak = 1
+            
+        user_info["last_date"] = current_date
+    
+    purchases += 1
+    user_info["purchases"] = purchases
+    user_info["streak"] = streak
+    db[user_id_str] = user_info
+    save_data(db)
+    
+    active_episode_link = get_current_episode_link()
+    total_buyers = get_total_unique_buyers(db)
+    
     success_text = (
         f"✨ **Payment Confirmed!** ✨\n"
         f"🎉 Aapka ₹{amount} ka pack successfully unlock ho gaya hai!\n\n"
-        f"👇 Neeche diye gaye button se turant channel join karein:"
+        f"🔥 Current Streak: **{streak} din** ho gaye hain.\n\n"
+        f"👇 Neeche diye gaye button se **Aaj ka Episode** turant dekhein:"
     )
     
     markup = InlineKeyboardMarkup(row_width=1)
-    markup.add(
-        InlineKeyboardButton("🚀 Join Episodes Channel", url=EPISODES_INVITE_LINK),
-        InlineKeyboardButton("💬 Support", url=f"https://t.me/{ADMIN_USERNAME}")
-    )
     
-    bot.edit_message_text(
-        chat_id=call.message.chat.id,
-        message_id=call.message.message_id,
-        text=success_text,
-        parse_mode="Markdown",
-        reply_markup=markup
-    )
+    # Active Dynamic Episode Link
+    markup.add(InlineKeyboardButton("🎬 Aaj Ka Episode Dekhein (Turant Kholen)", url=active_episode_link))
+    
+    # Bot par wapas aane ka link
+    markup.add(InlineKeyboardButton("🤖 Bot Par Wapas Jayein", url=BOT_PROFILE_LINK))
+    
+    if total_buyers >= 10 and streak >= 6:
+        success_text += "\n\n🎁 **Congratulations! Lagatar 6 din kharidari karne par 7vein din ka free episode reward link yeh raha:**"
+        markup.add(InlineKeyboardButton("🎁 Claim Free Episode (Day 7 Reward)", url=active_episode_link))
+        user_info["streak"] = 0 
+        save_data(db)
+        
+    markup.add(InlineKeyboardButton("🔙 Main Menu Par Jayein", callback_data="cancel_custom"))
+    
+    try:
+        bot.edit_message_text(
+            chat_id=call.message.chat.id,
+            message_id=call.message.message_id,
+            text=success_text,
+            parse_mode="Markdown",
+            reply_markup=markup
+        )
+    except Exception:
+        pass
 
 @app.route(f'/{API_TOKEN}', methods=['POST'])
 def webhook():
@@ -224,7 +363,7 @@ def webhook():
 
 @app.route('/')
 def home():
-    return "Bot Webhook Server with Step-by-Step Bargain is running! 🚀"
+    return "Bot Webhook Server with Dynamic Link Command is running! 🚀"
 
 if __name__ == "__main__":
     bot.remove_webhook()
@@ -234,4 +373,4 @@ if __name__ == "__main__":
     
     port = int(os.environ.get('PORT', 8080))
     app.run(host='0.0.0.0', port=port)
-    
+            

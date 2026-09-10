@@ -186,7 +186,7 @@ def post_to_main_channel():
             f"📦 **TOTAL — {TOTAL_EPISODES}**\n\n"
             f"💰 **PRICE — {PRICE_50}** (Kam budget walon ke liye ₹30 mein bhi Full Pack available hai!)\n\n"
             f"⚡ **TURANT MILEGA**\n\n"
-            f"📩 **Link:-** {BOT_LINK}"
+            f"📩 **Link:-** [Click Here to Open Bot]({BOT_LINK})"
         )
         bot.send_message(MAIN_CHANNEL_ID, channel_message, parse_mode="Markdown")
         print("✅ Main channel par post successfully bhej di gayi hai!")

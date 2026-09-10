@@ -116,4 +116,7 @@ def callback_query(call):
 if __name__ == "__main__":
     keep_alive()
     print("🤖 Bot successfully start ho raha hai... 🚀")
+    # Conflict error se bachne ke liye webhook remove karke polling start karenge
+    bot.remove_webhook()
     bot.infinity_polling(skip_pending=True)
+    

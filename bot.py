@@ -34,66 +34,67 @@ def handle_all_queries(message):
         if not text:
             return
         
-        # 1. Naya / Available package (3503 se 3510) - ₹100 Fixed 🚀
-        if "3503" in text or "3510" in text:
-            markup = InlineKeyboardMarkup()
-            markup.add(InlineKeyboardButton("⭐ Pay with Stars / Order Now", callback_data="pay_stars"))
+        # Range wale messages ko automatically calculate karne ke liye (Jaise 3496-3503 ya 3504-3510)
+        range_match = re.search(r'(\d+)\s*-\s*(\d+)', text)
+        if range_match:
+            start_ep = int(range_match.group(1))
+            end_ep = int(range_match.group(2))
+            count = (end_ep - start_ep) + 1  
             
-            response = (
-                "🎧 **EPISODE 3503 → 3510** 🚀\n\n"
-                "📦 **TOTAL — 8 EPISODES** 📚\n\n"
-                "💰 **PRICE — ₹100 ONLY** 💵\n\n"
-                "⚡ **TURANT MILEGA** 🔥\n\n"
-                "📩 **DM:** @ROMEO_KERKETTA"
-            )
-            bot.reply_to(message, response, parse_mode="Markdown", reply_markup=markup)
-            return
-
-        # 2. Purane episodes ke liye slabs aur calculation (1 se 3502) 📊
-        numbers = re.findall(r'\d+', text)
-        if numbers:
-            count = int(numbers[-1])
-            
-            # Agar maanga gaya episode available range (1 se 3502) ke andar hai:
-            if 1 <= count <= 3502:
-                rate_per_ep = 0
-                
-                # Pricing Slabs Rules:
-                if count <= 100:
-                    rate_per_ep = 5       # 1 se 100 tak: ₹5 per episode 💵
-                elif count <= 300:
-                    rate_per_ep = 3       # 101 se 300 tak: ₹3 per episode 💵
-                elif count <= 500:
-                    rate_per_ep = 2       # 301 se 500 tak: ₹2 per episode 💵
+            if count > 0:
+                # Agar 3504 se 3510 bheja hai toh chahein toh isko ₹100 fixed bhi rakh sakte hain
+                if start_ep == 3504 and end_ep == 3510:
+                    total_price = 100
                 else:
-                    rate_per_ep = 1       # 500 se jyada: ₹1 per episode 💵
-                    
-                total_price = count * rate_per_ep
+                    # Baaki ranges ke liye rate calculation
+                    rate_per_ep = 5
+                    if count <= 100:
+                        rate_per_ep = 5
+                    elif count <= 300:
+                        rate_per_ep = 3
+                    elif count <= 500:
+                        rate_per_ep = 2
+                    else:
+                        rate_per_ep = 1
+                    total_price = count * rate_per_ep
                 
                 markup = InlineKeyboardMarkup()
-                markup.add(InlineKeyboardButton("⭐ Pay with Stars / Order Now", callback_data="pay_stars"))
+                markup.add(InlineKeyboardButton(f"⭐ Pay ₹{total_price} (EP {start_ep}-{end_ep})", callback_data="pay_stars"))
                 
                 response = (
                     f"📊 **EPISODE ORDER SUMMARY** 📋\n\n"
-                    f"🔢 **Total Episodes:** {count} 📚\n"
-                    f"🏷️ **Rate:** ₹{rate_per_ep} per episode 💵\n\n"
+                    f"🔢 **Range:** {start_ep} → {end_ep} 📚\n"
+                    f"📦 **Total Episodes:** {count} 📚\n\n"
                     f"💰 **TOTAL PRICE — ₹{total_price}** 🔥\n\n"
                     f"🔒 *Content Secure hai (No Download/Forward)* 🛡️\n"
                     f"⚡ Payment ke baad episodes turant mil jayenge! 🚀"
                 )
                 bot.reply_to(message, response, parse_mode="Markdown", reply_markup=markup)
                 return
-            
-            else:
-                # Agar episode range (3502 se aage ya 0/negative) mein nahi hai:
-                bot.reply_to(message, "❌ Yeh episode available nahi hai! 🚫 Kripya 1 se 3510 ke beech ka episode number bhejein.")
-                return
 
-        # 3. Agar text mein koi number nahi hai (General chat)
+        # Simple numbers ke liye
+        numbers = re.findall(r'\d+', text)
+        if numbers:
+            count = int(numbers[-1])
+            rate_per_ep = 5 if count <= 100 else 3
+            total_price = count * rate_per_ep
+            
+            markup = InlineKeyboardMarkup()
+            markup.add(InlineKeyboardButton(f"⭐ Pay ₹{total_price} ({count} Episodes)", callback_data="pay_stars"))
+            
+            response = (
+                f"📊 **EPISODE ORDER SUMMARY** 📋\n\n"
+                f"🔢 **Total Episodes:** {count} 📚\n"
+                f"💰 **TOTAL PRICE — ₹{total_price}** 🔥\n\n"
+                f"⚡ Payment ke baad episodes turant mil jayenge! 🚀"
+            )
+            bot.reply_to(message, response, parse_mode="Markdown", reply_markup=markup)
+            return
+
+        # General chat
         ai_smart_response = (
            f"🤖 **AI Assistant:** Aapne kaha: *\"{text}\"* \n\n"
-           f"👋 Namaste! Agar aapko audio series ke episodes chahiye, toh kripya episodes ki sankhya (jaise **50**, **200**, **500**) लिखकर भेजें! 🎧✨\n\n"
-           f"📩 Kisi bhi sahayta ke liye DM karein: @ROMEO_KERKETTA"
+           f"👋 Namaste! Kripya episodes ki range (jaise **3504 - 3510**) लिखकर भेजें! 🎧✨"
         )
         bot.reply_to(message, ai_smart_response, parse_mode="Markdown")
         
@@ -105,7 +106,6 @@ def handle_star_click(call):
     text_message = (
         "⭐ **TELEGRAM STARS PAYMENT** 💳\n\n"
         "✅ Aapka request accept kar liya gaya hai!\n"
-        "🛡️ Payment ya episodes pane ke liye turant yahan message karein:\n\n"
         "📩 **Admin DM:** @ROMEO_KERKETTA"
     )
     bot.answer_callback_query(call.id, "Processing your request...")
@@ -113,7 +113,7 @@ def handle_star_click(call):
 
 # --- 3. Main Execution with Flask Keep Alive ---
 if __name__ == "__main__":
-    keep_alive()  # Flask server background me start hoga taaki Render port error na de 🌐
+    keep_alive()
     print("🤖 Bot successfully start ho raha hai... 🚀")
     bot.infinity_polling(skip_pending=True)
     

@@ -1,7 +1,6 @@
 import os
 from threading import Thread
 from flask import Flask
-import re
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
@@ -27,93 +26,94 @@ STORAGE_CHANNEL_ID = '-1003621158878'
 
 bot = telebot.TeleBot(API_TOKEN)
 
-@bot.message_handler(func=lambda message: True, content_types=['text'])
-def handle_all_queries(message):
-    try:
-        text = message.text
-        if not text:
-            return
-        
-        # Range wale messages ko automatically calculate karne ke liye (Jaise 3496-3503 ya 3504-3510)
-        range_match = re.search(r'(\d+)\s*-\s*(\d+)', text)
-        if range_match:
-            start_ep = int(range_match.group(1))
-            end_ep = int(range_match.group(2))
-            count = (end_ep - start_ep) + 1  
-            
-            if count > 0:
-                # Agar 3504 se 3510 bheja hai toh chahein toh isko ₹100 fixed bhi rakh sakte hain
-                if start_ep == 3504 and end_ep == 3510:
-                    total_price = 100
-                else:
-                    # Baaki ranges ke liye rate calculation
-                    rate_per_ep = 5
-                    if count <= 100:
-                        rate_per_ep = 5
-                    elif count <= 300:
-                        rate_per_ep = 3
-                    elif count <= 500:
-                        rate_per_ep = 2
-                    else:
-                        rate_per_ep = 1
-                    total_price = count * rate_per_ep
-                
-                markup = InlineKeyboardMarkup()
-                markup.add(InlineKeyboardButton(f"⭐ Pay ₹{total_price} (EP {start_ep}-{end_ep})", callback_data="pay_stars"))
-                
-                response = (
-                    f"📊 **EPISODE ORDER SUMMARY** 📋\n\n"
-                    f"🔢 **Range:** {start_ep} → {end_ep} 📚\n"
-                    f"📦 **Total Episodes:** {count} 📚\n\n"
-                    f"💰 **TOTAL PRICE — ₹{total_price}** 🔥\n\n"
-                    f"🔒 *Content Secure hai (No Download/Forward)* 🛡️\n"
-                    f"⚡ Payment ke baad episodes turant mil jayenge! 🚀"
-                )
-                bot.reply_to(message, response, parse_mode="Markdown", reply_markup=markup)
-                return
-
-        # Simple numbers ke liye
-        numbers = re.findall(r'\d+', text)
-        if numbers:
-            count = int(numbers[-1])
-            rate_per_ep = 5 if count <= 100 else 3
-            total_price = count * rate_per_ep
-            
-            markup = InlineKeyboardMarkup()
-            markup.add(InlineKeyboardButton(f"⭐ Pay ₹{total_price} ({count} Episodes)", callback_data="pay_stars"))
-            
-            response = (
-                f"📊 **EPISODE ORDER SUMMARY** 📋\n\n"
-                f"🔢 **Total Episodes:** {count} 📚\n"
-                f"💰 **TOTAL PRICE — ₹{total_price}** 🔥\n\n"
-                f"⚡ Payment ke baad episodes turant mil jayenge! 🚀"
-            )
-            bot.reply_to(message, response, parse_mode="Markdown", reply_markup=markup)
-            return
-
-        # General chat
-        ai_smart_response = (
-           f"🤖 **AI Assistant:** Aapne kaha: *\"{text}\"* \n\n"
-           f"👋 Namaste! Kripya episodes ki range (jaise **3504 - 3510**) लिखकर भेजें! 🎧✨"
-        )
-        bot.reply_to(message, ai_smart_response, parse_mode="Markdown")
-        
-    except Exception as e:
-        bot.reply_to(message, "⚠️ Kuchh technical dikkat aayi hai, kripya dobara koshish karein! 🔄")
-
-@bot.callback_query_handler(func=lambda call: call.data == "pay_stars")
-def handle_star_click(call):
-    text_message = (
-        "⭐ **TELEGRAM STARS PAYMENT** 💳\n\n"
-        "✅ Aapka request accept kar liya gaya hai!\n"
-        "📩 **Admin DM:** @ROMEO_KERKETTA"
+# Main Menu / Buttons function
+def send_main_menu(chat_id, message_id=None):
+    markup = InlineKeyboardMarkup(row_width=1)
+    
+    # Package Buttons
+    markup.add(
+        InlineKeyboardButton("🎧 EP: 3487 - 3491 (₹50)", callback_data="pkg_3487_3491"),
+        InlineKeyboardButton("🎧 EP: 3491 - 3495 (₹80)", callback_data="pkg_3491_3495"),
+        InlineKeyboardButton("🎧 EP: 3504 - 3510 (₹70)", callback_data="pkg_3504_3510"),
+        InlineKeyboardButton("🚀 Start / Menu", callback_data="main_menu")
     )
-    bot.answer_callback_query(call.id, "Processing your request...")
-    bot.send_message(call.message.chat.id, text_message, parse_mode="Markdown")
+    
+    text = (
+        "🎧 **SUPER YODDHA — Audio Series** 🚀\n\n"
+        "Aapko kaun sa episode chahiye? Neeche diye gaye button par click karein: 👇"
+    )
+    
+    if message_id:
+        try:
+            bot.edit_message_text(text, chat_id, message_id, parse_mode="Markdown", reply_markup=markup)
+            return
+        except Exception:
+            pass
+    bot.send_message(chat_id, text, parse_mode="Markdown", reply_markup=markup)
+
+@bot.message_handler(commands=['start', 'menu'])
+def send_welcome(message):
+    send_main_menu(message.chat.id)
+
+@bot.message_handler(func=lambda message: True, content_types=['text'])
+def handle_text(message):
+    send_main_menu(message.chat.id)
+
+@bot.callback_query_handler(func=lambda call: True)
+def callback_query(call):
+    if call.data == "main_menu":
+        bot.answer_callback_query(call.id)
+        send_main_menu(call.message.chat.id, call.message.message_id)
+        
+    elif call.data.startswith("pkg_"):
+        bot.answer_callback_query(call.id, "Package selected!")
+        
+        # Package ke hisab se exact details aur response text
+        if "3504_3510" in call.data:
+            response = (
+                "🎧 **EPISODE 3504 → 3510** 🚀\n\n"
+                "📦 **TOTAL — 7 EPISODES** 📚\n\n"
+                "💰 **PRICE — ₹70 ONLY** 💵\n\n"
+                "⚡ **TURANT MILEGA** 🔥\n\n"
+                "📩 **DM:** @ROMEO_KERKETTA"
+            )
+        elif "3491_3495" in call.data:
+            response = (
+                "🎧 **EPISODE 3491 → 3495** 🚀\n\n"
+                "📦 **TOTAL — 5 EPISODES** 📚\n\n"
+                "💰 **PRICE — ₹80 ONLY** 💵\n\n"
+                "⚡ **TURANT MILEGA** 🔥\n\n"
+                "📩 **DM:** @ROMEO_KERKETTA"
+            )
+        else:
+            response = (
+                "🎧 **EPISODE 3487 → 3491** 🚀\n\n"
+                "📦 **TOTAL — 5 EPISODES** 📚\n\n"
+                "💰 **PRICE — ₹50 ONLY** 💵\n\n"
+                "⚡ **TURANT MILEGA** 🔥\n\n"
+                "📩 **DM:** @ROMEO_KERKETTA"
+            )
+            
+        markup = InlineKeyboardMarkup()
+        markup.add(InlineKeyboardButton("⭐ Pay with Stars / Order Now", callback_data="pay_stars"))
+        markup.add(InlineKeyboardButton("🔙 Back to Menu", callback_data="main_menu"))
+        
+        try:
+            bot.edit_message_text(response, call.message.chat.id, call.message.message_id, parse_mode="Markdown", reply_markup=markup)
+        except Exception:
+            bot.send_message(call.message.chat.id, response, parse_mode="Markdown", reply_markup=markup)
+
+    elif call.data == "pay_stars":
+        bot.answer_callback_query(call.id, "Processing...")
+        text_message = (
+            "⭐ **PAYMENT & DELIVERY** 💳\n\n"
+            "🛡️ Episodes pane ke liye turant yahan message karein:\n"
+            "📩 **Admin DM:** @ROMEO_KERKETTA"
+        )
+        bot.send_message(call.message.chat.id, text_message, parse_mode="Markdown")
 
 # --- 3. Main Execution with Flask Keep Alive ---
 if __name__ == "__main__":
     keep_alive()
     print("🤖 Bot successfully start ho raha hai... 🚀")
     bot.infinity_polling(skip_pending=True)
-    

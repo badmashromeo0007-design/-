@@ -1,4 +1,5 @@
 import os
+import time
 from flask import Flask
 from threading import Thread
 import telebot
@@ -25,12 +26,12 @@ API_TOKEN = '8831853256:AAFOYW-K73PXAc8hHSJ1QvuVGBqudEU3fnY'
 EPISODES_INVITE_LINK = 'https://t.me/+rViclcLru-0yYTI1'
 ADMIN_USERNAME = "ROMEO_KERKETTA"
 
-# --- 3. Aapki UPI ID (Yahan apni asli UPI ID daalein) ---
-YOUR_UPI_ID = 'your_upi@okaxis'  # <-- Apna asli UPI ID yahan likhein (jaise 9876543210@paytm)
+# --- 3. Aapka UPI ID ---
+YOUR_UPI_ID = 'badmashromeo0007@okaxis'
 PAYMENT_AMOUNT = '30'
 PAYEE_NAME = 'SuperYoddha'
 
-# Direct UPI Payment Link (Jo Google Pay, PhonePe, Paytm sabhi me open hoga)
+# Direct UPI Payment Link
 UPI_INTENT_LINK = f"upi://pay?pa={YOUR_UPI_ID}&pn={PAYEE_NAME}&am={PAYMENT_AMOUNT}&cu=INR&tn=SuperYoddhaEpisodes"
 
 bot = telebot.TeleBot(API_TOKEN)
@@ -43,7 +44,6 @@ try:
 except Exception as e:
     print(f"Menu commands error: {e}")
 
-# Episode Details
 FULL_TITLE = "EPISODE 3503 → 3510"
 TOTAL_EPISODES = "TOTAL — 8 EPISODES"
 PRICE_TEXT = "PRICE — ₹30 ONLY"
@@ -62,11 +62,7 @@ def get_start_text():
 @bot.message_handler(commands=['start', 'menu'])
 def send_welcome(message):
     markup = InlineKeyboardMarkup(row_width=1)
-    
-    # Direct Payment App Link Button
     markup.add(InlineKeyboardButton("⚡ Pay ₹30 Now (GPay/PhonePe)", url=UPI_INTENT_LINK))
-    
-    # Admin Contact Button
     markup.add(InlineKeyboardButton("💬 Admin se Baat Karein", url=f"https://t.me/{ADMIN_USERNAME}"))
     
     bot.send_message(
@@ -90,23 +86,23 @@ def handle_payment_screenshot(message):
         InlineKeyboardButton("💬 Support / Admin", url=f"https://t.me/{ADMIN_USERNAME}")
     )
     
-    bot.reply_to(
-        message,
-        text=thanks_text,
-        parse_mode="Markdown",
-        reply_markup=markup
-    )
+    bot.reply_to(message, text=thanks_text, parse_mode="Markdown", reply_markup=markup)
 
 @bot.message_handler(func=lambda message: True)
 def handle_other_messages(message):
-    bot.reply_to(
-        message, 
-        "📷 Kripya payment karne ke baad apna **screenshot** yahan bhejiye taaki aapko episodes ka link mil sake!"
-    )
+    bot.reply_to(message, "📷 Kripya payment karne ke baad apna **screenshot** yahan bhejiye taaki aapko episodes ka link mil sake!")
 
 if __name__ == "__main__":
     keep_alive()
-    print("🤖 Bot successfully start ho raha hai... (Direct Payment Mode) 🚀")
-    bot.remove_webhook()
-    bot.infinity_polling(skip_pending=True)
+    print("🤖 Bot successfully start ho raha hai...")
     
+    while True:
+        try:
+            bot.remove_webhook()
+            time.sleep(1)
+            print("🚀 Polling started successfully!")
+            bot.infinity_polling(skip_pending=True)
+        except Exception as e:
+            print(f"Polling error: {e}. Restarting in 5 seconds...")
+            time.sleep(5)
+            

@@ -1,11 +1,11 @@
 import re
 import telebot
 
-# [1] BotFather se mila hua apna asli API Token yahan dalein:
+# [1] Aapka BotFather se mila hua asli API Token:
 API_TOKEN = '8831853256:AAFCFchvQVxwz9v_ACuhsL8ITSsNKpJ74nY'
 
-# [2] Aapke private channel ki numeric ID:
-STORAGE_CHANNEL_ID = '-1004492110524'
+# [2] Nayi Channel ID jo abhi aapne screenshot se nikali hai:
+STORAGE_CHANNEL_ID = '-1003621158878'
 
 bot = telebot.TeleBot(API_TOKEN)
 
@@ -33,6 +33,7 @@ def handle_all_queries(message):
         if numbers:
             count = int(numbers[0])
             
+            # Agar maanga gaya episode available range (1 se 3502) ke andar hai:
             if 1 <= count <= 3502:
                 rate_per_ep = 0
                 
@@ -59,11 +60,16 @@ def handle_all_queries(message):
                 )
                 bot.reply_to(message, response, parse_mode="Markdown")
                 return
+            
+            else:
+                # Agar episode range (3502 se aage ya 0/negative) mein nahi hai:
+                bot.reply_to(message, "❌ Yeh episode available nahi hai! 🚫 Kripya 1 se 3510 ke beech ka episode number bhejein.")
+                return
 
-        # 3. AI-Powered Smart Fallback for general chats/questions 🤖✨
+        # 3. Agar text mein koi number nahi hai (General chat)
         ai_smart_response = (
            f"🤖 **AI Assistant:** Aapne kaha: *\"{text}\"* \n\n"
-           f"👋 Namaste! Agar aapko audio series ke episodes chahiye, toh kripya episodes ki sankhya (jaise **50**, **200**, **500**) लिखकर भेजें ताकि सही दाम और डिस्काउंट स्लैब का पता चल सके! 🎧✨\n\n"
+           f"👋 Namaste! Agar aapko audio series ke episodes chahiye, toh kripya episodes ki sankhya (jaise **50**, **200**, **500**) लिखकर भेजें! 🎧✨\n\n"
            f"📩 Kisi bhi sahayta ke liye DM karein: @ROMEO_KERKETTA"
         )
         bot.reply_to(message, ai_smart_response, parse_mode="Markdown")
@@ -71,5 +77,5 @@ def handle_all_queries(message):
     except Exception as e:
         bot.reply_to(message, "⚠️ Kuchh technical dikkat aayi hai, kripya dobara koshish karein! 🔄")
 
-print("🤖 AI-Integrated Telegram Bot successfully start ho raha hai... 🚀")
+print("🤖 Bot successfully start ho raha hai... 🚀")
 bot.infinity_polling(skip_pending=True)

@@ -1,5 +1,6 @@
 import os
 import time
+from datetime import datetime
 from threading import Thread
 from flask import Flask
 import telebot
@@ -22,165 +23,101 @@ def keep_alive():
     t.start()
 
 # --- 2. Telegram Bot Configuration ---
-API_TOKEN = '8831853256:AAGummjGke8vPpQ85EkWYTBzig5vh291XG8'
+API_TOKEN = '8831853256:AAGummjGke8vPpQ85EkWYTBzig5vh291XG8'  # Apna naya token yahan daalein agar change karein
 MAIN_CHANNEL_ID = '-1004382767346' 
-EPISODES_CHANNEL_ID = '-100xxxxxxxxxx' 
+EPISODES_CHANNEL_ID = '-100rViclcLru-0yYTI1' # Aapka episodes channel
+EPISODES_INVITE_LINK = 'https://t.me/+rViclcLru-0yYTI1'
 
 ADMIN_USERNAME = "ROMEO_KERKETTA"
+BOT_USERNAME = "Romeo_pay_bot" # Apne bot ka username yahan daalein (@ ke bina)
 
 bot = telebot.TeleBot(API_TOKEN)
 
 try:
     bot.set_my_commands([
         BotCommand("start", "🚀 Start / Main Menu"),
-        BotCommand("menu", "🎛 Open Episodes Menu")
+        BotCommand("menu", "🎛 Open Menu")
     ])
 except Exception as e:
     print(f"Menu commands error: {e}")
 
-FULL_TITLE = "FULL EPISODES PACK (3504 → 3510)"
-TOTAL_EPISODES = "All 7 Episodes (Full Pack)"
-PRICE_50 = "₹50 ONLY"
-PRICE_30 = "₹30 (Special Full Pack)"
-BOT_LINK = "https://t.me/Romeo_pay_bot"
-MAIN_CHANNEL_LINK = "https://t.me/+YOUR_MAIN_CHANNEL_LINK" 
+# Text Details as requested
+FULL_TITLE = "EPISODE 3503 → 3510"
+TOTAL_EPISODES = "TOTAL — 8 EPISODES"
+PRICE_TEXT = "PRICE — ₹30 ONLY"
 QR_IMAGE_URL = "https://i.ibb.co/3m3vL05/1000018603.png"
 
 last_channel_msg_id = None
 
-def send_main_menu(chat_id, message_id=None):
-    markup = InlineKeyboardMarkup(row_width=1)
-    
-    markup.add(
-        InlineKeyboardButton(f"🎧 FULL EPISODES PACK ({PRICE_50})", callback_data="pkg_full_50"),
-        InlineKeyboardButton(f"💸 Kam Budget Full Pack ({PRICE_30})", callback_data="pkg_full_30"),
-        InlineKeyboardButton("📢 Join Main Channel", url=MAIN_CHANNEL_LINK),
-        InlineKeyboardButton("💬 Mol-Bhav / Admin DM", url=f"https://t.me/{ADMIN_USERNAME}"),
-        InlineKeyboardButton("🚀 Start / Menu", callback_data="main_menu")
-    )
-    
-    text = (
-        f"🎧 **SUPER YODDHA — Audio Series** 🚀\n\n"
-        f"Aapko **Full Episodes** chahiye? Chahe ₹50 mein lo ya ₹30 mein, full pack milega! Neeche click karein: 👇"
-    )
-    
-    if message_id:
-        try:
-            bot.edit_message_text(
-                text=text,
-                chat_id=chat_id,
-                message_id=message_id,
-                parse_mode="Markdown",
-                reply_markup=markup
-            )
-            return
-        except Exception:
-            pass
-            
-    bot.send_message(chat_id, text, parse_mode="Markdown", reply_markup=markup)
-
-@bot.message_handler(commands=['start', 'menu'])
-def send_welcome(message):
-    send_main_menu(message.chat.id)
-
-@bot.message_handler(func=lambda message: True, content_types=['text'])
-def handle_user_text(message):
-    user_text = message.text.strip()
-    
-    caption_text = (
-        f"🎧 **SUPER YODDHA — Full Episodes** 🚀\n\n"
-        f"📦 **Aapka Message:** {user_text}\n"
-        f"💰 **PRICE:** {PRICE_50} (Ya ₹30 mein bhi Full Pack le sakte hain!)\n\n"
-        f"⚡ **TURANT MILEGA!**\n\n"
+def get_start_caption():
+    return (
+        f"🎧 **{FULL_TITLE}**\n\n"
+        f"📦 **{TOTAL_EPISODES}**\n\n"
+        f"💰 **{PRICE_TEXT}**\n\n"
+        f"⚡ **TURANT MILEGA**\n\n"
         f"📲 **Payment karne ke liye upar diye gaye Barcode par Scan karke pay karein.**\n"
         f"📸 **Payment karne ke baad apna Screenshot yahin chat mein bhejen.**"
     )
-    
+
+@bot.message_handler(commands=['start', 'menu'])
+def send_welcome(message):
     markup = InlineKeyboardMarkup()
-    markup.add(InlineKeyboardButton("🔙 Back to Menu", callback_data="main_menu"))
+    markup.add(InlineKeyboardButton("💬 Admin se Baat Karein", url=f"https://t.me/{ADMIN_USERNAME}"))
     
     bot.send_photo(
         chat_id=message.chat.id,
         photo=QR_IMAGE_URL,
-        caption=caption_text,
+        caption=get_start_caption(),
         parse_mode="Markdown",
         reply_markup=markup
     )
 
 @bot.message_handler(content_types=['photo'])
 def handle_payment_screenshot(message):
-    try:
-        invite_link = bot.create_chat_invite_link(
-            chat_id=EPISODES_CHANNEL_ID,
-            member_limit=1
-        ).invite_link
-        
-        success_text = (
-            f"✅ **Payment Screenshot Verified!**\n\n"
-            f"🎉 Aapka payment verify ho gaya hai!\n"
-            f"Neeche aapke liye **Full Episodes** ka **1-time use hone wala** secure link generate kiya gaya hai: 👇"
-        )
-        
-        markup = InlineKeyboardMarkup(row_width=1)
-        markup.add(
-            InlineKeyboardButton("🚀 Join Full Episodes Channel", url=invite_link),
-            InlineKeyboardButton("🔙 Back to Menu", callback_data="main_menu")
-        )
-        
-        bot.reply_to(
-            message,
-            text=success_text,
-            parse_mode="Markdown",
-            reply_markup=markup
-        )
-    except Exception as e:
-        bot.reply_to(
-            message,
-            "⚠️ Link banane mein thodi problem aa rahi hai. Admin se sampark karein."
-        )
-        print(f"Invite link error: {e}")
-
-@bot.callback_query_handler(func=lambda call: True)
-def callback_query(call):
-    if call.data == "main_menu":
-        bot.answer_callback_query(call.id)
-        send_main_menu(call.message.chat.id, call.message.message_id)
-        
-    elif call.data == "pkg_full_50":
-        bot.answer_callback_query(call.id, "₹50 Full Pack Loaded!")
-        caption_text = (
-            f"🎧 **SUPER YODDHA — Full Episodes Pack** 🚀\n\n"
-            f"📦 **{FULL_TITLE}** ({TOTAL_EPISODES})\n"
-            f"💰 **PRICE:** {PRICE_50}\n\n"
-            f"⚡ **TURANT MILEGA!**\n\n"
-            f"📲 **Payment karne ke liye upar diye gaye Barcode par Scan karke pay karein.**\n"
-            f"📸 **Payment karne ke baad apna Screenshot yahin chat mein bhejen.**"
-        )
-        markup = InlineKeyboardMarkup()
-        markup.add(InlineKeyboardButton("🔙 Back to Menu", callback_data="main_menu"))
-        
-        # Yahan message delete hone ki wajah se error aa raha tha, ise hata diya gaya hai taaki photo safe aaye
-        bot.send_photo(call.message.chat.id, photo=QR_IMAGE_URL, caption=caption_text, parse_mode="Markdown", reply_markup=markup)
-
-    elif call.data == "pkg_full_30":
-        bot.answer_callback_query(call.id, "₹30 Full Pack Loaded!")
-        caption_text = (
-            f"🎧 **SUPER YODDHA — Full Episodes Pack (Special Offer)** 🚀\n\n"
-            f"📦 **{FULL_TITLE}** ({TOTAL_EPISODES})\n"
-            f"💰 **PRICE:** {PRICE_30}\n\n"
-            f"⚡ **TURANT MILEGA!**\n\n"
-            f"📲 **₹30 pay karne ke liye upar diye gaye Barcode par Scan karke pay karein.**\n"
-            f"📸 **Payment karne ke baad apna Screenshot yahin chat mein bhejen.**"
-        )
-        markup = InlineKeyboardMarkup()
-        markup.add(InlineKeyboardButton("🔙 Back to Menu", callback_data="main_menu"))
-        
-        bot.send_photo(call.message.chat.id, photo=QR_IMAGE_URL, caption=caption_text, parse_mode="Markdown", reply_markup=markup)
+    # User ko badhiya sa thank you message channel/brand name ke sath
+    thanks_text = (
+        f"✨ **Thank You so much for your payment!** ✨\n"
+        f"🎧 **THE SUPER YODDHA** ki taraf se aapka swagat hai.\n\n"
+        f"⏳ Aapka screenshot admin (${ADMIN_USERNAME}) dwara verify kiya ja raha hai. "
+        f"Verification poora hote hi aapko episodes ka secure link mil jayega!"
+    )
+    bot.reply_to(message, thanks_text, parse_mode="Markdown")
+    
+    # Admin ko notify karne ke liye (Optional: Admin chat mein screenshot forward kar sakte hain)
+    # Yahan agar aap chahein toh direct link bhi de sakte hain ya manual verify kar sakte hain:
+    # Testing ke liye direct secure link dene ka option:
+    success_verify_text = (
+        f"✅ **Payment Received & Verified!**\n\n"
+        f"🎉 Thank you for purchasing from **THE SUPER YODDHA**!\n"
+        f"Neeche aapke episodes ka link hai: 👇"
+    )
+    
+    markup = InlineKeyboardMarkup(row_width=1)
+    markup.add(
+        InlineKeyboardButton("🚀 Join Episodes Channel", url=EPISODES_INVITE_LINK),
+        InlineKeyboardButton("💬 Support / Admin", url=f"https://t.me/{ADMIN_USERNAME}")
+    )
+    
+    bot.send_message(
+        chat_id=message.chat.id,
+        text=success_verify_text,
+        parse_mode="Markdown",
+        reply_markup=markup
+    )
 
 def auto_remind_channel():
     global last_channel_msg_id
     while True:
         try:
+            current_hour = datetime.now().hour
+            
+            # Raat 10:00 PM (22) se subah 8:00 AM (8) ke beech har 1 ghante mein reminder
+            # Baaki din mein har 10 minute mein reminder
+            if current_hour >= 22 or current_hour < 8:
+                sleep_time = 3600 # 1 ghanta
+            else:
+                sleep_time = 600  # 10 minat
+                
             if last_channel_msg_id:
                 try:
                     bot.delete_message(MAIN_CHANNEL_ID, last_channel_msg_id)
@@ -189,18 +126,19 @@ def auto_remind_channel():
 
             channel_message = (
                 f"🎧 **{FULL_TITLE}**\n\n"
-                f"📦 **TOTAL — {TOTAL_EPISODES}**\n\n"
-                f"💰 **PRICE — {PRICE_50}** (Kam budget walon ke liye ₹30 mein bhi Full Pack available hai!)\n\n"
+                f"📦 **{TOTAL_EPISODES}**\n\n"
+                f"💰 **{PRICE_TEXT}**\n\n"
                 f"⚡ **TURANT MILEGA**\n\n"
-                f"📩 **Bot Link:-** [THE SUPER YODDHA]({BOT_LINK})"
+                f"📩 **Bot Link:-** [THE SUPER YODDHA]({f'https://t.me/{BOT_USERNAME}'})"
             )
             sent_msg = bot.send_message(MAIN_CHANNEL_ID, channel_message, parse_mode="Markdown")
             last_channel_msg_id = sent_msg.message_id
-            print("✅ Main channel par naya reminder post bhej diya gaya hai!")
+            print("✅ Main channel par reminder post bhej diya gaya hai!")
+            
+            time.sleep(sleep_time)
         except Exception as e:
             print(f"⚠️ Channel reminder error: {e}")
-        
-        time.sleep(600)
+            time.sleep(60)
 
 if __name__ == "__main__":
     keep_alive()
@@ -212,4 +150,4 @@ if __name__ == "__main__":
     
     bot.remove_webhook()
     bot.infinity_polling(skip_pending=True)
-    
+                                                                     

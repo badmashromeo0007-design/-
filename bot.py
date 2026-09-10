@@ -21,7 +21,7 @@ bot = telebot.TeleBot(API_TOKEN)
 genai.configure(api_key=GEMINI_API_KEY)
 ai_client = genai.GenerativeModel('gemini-1.5-flash')
 
-DATA_FILE = "user_data.json"
+DATA_FILE = "/tmp/user_data.json"
 
 def load_data():
     if os.path.exists(DATA_FILE):
@@ -33,8 +33,11 @@ def load_data():
     return {}
 
 def save_data(data):
-    with open(DATA_FILE, "w") as f:
-        json.dump(data, f)
+    try:
+        with open(DATA_FILE, "w") as f:
+            json.dump(data, f)
+    except Exception as e:
+        print(f"Save error: {e}")
 
 def get_current_episode_link():
     db = load_data()

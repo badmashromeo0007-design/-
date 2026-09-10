@@ -22,7 +22,7 @@ def keep_alive():
     t.start()
 
 # --- 2. Telegram Bot Configuration ---
-API_TOKEN = '8831853256:AAHM8oOD0qVQs10uuCKLdieB9LrZ7vFTOOE'
+API_TOKEN = '8831853256:AAGummjGke8vPpQ85EkWYTBzig5vh291XG8'
 STORAGE_CHANNEL_ID = '-1003621158878'
 
 bot = telebot.TeleBot(API_TOKEN)

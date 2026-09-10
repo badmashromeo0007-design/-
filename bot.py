@@ -4,7 +4,8 @@ import time
 import telebot
 from flask import Flask, request
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, BotCommand
-from google import genai
+import google.generativeai as genai
+
 
 API_TOKEN = '8831853256:AAFOYW-K73PXAc8hHSJ1QvuVGBqudEU3fnY'
 GEMINI_API_KEY = 'AQ.Ab8RN6KJCiUJrMwS6JrsCkSP_Hfd9ZRH0wb_qoKrgZCX4MPSdg'  # Aapki Gemini API Key yahan set kar di gayi hai

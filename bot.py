@@ -25,6 +25,14 @@ API_TOKEN = '8831853256:AAFOYW-K73PXAc8hHSJ1QvuVGBqudEU3fnY'
 EPISODES_INVITE_LINK = 'https://t.me/+rViclcLru-0yYTI1'
 ADMIN_USERNAME = "ROMEO_KERKETTA"
 
+# --- 3. Aapki UPI ID (Yahan apni asli UPI ID daalein) ---
+YOUR_UPI_ID = 'your_upi@okaxis'  # <-- Apna asli UPI ID yahan likhein (jaise 9876543210@paytm)
+PAYMENT_AMOUNT = '30'
+PAYEE_NAME = 'SuperYoddha'
+
+# Direct UPI Payment Link (Jo Google Pay, PhonePe, Paytm sabhi me open hoga)
+UPI_INTENT_LINK = f"upi://pay?pa={YOUR_UPI_ID}&pn={PAYEE_NAME}&am={PAYMENT_AMOUNT}&cu=INR&tn=SuperYoddhaEpisodes"
+
 bot = telebot.TeleBot(API_TOKEN)
 
 try:
@@ -35,29 +43,35 @@ try:
 except Exception as e:
     print(f"Menu commands error: {e}")
 
-# Episode & Payment Details
+# Episode Details
 FULL_TITLE = "EPISODE 3503 → 3510"
 TOTAL_EPISODES = "TOTAL — 8 EPISODES"
 PRICE_TEXT = "PRICE — ₹30 ONLY"
-QR_IMAGE_URL = "https://i.ibb.co/3m3vL05/1000018603.png"
 
-def get_start_caption():
+def get_start_text():
     return (
         f"🎧 **{FULL_TITLE}**\n\n"
         f"📦 **{TOTAL_EPISODES}**\n\n"
         f"💰 **{PRICE_TEXT}**\n\n"
-        f"Payment karne ke baad screenshot bhejiye"
+        f"⚡ **Payment Karne Ka Tarika:**\n"
+        f"1. Neeche diye gaye **'Pay ₹30 Now'** button par click karein (GPay/PhonePe/Paytm khul jayega).\n"
+        f"2. Payment karne ke baad **screenshot** yahin chat me bhejiye!\n\n"
+        f"*(Agar button se app na khule, toh aap is UPI ID par bhej sakte hain: `{YOUR_UPI_ID}`)*"
     )
 
 @bot.message_handler(commands=['start', 'menu'])
 def send_welcome(message):
-    markup = InlineKeyboardMarkup()
+    markup = InlineKeyboardMarkup(row_width=1)
+    
+    # Direct Payment App Link Button
+    markup.add(InlineKeyboardButton("⚡ Pay ₹30 Now (GPay/PhonePe)", url=UPI_INTENT_LINK))
+    
+    # Admin Contact Button
     markup.add(InlineKeyboardButton("💬 Admin se Baat Karein", url=f"https://t.me/{ADMIN_USERNAME}"))
     
-    bot.send_photo(
+    bot.send_message(
         chat_id=message.chat.id,
-        photo=QR_IMAGE_URL,
-        caption=get_start_caption(),
+        text=get_start_text(),
         parse_mode="Markdown",
         reply_markup=markup
     )
@@ -65,7 +79,7 @@ def send_welcome(message):
 @bot.message_handler(content_types=['photo'])
 def handle_payment_screenshot(message):
     thanks_text = (
-        f"✨ **Payment Kar Diya Hai! Iske Liye Dil Se Thanks!** ✨\n"
+        f"✨ **Payment Ka Screenshot Mil Gaya! Thanks!** ✨\n"
         f"🎧 **THE SUPER YODDHA** channel par aapka swagat hai!\n\n"
         f"🎉 Aapka payment verify ho gaya hai! Neeche aapke episodes ka secure link hai: 👇"
     )
@@ -83,9 +97,16 @@ def handle_payment_screenshot(message):
         reply_markup=markup
     )
 
+@bot.message_handler(func=lambda message: True)
+def handle_other_messages(message):
+    bot.reply_to(
+        message, 
+        "📷 Kripya payment karne ke baad apna **screenshot** yahan bhejiye taaki aapko episodes ka link mil sake!"
+    )
+
 if __name__ == "__main__":
     keep_alive()
-    print("🤖 Bot successfully start ho raha hai... 🚀")
+    print("🤖 Bot successfully start ho raha hai... (Direct Payment Mode) 🚀")
     bot.remove_webhook()
     bot.infinity_polling(skip_pending=True)
     

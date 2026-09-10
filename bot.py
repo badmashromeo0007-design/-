@@ -2,21 +2,17 @@ import os
 import telebot
 from telebot import types
 
-# नया बॉट टोकन जो रेंडर पर सेट किया गया है
 TOKEN = os.getenv("BOT_TOKEN", "8831853256:AAFCFchvQVxwz9v_ACuhsL8ITSsNKpJ74nY")
-
 bot = telebot.TeleBot(TOKEN)
 
-# टेलीग्राम 409 Conflict एरर को हटाने के लिए वेबहुक हटा रहे हैं ताकि पोलिंग सुचारू रूप से चले
 try:
     bot.remove_webhook()
 except Exception as e:
     print(f"Error removing webhook: {e}")
 
-@bot.message_handler(commands=['start'])
+@bot.message_handler(func=lambda message: "Start / Menu" in message.text or message.text.startswith('/start'))
 def send_welcome(message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
-    # नया मेनू विकल्प जो आप चाहते थे
     btn_ep = types.KeyboardButton("EP 3496 - 3503")
     markup.add(btn_ep)
     

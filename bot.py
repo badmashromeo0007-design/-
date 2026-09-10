@@ -3,6 +3,7 @@ from threading import Thread
 from flask import Flask
 import re
 import telebot
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 # --- 1. Flask Web Server for Render Port Binding ---
 app = Flask(__name__)
@@ -35,6 +36,9 @@ def handle_all_queries(message):
         
         # 1. Naya / Available package (3503 se 3510) - ₹100 Fixed 🚀
         if "3503" in text or "3510" in text:
+            markup = InlineKeyboardMarkup()
+            markup.add(InlineKeyboardButton("⭐ Pay with Stars / Order Now", callback_data="pay_stars"))
+            
             response = (
                 "🎧 **EPISODE 3503 → 3510** 🚀\n\n"
                 "📦 **TOTAL — 8 EPISODES** 📚\n\n"
@@ -42,13 +46,13 @@ def handle_all_queries(message):
                 "⚡ **TURANT MILEGA** 🔥\n\n"
                 "📩 **DM:** @ROMEO_KERKETTA"
             )
-            bot.reply_to(message, response, parse_mode="Markdown")
+            bot.reply_to(message, response, parse_mode="Markdown", reply_markup=markup)
             return
 
         # 2. Purane episodes ke liye slabs aur calculation (1 se 3502) 📊
         numbers = re.findall(r'\d+', text)
         if numbers:
-            count = int(numbers[0])
+            count = int(numbers[-1])
             
             # Agar maanga gaya episode available range (1 se 3502) ke andar hai:
             if 1 <= count <= 3502:
@@ -66,16 +70,18 @@ def handle_all_queries(message):
                     
                 total_price = count * rate_per_ep
                 
+                markup = InlineKeyboardMarkup()
+                markup.add(InlineKeyboardButton("⭐ Pay with Stars / Order Now", callback_data="pay_stars"))
+                
                 response = (
                     f"📊 **EPISODE ORDER SUMMARY** 📋\n\n"
                     f"🔢 **Total Episodes:** {count} 📚\n"
                     f"🏷️ **Rate:** ₹{rate_per_ep} per episode 💵\n\n"
                     f"💰 **TOTAL PRICE — ₹{total_price}** 🔥\n\n"
                     f"🔒 *Content Secure hai (No Download/Forward)* 🛡️\n"
-                    f"⚡ Payment ke baad episodes turant mil jayenge! 🚀\n\n"
-                    f"📩 **Payment/Help ke liye DM karein:** @ROMEO_KERKETTA"
+                    f"⚡ Payment ke baad episodes turant mil jayenge! 🚀"
                 )
-                bot.reply_to(message, response, parse_mode="Markdown")
+                bot.reply_to(message, response, parse_mode="Markdown", reply_markup=markup)
                 return
             
             else:
@@ -93,6 +99,17 @@ def handle_all_queries(message):
         
     except Exception as e:
         bot.reply_to(message, "⚠️ Kuchh technical dikkat aayi hai, kripya dobara koshish karein! 🔄")
+
+@bot.callback_query_handler(func=lambda call: call.data == "pay_stars")
+def handle_star_click(call):
+    text_message = (
+        "⭐ **TELEGRAM STARS PAYMENT** 💳\n\n"
+        "✅ Aapka request accept kar liya gaya hai!\n"
+        "🛡️ Payment ya episodes pane ke liye turant yahan message karein:\n\n"
+        "📩 **Admin DM:** @ROMEO_KERKETTA"
+    )
+    bot.answer_callback_query(call.id, "Processing your request...")
+    bot.send_message(call.message.chat.id, text_message, parse_mode="Markdown")
 
 # --- 3. Main Execution with Flask Keep Alive ---
 if __name__ == "__main__":

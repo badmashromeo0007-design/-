@@ -4,7 +4,6 @@ from flask import Flask, request
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, BotCommand
 
 API_TOKEN = '8831853256:AAFOYW-K73PXAc8hHSJ1QvuVGBqudEU3fnY'
-# Yahan apna Render wala web service ka URL daalein (jo aapke Render dashboard par dikhta hai)
 RENDER_URL = 'https://badmash-7bhkr73f.onrender.com' 
 
 EPISODES_INVITE_LINK = 'https://t.me/+rViclcLru-0yYTI1'
@@ -15,7 +14,6 @@ PAYMENT_AMOUNT = '₹30'
 app = Flask(__name__)
 bot = telebot.TeleBot(API_TOKEN)
 
-# Set bot commands
 try:
     bot.set_my_commands([
         BotCommand("start", "🚀 Start / Main Menu"),
@@ -24,8 +22,8 @@ try:
 except Exception as e:
     print(f"Menu commands error: {e}")
 
-FULL_TITLE = "EPISODE 3503 → 3510"
-TOTAL_EPISODES = "TOTAL — 8 EPISODES"
+FULL_TITLE = "EPISODE 3504 → 3510"
+TOTAL_EPISODES = "TOTAL — 7 EPISODES"
 
 def get_start_text():
     return (
@@ -86,9 +84,11 @@ def home():
     return "Bot Webhook Server is running! 🚀"
 
 if __name__ == "__main__":
-    # Remove old webhook and set new one pointing to Render URL
     bot.remove_webhook()
-    bot.set_webhook(url=f"{RENDER_URL}/{API_TOKEN}")
+    # Webhook URL set karte waqt token ke sath slash ensure karna
+    webhook_url = f"{RENDER_URL}/{API_TOKEN}"
+    bot.set_webhook(url=webhook_url)
+    print(f"Webhook set to: {webhook_url}")
     
     port = int(os.environ.get('PORT', 8080))
     app.run(host='0.0.0.0', port=port)

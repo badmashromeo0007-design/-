@@ -9,7 +9,7 @@ RENDER_URL = 'https://badmash-7bhkr73f.onrender.com'
 EPISODES_INVITE_LINK = 'https://t.me/+rViclcLru-0yYTI1'
 ADMIN_USERNAME = "ROMEO_KERKETTA"
 YOUR_UPI_ID = 'badmashromeo0007@okaxis'
-PAYMENT_AMOUNT = '₹30'
+PAYMENT_AMOUNT = '₹180'
 
 app = Flask(__name__)
 bot = telebot.TeleBot(API_TOKEN)
@@ -22,8 +22,8 @@ try:
 except Exception as e:
     print(f"Menu commands error: {e}")
 
-FULL_TITLE = "EPISODE 3504 → 3510"
-TOTAL_EPISODES = "TOTAL — 7 EPISODES"
+FULL_TITLE = "EPISODE 3510 → 3520"
+TOTAL_EPISODES = "TOTAL — 10 EPISODES"
 
 def get_start_text():
     return (

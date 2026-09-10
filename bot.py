@@ -14,7 +14,7 @@ RENDER_URL = 'https://badmash-tr95.onrender.com'
 MAIN_CHANNEL_LINK = 'https://t.me/+gy0gavj0e112Th1'
 DEFAULT_EPISODE_LINK = 'https://t.me/c/Viclctru-0YFT1i'
 BOT_PROFILE_LINK = 'https://t.me/TheSuperYoddhabot'
-ADMIN_USER_ID = 123456789  # Apna real Telegram User ID yahan daalein
+ADMIN_USER_ID = 123456789  # Yeh automatic aapka ID chat mein dikha dega jab aap command use karenge
 ADMIN_USERNAME = "ROMEO_KERNKETA"
 YOUR_UPI_ID = "badmashromeo0007@okaxis"
 PAYEE_NAME = "ROMEO"
@@ -52,13 +52,6 @@ def set_current_episode_link(link):
     db["global_stats"]["current_episode_link"] = link
     save_data(db)
 
-def get_total_unique_buyers(db):
-    buyers_count = 0
-    for uid, info in db.items():
-        if uid != "global_stats" and info.get("purchases", 0) > 0:
-            buyers_count += 1
-    return buyers_count
-
 try:
     bot.set_my_commands([
         BotCommand("start", "🎁 Choose Pack & Pay"),
@@ -72,7 +65,7 @@ except Exception as e:
 @bot.message_handler(commands=['setlink'])
 def set_episode_link_command(message):
     if message.from_user.id != ADMIN_USER_ID:
-        bot.reply_to(message, "⚠️ Yeh command sirf Admin ke liye hai!")
+        bot.reply_to(message, f"⚠️ Yeh command sirf Admin ke liye hai!\nAapka Telegram User ID yeh hai: `{message.from_user.id}`\nIsse code mein `ADMIN_USER_ID` ki jagah daal dein.", parse_mode="Markdown")
         return
     
     parts = message.text.split(maxsplit=1)
@@ -87,7 +80,7 @@ def set_episode_link_command(message):
 @bot.message_handler(commands=['getlink'])
 def get_episode_link_command(message):
     if message.from_user.id != ADMIN_USER_ID:
-        bot.reply_to(message, "⚠️ Yeh command sirf Admin ke liye hai!")
+        bot.reply_to(message, f"⚠️ Yeh command sirf Admin ke liye hai!\nAapka Telegram User ID yeh hai: `{message.from_user.id}`\nIsse code mein `ADMIN_USER_ID` ki jagah daal dein.", parse_mode="Markdown")
         return
     current_link = get_current_episode_link()
     bot.reply_to(message, f"🔗 Current Episode Link:\n{current_link}")
@@ -101,14 +94,15 @@ def send_welcome(message):
         save_data(db)
 
     markup = InlineKeyboardMarkup()
-    markup.add(InlineKeyboardButton("🎁 Choose Pack & Pay", callback_data="choose_pack"))
-    markup.add(InlineKeyboardButton("📢 Join Main Channel", url=MAIN_CHANNEL_LINK))
+    markup.add(InlineKeyboardButton("⚡ Buy Episodes Pack (₹180)", callback_data="choose_pack"))
+    markup.add(InlineKeyboardButton("📢 Join The Super Yoddha Main Channel", url=MAIN_CHANNEL_LINK))
     
     welcome_text = (
-        "👋 Welcome to Super Yoddha Audio Series Bot!\n\n"
-        "Yahan aapko milenge saare latest episodes. Niche diye gaye button par click karke packs dekhein aur pay karein."
+        "🎬 **THE SUPER YODDHA EPISODES**\n\n"
+        "🎧 Apni pasand ke episodes turant prapt karein.\n\n"
+        "Neeche diye gaye button par click karke payment karein aur instant access payen: 👇"
     )
-    bot.reply_to(message, welcome_text, reply_markup=markup)
+    bot.reply_to(message, welcome_text, reply_markup=markup, parse_mode="Markdown")
 
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callback(call):
@@ -117,7 +111,7 @@ def handle_callback(call):
     if call.data == "choose_pack":
         markup = InlineKeyboardMarkup()
         markup.add(InlineKeyboardButton("⭐ Single Episode Pack (₹10)", callback_data="pack_10"))
-        markup.add(InlineKeyboardButton("🚀 Mega Pack (₹120)", callback_data="pack_120"))
+        markup.add(InlineKeyboardButton("🚀 Mega Pack (₹180)", callback_data="pack_180"))
         markup.add(InlineKeyboardButton("🔙 Back to Menu", callback_data="back_main"))
         bot.edit_message_text("📦 Apni pasand ka pack select karein:", call.message.chat.id, call.message.message_id, reply_markup=markup)
 
@@ -129,13 +123,13 @@ def handle_callback(call):
         markup.add(InlineKeyboardButton("🔙 Back", callback_data="choose_pack"))
         bot.edit_message_text(f"💳 **₹10 Payment**\n\nUPI ID: `{YOUR_UPI_ID}`\n\nPayment karne ke baad niche diye gaye 'Verify Payment' button par click karein.", call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="Markdown")
 
-    elif call.data == "pack_120":
-        upi_url = f"upi://pay?pa={YOUR_UPI_ID}&pn={PAYEE_NAME}&am=120.00&cu=INR&tn=MegaPack"
+    elif call.data == "pack_180":
+        upi_url = f"upi://pay?pa={YOUR_UPI_ID}&pn={PAYEE_NAME}&am=180.00&cu=INR&tn=EpisodesPack"
         markup = InlineKeyboardMarkup()
         markup.add(InlineKeyboardButton("🔗 Pay via UPI App", url=upi_url))
-        markup.add(InlineKeyboardButton("✅ Payment Ho Gaya (Verify)", callback_data="verify_payment_120"))
+        markup.add(InlineKeyboardButton("✅ Payment Ho Gaya (Verify)", callback_data="verify_payment_180"))
         markup.add(InlineKeyboardButton("🔙 Back", callback_data="choose_pack"))
-        bot.edit_message_text(f"💳 **₹120 Payment**\n\nUPI ID: `{YOUR_UPI_ID}`\n\nPayment karne ke baad niche diye gaye 'Verify Payment' button par click karein.", call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="Markdown")
+        bot.edit_message_text(f"💳 **₹180 Payment**\n\nUPI ID: `{YOUR_UPI_ID}`\n\nPayment karne ke baad niche diye gaye 'Verify Payment' button par click karein.", call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="Markdown")
 
     elif call.data.startswith("verify_payment_"):
         db = load_data()
@@ -151,9 +145,14 @@ def handle_callback(call):
 
     elif call.data == "back_main":
         markup = InlineKeyboardMarkup()
-        markup.add(InlineKeyboardButton("🎁 Choose Pack & Pay", callback_data="choose_pack"))
-        markup.add(InlineKeyboardButton("📢 Join Main Channel", url=MAIN_CHANNEL_LINK))
-        bot.edit_message_text("👋 Welcome back to main menu!", call.message.chat.id, call.message.message_id, reply_markup=markup)
+        markup.add(InlineKeyboardButton("⚡ Buy Episodes Pack (₹180)", callback_data="choose_pack"))
+        markup.add(InlineKeyboardButton("📢 Join The Super Yoddha Main Channel", url=MAIN_CHANNEL_LINK))
+        welcome_text = (
+            "🎬 **THE SUPER YODDHA EPISODES**\n\n"
+            "🎧 Apni pasand ke episodes turant prapt karein.\n\n"
+            "Neeche diye gaye button par click karke payment karein aur instant access payen: 👇"
+        )
+        bot.edit_message_text(welcome_text, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="Markdown")
 
 @bot.message_handler(func=lambda message: True)
 def handle_ai_chat(message):

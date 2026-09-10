@@ -6,7 +6,7 @@ from flask import Flask, request
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, BotCommand
 import google.generativeai as genai
 
-API_TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN_HERE'  # BotFather se apna real Telegram token yahan daalein
+API_TOKEN = '8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU'
 GEMINI_API_KEY = 'AIzaSyA8KM6KJCIUJVMr5SJrstkQjHfd92Hnwb_qdrg2CX4MF5dg'
 RENDER_URL = 'https://badmash-tr95.onrender.com'
 

@@ -1,41 +1,21 @@
 import os
-import time
-import logging
-from flask import Flask
-from threading import Thread
 import telebot
+from flask import Flask, request
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, BotCommand
 
-# Enable logging
-logging.basicConfig(level=logging.INFO)
-
-# --- 1. Flask Web Server for Render Port Binding ---
-app = Flask(__name__)
-
-@app.route('/')
-def home():
-    return "Bot is alive and running successfully! 🚀🤖"
-
-def run_flask():
-    port = int(os.environ.get('PORT', 8080))
-    app.run(host='0.0.0.0', port=port)
-
-def keep_alive():
-    t = Thread(target=run_flask)
-    t.daemon = True
-    t.start()
-
-# --- 2. Telegram Bot Configuration ---
 API_TOKEN = '8831853256:AAFOYW-K73PXAc8hHSJ1QvuVGBqudEU3fnY'
+# Yahan apna Render wala web service ka URL daalein (jo aapke Render dashboard par dikhta hai)
+RENDER_URL = 'https://badmash-7bhkr73f.onrender.com' 
+
 EPISODES_INVITE_LINK = 'https://t.me/+rViclcLru-0yYTI1'
 ADMIN_USERNAME = "ROMEO_KERKETTA"
-
-# --- 3. Aapka UPI ID ---
 YOUR_UPI_ID = 'badmashromeo0007@okaxis'
 PAYMENT_AMOUNT = '₹30'
 
+app = Flask(__name__)
 bot = telebot.TeleBot(API_TOKEN)
 
+# Set bot commands
 try:
     bot.set_my_commands([
         BotCommand("start", "🚀 Start / Main Menu"),
@@ -46,7 +26,6 @@ except Exception as e:
 
 FULL_TITLE = "EPISODE 3503 → 3510"
 TOTAL_EPISODES = "TOTAL — 8 EPISODES"
-PRICE_TEXT = "PRICE — 30 ONLY"
 
 def get_start_text():
     return (
@@ -62,7 +41,6 @@ def get_start_text():
 @bot.message_handler(commands=['start', 'menu'])
 def send_welcome(message):
     markup = InlineKeyboardMarkup(row_width=1)
-    # Safe HTTP/HTTPS links or support buttons only (No unsupported protocols)
     markup.add(InlineKeyboardButton("💬 Admin se Sampark Karein", url=f"https://t.me/{ADMIN_USERNAME}"))
     
     bot.send_message(
@@ -92,20 +70,26 @@ def handle_payment_screenshot(message):
 def handle_other_messages(message):
     bot.reply_to(message, "📷 Kripya payment karne ke baad apna **screenshot** yahan bhejiye taaki aapko episodes ka link mil sake!")
 
-if __name__ == "__main__":
-    keep_alive()
-    print("🤖 Bot successfully start ho raha hai...")
-    
-    try:
-        bot.remove_webhook()
-        time.sleep(1)
-    except Exception as e:
-        print(f"Webhook removal error: {e}")
+# Flask Route for Telegram Webhook
+@app.route(f'/{API_TOKEN}', methods=['POST'])
+def webhook():
+    if request.headers.get('content-type') == 'application/json':
+        json_string = request.get_data().decode('utf-8')
+        update = telebot.types.Update.de_json(json_string)
+        bot.process_new_updates([update])
+        return "OK", 200
+    else:
+        return "Forbidden", 403
 
-    while True:
-        try:
-            bot.infinity_polling(skip_pending=True, timeout=60, long_polling_timeout=60)
-        except Exception as e:
-            print(f"Polling error: {e}")
-            time.sleep(5)
-            
+@app.route('/')
+def home():
+    return "Bot Webhook Server is running! 🚀"
+
+if __name__ == "__main__":
+    # Remove old webhook and set new one pointing to Render URL
+    bot.remove_webhook()
+    bot.set_webhook(url=f"{RENDER_URL}/{API_TOKEN}")
+    
+    port = int(os.environ.get('PORT', 8080))
+    app.run(host='0.0.0.0', port=port)
+    

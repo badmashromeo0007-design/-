@@ -1,9 +1,13 @@
 import os
 import time
+import logging
 from flask import Flask
 from threading import Thread
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, BotCommand
+
+# Enable logging to see what's happening
+logging.basicConfig(level=logging.INFO)
 
 # --- 1. Flask Web Server for Render Port Binding ---
 app = Flask(__name__)
@@ -14,6 +18,7 @@ def home():
 
 def run_flask():
     port = int(os.environ.get('PORT', 8080))
+    print(f"Starting Flask server on port {port}...")
     app.run(host='0.0.0.0', port=port)
 
 def keep_alive():
@@ -41,6 +46,7 @@ try:
         BotCommand("start", "🚀 Start / Main Menu"),
         BotCommand("menu", "🎛 Open Menu")
     ])
+    print("Bot commands set successfully.")
 except Exception as e:
     print(f"Menu commands error: {e}")
 
@@ -61,6 +67,7 @@ def get_start_text():
 
 @bot.message_handler(commands=['start', 'menu'])
 def send_welcome(message):
+    print(f"Received /start or /menu from user: {message.from_user.id}")
     markup = InlineKeyboardMarkup(row_width=1)
     markup.add(InlineKeyboardButton("⚡ Pay ₹30 Now (GPay/PhonePe)", url=UPI_INTENT_LINK))
     markup.add(InlineKeyboardButton("💬 Admin se Baat Karein", url=f"https://t.me/{ADMIN_USERNAME}"))
@@ -74,6 +81,7 @@ def send_welcome(message):
 
 @bot.message_handler(content_types=['photo'])
 def handle_payment_screenshot(message):
+    print(f"Received photo payment screenshot from user: {message.from_user.id}")
     thanks_text = (
         f"✨ **Payment Ka Screenshot Mil Gaya! Thanks!** ✨\n"
         f"🎧 **THE SUPER YODDHA** channel par aapka swagat hai!\n\n"
@@ -90,19 +98,26 @@ def handle_payment_screenshot(message):
 
 @bot.message_handler(func=lambda message: True)
 def handle_other_messages(message):
+    print(f"Received text message: {message.text}")
     bot.reply_to(message, "📷 Kripya payment karne ke baad apna **screenshot** yahan bhejiye taaki aapko episodes ka link mil sake!")
 
 if __name__ == "__main__":
+    print("Initializing Flask server...")
     keep_alive()
-    print("🤖 Bot successfully start ho raha hai...")
     
+    print("Connecting to Telegram...")
+    try:
+        bot.remove_webhook()
+        time.sleep(1)
+    except Exception as e:
+        print(f"Webhook removal error: {e}")
+
+    print("Starting bot polling loop...")
     while True:
         try:
-            bot.remove_webhook()
-            time.sleep(1)
-            print("🚀 Polling started successfully!")
-            bot.infinity_polling(skip_pending=True)
+            bot.infinity_polling(skip_pending=True, timeout=60, long_polling_timeout=60)
         except Exception as e:
-            print(f"Polling error: {e}. Restarting in 5 seconds...")
+            print(f"Polling crashed with error: {e}")
+            print("Restarting polling in 5 seconds...")
             time.sleep(5)
             

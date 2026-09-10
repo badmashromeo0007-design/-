@@ -21,7 +21,8 @@ def keep_alive():
     t.start()
 
 # --- 2. Telegram Bot Configuration ---
-API_TOKEN = '8831853256:AAFCFchvQVxwz9v_ACuhsL8ITSsNKpJ74nY'
+# Yeh Render ke Environment Variable se BOT_TOKEN utha lega 🔑
+API_TOKEN = os.environ.get('BOT_TOKEN')
 STORAGE_CHANNEL_ID = '-1003621158878'
 
 bot = telebot.TeleBot(API_TOKEN)

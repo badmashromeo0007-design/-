@@ -10,12 +10,9 @@ API_TOKEN = '8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU'
 GEMINI_API_KEY = 'AIzaSyA8KM6KJCIUJVMr5SJrstkQjHfd92Hnwb_qdrg2CX4MF5dg'
 RENDER_URL = 'https://badmash-tr95.onrender.com'
 
-# Links & Admin Configuration
+# Links & Configuration
 MAIN_CHANNEL_LINK = 'https://t.me/+gy0gavj0e112Th1'
 DEFAULT_EPISODE_LINK = 'https://t.me/c/Viclctru-0YFT1i'
-BOT_PROFILE_LINK = 'https://t.me/TheSuperYoddhabot'
-ADMIN_USER_ID = 123456789  # Command chalate hi bot aapko aapki asli ID chat mein bata dega
-ADMIN_USERNAME = "ROMEO_KERNKETA"
 YOUR_UPI_ID = "badmashromeo0007@okaxis"
 PAYEE_NAME = "ROMEO"
 
@@ -24,7 +21,6 @@ bot = telebot.TeleBot(API_TOKEN)
 genai.configure(api_key=GEMINI_API_KEY)
 ai_client = genai.GenerativeModel('gemini-1.5-flash')
 
-user_states = {}
 DATA_FILE = "user_data.json"
 
 def load_data():
@@ -56,22 +52,17 @@ try:
     bot.set_my_commands([
         BotCommand("start", "🎁 Choose Pack & Pay"),
         BotCommand("menu", "📖 Open Menu"),
-        BotCommand("setlink", "🔗 Set New Episode Link (Admin)"),
-        BotCommand("getlink", "🔗 Check Current Episode Link (Admin)"),
+        BotCommand("setlink", "🔗 Set New Episode Link"),
+        BotCommand("getlink", "🔗 Check Current Episode Link"),
     ])
 except Exception as e:
     print(f"Menu commands error: {e}")
 
 @bot.message_handler(commands=['setlink'])
 def set_episode_link_command(message):
-    # Agar aap admin nahi hain toh bot aapka user ID bata dega
-    if message.from_user.id != ADMIN_USER_ID:
-        bot.reply_to(message, f"⚠️ Yeh command sirf Admin ke liye hai!\nAapka Telegram User ID yeh hai: `{message.from_user.id}`\nIsse copy karke code mein `ADMIN_USER_ID = ...` ki jagah daal dein.", parse_mode="Markdown")
-        return
-    
     parts = message.text.split(maxsplit=1)
     if len(parts) < 2:
-        bot.reply_to(message, "⚠️ Kripya link bhi daalein. Example: `/setlink https://t.me/...`")
+        bot.reply_to(message, f"⚠️ Kripya link bhi daalein. Aapka User ID: `{message.from_user.id}`\nExample: `/setlink https://t.me/...`", parse_mode="Markdown")
         return
     
     new_link = parts[1].strip()
@@ -80,11 +71,8 @@ def set_episode_link_command(message):
 
 @bot.message_handler(commands=['getlink'])
 def get_episode_link_command(message):
-    if message.from_user.id != ADMIN_USER_ID:
-        bot.reply_to(message, f"⚠️ Yeh command sirf Admin ke liye hai!\nAapka Telegram User ID yeh hai: `{message.from_user.id}`\nIsse copy karke code mein `ADMIN_USER_ID = ...` ki jagah daal dein.", parse_mode="Markdown")
-        return
     current_link = get_current_episode_link()
-    bot.reply_to(message, f"🔗 Current Episode Link:\n{current_link}")
+    bot.reply_to(message, f"🔗 Current Episode Link:\n{current_link}\n\n(Aapka User ID: `{message.from_user.id}`)", parse_mode="Markdown")
 
 @bot.message_handler(commands=['start', 'menu'])
 def send_welcome(message):
@@ -154,14 +142,6 @@ def handle_callback(call):
             "Neeche diye gaye button par click karke payment karein aur instant access payen: 👇"
         )
         bot.edit_message_text(welcome_text, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode="Markdown")
-
-@bot.message_handler(func=lambda message: True)
-def handle_ai_chat(message: telebot.types.Message):
-    try:
-        response = ai_client.generate_content(message.text)
-        bot.reply_to(message, response.text)
-    except Exception as e:
-        bot.reply_to(message, "Maaf kijiye, abhi AI response generate karne mein kuch dikkat aa rahi hai.")
 
 @app.route(f'/{API_TOKEN}', methods=['POST'])
 def webhook():

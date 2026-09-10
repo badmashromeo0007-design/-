@@ -2,7 +2,7 @@ import os
 from threading import Thread
 from flask import Flask
 import telebot
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, InputMediaPhoto
 
 # --- 1. Flask Web Server for Render Port Binding ---
 app = Flask(__name__)
@@ -30,7 +30,6 @@ bot = telebot.TeleBot(API_TOKEN)
 def send_main_menu(chat_id, message_id=None):
     markup = InlineKeyboardMarkup(row_width=1)
     
-    # Sirf naya package button aur menu button
     markup.add(
         InlineKeyboardButton("🎧 EP: 3504 - 3510 (₹70)", callback_data="pkg_3504_3510"),
         InlineKeyboardButton("🚀 Start / Menu", callback_data="main_menu")
@@ -43,10 +42,28 @@ def send_main_menu(chat_id, message_id=None):
     
     if message_id:
         try:
-            bot.edit_message_text(text, chat_id, message_id, parse_mode="Markdown", reply_markup=markup)
+            # Agar pehle se photo hai toh use text mein wapas laane ke liye ya edit karne ke liye
+            bot.edit_message_caption(
+                chat_id=chat_id,
+                message_id=message_id,
+                caption=text,
+                parse_mode="Markdown",
+                reply_markup=markup
+            )
             return
         except Exception:
-            pass
+            try:
+                bot.edit_message_text(
+                    text=text,
+                    chat_id=chat_id,
+                    message_id=message_id,
+                    parse_mode="Markdown",
+                    reply_markup=markup
+                )
+                return
+            except Exception:
+                pass
+                
     bot.send_message(chat_id, text, parse_mode="Markdown", reply_markup=markup)
 
 @bot.message_handler(commands=['start', 'menu'])
@@ -66,7 +83,6 @@ def callback_query(call):
     elif call.data == "pkg_3504_3510":
         bot.answer_callback_query(call.id, "QR Code & Details loaded!")
         
-        # Scanner image URL (Aapke diye gaye Google Pay QR code ki link)
         qr_image_url = "https://i.ibb.co/3m3vL05/1000018603.png"
         
         caption_text = (
@@ -83,18 +99,23 @@ def callback_query(call):
         markup.add(InlineKeyboardButton("🔙 Back to Menu", callback_data="main_menu"))
         
         try:
-            # Purana text message delete karke QR code aur caption bhetega
-            bot.delete_message(call.message.chat.id, call.message.message_id)
-        except Exception:
-            pass
-            
-        bot.send_photo(
-            chat_id=call.message.chat.id,
-            photo=qr_image_url,
-            caption=caption_text,
-            parse_mode="Markdown",
-            reply_markup=markup
-        )
+            # Message ko delete kiye bina seedha photo/caption me edit kar rahe hain
+            media = InputMediaPhoto(qr_image_url, caption=caption_text, parse_mode="Markdown")
+            bot.edit_message_media(
+                media=media,
+                chat_id=call.message.chat.id,
+                message_id=call.message.message_id,
+                reply_markup=markup
+            )
+        except Exception as e:
+            # Agar edit na ho paye toh naya bhej do
+            bot.send_photo(
+                chat_id=call.message.chat.id,
+                photo=qr_image_url,
+                caption=caption_text,
+                parse_mode="Markdown",
+                reply_markup=markup
+            )
 
 # --- 3. Main Execution with Flask Keep Alive ---
 if __name__ == "__main__":

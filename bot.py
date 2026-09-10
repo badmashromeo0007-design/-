@@ -1,10 +1,27 @@
+import os
+from threading import Thread
+from flask import Flask
 import re
 import telebot
 
-# [1] Aapka BotFather se mila hua asli API Token:
-API_TOKEN = '8831853256:AAFCFchvQVxwz9v_ACuhsL8ITSsNKpJ74nY'
+# --- 1. Flask Web Server for Render Port Binding ---
+app = Flask(__name__)
 
-# [2] Nayi Channel ID jo abhi aapne screenshot se nikali hai:
+@app.route('/')
+def home():
+    return "Bot is alive and running successfully! 🚀🤖"
+
+def run_flask():
+    port = int(os.environ.get('PORT', 8080))
+    app.run(host='0.0.0.0', port=port)
+
+def keep_alive():
+    t = Thread(target=run_flask)
+    t.daemon = True
+    t.start()
+
+# --- 2. Telegram Bot Configuration ---
+API_TOKEN = '8831853256:AAFCFchvQVxwz9v_ACuhsL8ITSsNKpJ74nY'
 STORAGE_CHANNEL_ID = '-1003621158878'
 
 bot = telebot.TeleBot(API_TOKEN)
@@ -77,5 +94,9 @@ def handle_all_queries(message):
     except Exception as e:
         bot.reply_to(message, "⚠️ Kuchh technical dikkat aayi hai, kripya dobara koshish karein! 🔄")
 
-print("🤖 Bot successfully start ho raha hai... 🚀")
-bot.infinity_polling(skip_pending=True)
+# --- 3. Main Execution with Flask Keep Alive ---
+if __name__ == "__main__":
+    keep_alive()  # Flask server background me start hoga taaki Render port error na de 🌐
+    print("🤖 Bot successfully start ho raha hai... 🚀")
+    bot.infinity_polling(skip_pending=True)
+    

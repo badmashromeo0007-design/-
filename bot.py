@@ -21,7 +21,7 @@ def keep_alive():
     t.start()
 
 # --- 2. Telegram Bot Configuration ---
-API_TOKEN = '8831853256:AAGummjGke8vPpQ85EkWYTBzig5vh291XG8'
+API_TOKEN = '8831853256:AAFOYW-K73PXAc8hHSJ1QvuVGBqudEU3fnY'
 EPISODES_INVITE_LINK = 'https://t.me/+rViclcLru-0yYTI1'
 ADMIN_USERNAME = "ROMEO_KERKETTA"
 

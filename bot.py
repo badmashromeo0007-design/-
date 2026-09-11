@@ -51,8 +51,8 @@ def webhook():
 
 # Health Check Route
 @app.route('/')
-index = lambda: "The Super Yoddha Bot is running live!"
-app.add_url_rule('/', 'index', index)
+def index():
+    return "The Super Yoddha Bot is running live!"
 
 # Telegram Command Handlers
 @bot.message_handler(commands=['start'])
@@ -76,7 +76,7 @@ def handle_all_messages(message):
         except Exception as e:
             bot.reply_to(message, "Kshama karein, AI response generate karne mein samasya aayi.")
     else:
-        bot.reply_to(message, fAapka sandesh mila: {user_text}")
+        bot.reply_to(message, f"Aapka sandesh mila: {user_text}")
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))

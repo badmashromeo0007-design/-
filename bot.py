@@ -4,18 +4,21 @@ from flask import Flask, request
 import telebot
 import google.generativeai as genai
 
-# Environment Variables Configuration
-TOKEN = os.environ.get('BOT_TOKEN')
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
+# Configuration
+TOKEN = os.environ.get('BOT_TOKEN')  # Render par BOT_TOKEN environment variable set hona chahiye
+GEMINI_API_KEY = "AQ.Ab8RN6K8v-703IMMAZ9BcSS2mPsf1SLujFWZQ91cbd1U2DjXIw"
 
 # Initialize Bot and Flask
 bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
 
-# Configure Gemini AI
+# Configure Gemini AI directly with your key
 if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
-    gemini_model = genai.GenerativeModel('gemini-1.5-flash')
+    try:
+        genai.configure(api_key=GEMINI_API_KEY)
+        gemini_model = genai.GenerativeModel('gemini-1.5-flash')
+    except Exception:
+        gemini_model = None
 else:
     gemini_model = None
 
@@ -67,7 +70,6 @@ def send_welcome(message):
 
 @bot.message_handler(func=lambda message: True)
 def handle_all_messages(message):
-    # Gemini AI integration for general queries or text prompts
     user_text = message.text
     if gemini_model:
         try:

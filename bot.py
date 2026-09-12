@@ -13,8 +13,8 @@ GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', 'AQ.A80RH6kVs-703IHNMAZ9Bc52mP
 MAIN_CHANNEL_ID = "@TheSuperYoddha" 
 ADMIN_ID = 6817248389
 
-# Apni UPI ID yahan daal dein (Jaise: yourname@paytm ya number@ybl)
-UPI_ID = "yourupiid@okhdfcbank"
+# Aapki Verified UPI ID
+UPI_ID = "badmashromeo0007@okaxis"
 
 # Initialize Bot and Flask
 bot = telebot.TeleBot(TOKEN, threaded=False)
@@ -34,8 +34,8 @@ SETTINGS_FILE = "/tmp/bot_settings.json"
 def load_settings():
     default_settings = {
         "episodes": "EP 3517 - 3526",
-        "price": "70",          # Sirf number rakhein UPI link ke liye (jaise 70)
-        "prebook_price": "100", # Sirf number (jaise 100)
+        "price": "70",
+        "prebook_price": "100",
         "access_link": "https://t.me/+8jC-7scof6diNzNl"
     }
     if os.path.exists(SETTINGS_FILE):

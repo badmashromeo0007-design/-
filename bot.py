@@ -19,7 +19,7 @@ ADMIN_ID = 6817248389
 # Aapki Verified UPI ID
 UPI_ID = "badmashromeo0007@okaxis"
 
-# Bot ka Username
+# Bot ka Username (Strictly Bot chat mein bhejne ke liye)
 BOT_USERNAME = "Romeo_pay_bot"
 
 # Initialize Bot and Flask
@@ -83,8 +83,10 @@ def get_payment_markup(is_channel=False):
     markup.row_width = 1
     
     if is_channel:
+        # Yeh link user ko 100% channel se nikal kar seedha bot ki private chat me le jayega
+        bot_deeplink = f"https://t.me/{BOT_USERNAME}?start=qr"
         markup.add(
-            InlineKeyboardButton(ep_text, url=f"https://t.me/{BOT_USERNAME}?start=qr"),
+            InlineKeyboardButton(ep_text, url=bot_deeplink),
             InlineKeyboardButton("📢 Join Main Channel", url="https://t.me/+gy8gewj0snllZThl")
         )
     else:
@@ -180,6 +182,7 @@ def send_to_main_channel(message):
 def send_welcome(message):
     settings = load_settings()
     
+    # Agar user channel ke button se aaya hai (jaise ?start=qr), toh seedha QR code bhej do
     if len(message.text.split()) > 1 and message.text.split()[1] == "qr":
         send_qr_code_logic(message.chat.id, settings)
         return

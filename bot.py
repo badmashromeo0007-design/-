@@ -39,7 +39,6 @@ def home():
   return "Bot is running 24/7 via Webhook!"
 
 
-# Telegram Webhook Endpoint
 @app.route(f"/{TOKEN}", methods=["POST"])
 def webhook():
   if request.headers.get("content-type") == "application/json":
@@ -76,34 +75,62 @@ def send_menu(message):
   bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode="Markdown")
 
 
-@bot.message_handler(commands=["set"])
-def update_episodes(message):
+# Episodes update karne ki command: /setep 3517 3526
+@bot.message_handler(commands=["setep"])
+def set_episodes(message):
+  if message.from_user.id != ADMIN_ID:
+    bot.reply_to(message, "Aap admin nahi hain!")
+    return
+
+  try:
+    text = message.text.replace("/setep", "").strip()
+    if "-" in text:
+      parts = text.split("-")
+    else:
+      parts = text.split()
+
+    start_ep = int(parts[0].strip())
+    end_ep = int(parts[1].strip())
+
+    settings = load_settings()
+    settings["start_ep"] = start_ep
+    settings["end_ep"] = end_ep
+    save_settings(settings)
+
+    total_eps = (end_ep - start_ep) + 1
+    bot.reply_to(
+        message,
+        f"✅ Episodes Updated Successfully!\nRange: {start_ep} - {end_ep}\nTotal:"
+        f" {total_eps} Episodes",
+    )
+  except Exception as e:
+    bot.reply_to(
+        message,
+        "Galat format! Sahi tareeqa yeh hai:\n`/setep 3517 3526`",
+        parse_mode="Markdown",
+    )
+
+
+# Price update karne ki command: /setprice 70
+@bot.message_handler(commands=["setprice"])
+def set_price(message):
   if message.from_user.id != ADMIN_ID:
     bot.reply_to(message, "Aap admin nahi hain!")
     return
 
   try:
     parts = message.text.split()
-    start_ep = int(parts[1])
-    end_ep = int(parts[2])
-    price = int(parts[3])
+    price = int(parts[1])
 
     settings = load_settings()
-    settings["start_ep"] = start_ep
-    settings["end_ep"] = end_ep
     settings["price"] = price
     save_settings(settings)
 
-    total_eps = (end_ep - start_ep) + 1
-    bot.reply_to(
-        message,
-        f"✅ Success! Updated:\nEpisodes: {start_ep}-{end_ep}"
-        f" ({total_eps} Episodes)\nPrice: ₹{price}",
-    )
+    bot.reply_to(message, f"✅ Price Updated Successfully!\nPrice: ₹{price}RS")
   except Exception as e:
     bot.reply_to(
         message,
-        "Galat format! Sahi tareeqa yeh hai:\n`/set 3527 3533 100`",
+        "Galat format! Sahi tareeqa yeh hai:\n`/setprice 70`",
         parse_mode="Markdown",
     )
 
@@ -129,7 +156,6 @@ def qr_handler(call):
 
 
 if __name__ == "__main__":
-  # Render ka live URL auto-detect karega aur webhook set kar dega
   RENDER_URL = os.environ.get(
       "RENDER_EXTERNAL_URL", "https://badmash-4k97.onrender.com"
   )

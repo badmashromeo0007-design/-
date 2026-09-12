@@ -4,11 +4,10 @@ import threading
 import urllib.parse
 from flask import Flask
 import telebot
-from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardRemove
 
 # Configuration
 TOKEN = os.environ.get('BOT_TOKEN', '8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU')
-ADMIN_ID = 6817248389
 MAIN_CHANNEL_ID = -1004382767346 
 UPI_ID = "badmashromeo0007@okaxis"
 BOT_USERNAME = "Romeo_pay_bot"
@@ -23,12 +22,16 @@ def load_settings():
         "episodes": "3517–3526",
         "price": "70",
         "total_eps": "10",
-        "access_link": "https://t.me/+8jC-7scof6diNzNl"
+        "access_link": "https://t.me/+8jC-7scof6diNzNl",
+        "admin_id": 6817248389
     }
     if os.path.exists(SETTINGS_FILE):
         try:
             with open(SETTINGS_FILE, "r") as f:
-                return json.load(f)
+                data = json.load(f)
+                if "admin_id" not in data:
+                    data["admin_id"] = 6817248389
+                return data
         except Exception:
             return default_settings
     return default_settings
@@ -67,11 +70,12 @@ def get_payment_markup(is_channel=False):
 
 @bot.message_handler(commands=['setep'])
 def set_episodes(message):
-    if message.from_user.id != ADMIN_ID:
-        return
+    settings = load_settings()
+    settings["admin_id"] = message.from_user.id
+    save_settings(settings)
+    
     args = message.text.split(maxsplit=1)
     if len(args) > 1:
-        settings = load_settings()
         settings["episodes"] = args[1]
         save_settings(settings)
         bot.reply_to(message, f"✅ Episode range updated to: **{args[1]}**", parse_mode="Markdown")
@@ -80,12 +84,13 @@ def set_episodes(message):
 
 @bot.message_handler(commands=['setprice'])
 def set_price(message):
-    if message.from_user.id != ADMIN_ID:
-        return
+    settings = load_settings()
+    settings["admin_id"] = message.from_user.id
+    save_settings(settings)
+    
     args = message.text.split(maxsplit=1)
     if len(args) > 1:
         new_price = args[1].replace("₹", "").strip()
-        settings = load_settings()
         settings["price"] = new_price
         save_settings(settings)
         bot.reply_to(message, f"✅ Price updated to: **₹{new_price}**", parse_mode="Markdown")
@@ -94,12 +99,13 @@ def set_price(message):
 
 @bot.message_handler(commands=['setlink'])
 def set_link(message):
-    if message.from_user.id != ADMIN_ID:
-        return
+    settings = load_settings()
+    settings["admin_id"] = message.from_user.id
+    save_settings(settings)
+    
     args = message.text.split(maxsplit=1)
     if len(args) > 1:
         new_link = args[1].strip()
-        settings = load_settings()
         settings["access_link"] = new_link
         save_settings(settings)
         bot.reply_to(message, f"✅ Access link updated successfully to:\n`{new_link}`", parse_mode="Markdown")
@@ -108,18 +114,16 @@ def set_link(message):
 
 @bot.message_handler(commands=['getlink'])
 def get_link(message):
-    if message.from_user.id != ADMIN_ID:
-        return
     settings = load_settings()
     current_link = settings.get("access_link", "Not set")
     bot.reply_to(message, f"🔗 **Current Access Link:**\n`{current_link}`", parse_mode="Markdown")
 
 @bot.message_handler(commands=['sendchannel', 'broadcast'])
 def send_to_main_channel(message):
-    if message.from_user.id != ADMIN_ID:
-        return
-    
     settings = load_settings()
+    settings["admin_id"] = message.from_user.id
+    save_settings(settings)
+    
     welcome_text = (
         "🎧 **EPISODE PRICING** 🎧\n\n"
         f"📦 **{settings['episodes']}**\n\n"
@@ -143,6 +147,9 @@ def send_to_main_channel(message):
 @bot.message_handler(commands=['start', 'menu', 'buy', 'qr'])
 def send_welcome(message):
     settings = load_settings()
+    settings["admin_id"] = message.from_user.id
+    save_settings(settings)
+
     if len(message.text.split()) > 1 and message.text.split()[1] == "qr":
         send_qr_code_logic(message.chat.id, settings)
         return
@@ -154,7 +161,8 @@ def send_welcome(message):
         "⚡ **INSTANT DELIVERY** 🎁\n\n"
         "📩 **DM — [ROMEO_PAY_BOT](https://t.me/Romeo_pay_bot)** 🎉"
     )
-    bot.reply_to(message, welcome_text, parse_mode="Markdown", reply_markup=get_payment_markup(is_channel=False))
+    bot.reply_to(message, welcome_text, parse_mode="Markdown", reply_markup=ReplyKeyboardRemove())
+    bot.send_message(message.chat.id, "👇 Tap below to choose option:", reply_markup=get_payment_markup(is_channel=False))
 
 def send_qr_code_logic(chat_id, settings):
     price = settings.get("price", "70").replace("₹", "").strip()
@@ -182,6 +190,8 @@ def callback_query(call):
 
 @bot.message_handler(content_types=['photo'])
 def handle_payment_screenshot(message):
+    settings = load_settings()
+    admin_id = settings.get("admin_id", message.from_user.id)
     user_id = message.from_user.id
     user_name = message.from_user.first_name
     
@@ -194,7 +204,7 @@ def handle_payment_screenshot(message):
     )
     
     try:
-        bot.send_photo(ADMIN_ID, message.photo[-1].file_id, caption=f"🚨 New Payment from {user_name} (`{user_id}`)", parse_mode="Markdown", reply_markup=admin_markup)
+        bot.send_photo(admin_id, message.photo[-1].file_id, caption=f"🚨 New Payment from {user_name} (`{user_id}`)", parse_mode="Markdown", reply_markup=admin_markup)
     except Exception as e:
         print(f"Error: {e}")
 
@@ -221,7 +231,12 @@ def admin_action_handler(call):
             bot.answer_callback_query(call.id, f"Error: {e}")
 
 def run_bot():
-    bot.remove_webhook()
+    try:
+        bot.remove_webhook()
+        bot.delete_webhook(drop_pending_updates=True)
+    except Exception as e:
+        print(f"Webhook reset error: {e}")
+        
     print("Bot polling started in background...")
     bot.infinity_polling(skip_pending=True)
 

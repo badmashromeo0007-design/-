@@ -9,6 +9,7 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeybo
 # Configuration
 TOKEN = os.environ.get('BOT_TOKEN', '8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU')
 MAIN_CHANNEL_ID = -1004382767346 
+MAIN_CHANNEL_URL = "https://t.me/+gy8gewj0snllZThl"
 UPI_ID = "badmashromeo0007@okaxis"
 BOT_USERNAME = "Romeo_pay_bot"
 
@@ -19,7 +20,7 @@ SETTINGS_FILE = "/tmp/bot_settings.json"
 
 def load_settings():
     default_settings = {
-        "episodes": "3517–3526",
+        "episodes": "3517 TO 3526",
         "price": "70",
         "total_eps": "10",
         "access_link": "https://t.me/+8jC-7scof6diNzNl",
@@ -47,25 +48,17 @@ def save_settings(settings):
 def index():
     return "The Super Yoddha Bot is running live!"
 
-def get_payment_markup(is_channel=False):
+# Menu Markup: Top par Super Yoddha (Main Channel link), uske niche Episode button
+def get_start_menu_markup():
     settings = load_settings()
-    episodes = settings.get("episodes", "3517–3526")
-    ep_text = f"Episode {episodes.split('–')[0]} To {episodes.split('–')[1] if '–' in episodes else episodes}"
+    episodes = settings.get("episodes", "3517 TO 3526")
     
     markup = InlineKeyboardMarkup()
     markup.row_width = 1
-    
-    if is_channel:
-        bot_deeplink = f"https://t.me/{BOT_USERNAME}?start=qr"
-        markup.add(
-            InlineKeyboardButton(ep_text, url=bot_deeplink),
-            InlineKeyboardButton("📢 Join Main Channel", url="https://t.me/+gy8gewj0snllZThl")
-        )
-    else:
-        markup.add(
-            InlineKeyboardButton(ep_text, callback_data="show_qr"),
-            InlineKeyboardButton("📢 Join Main Channel", url="https://t.me/+gy8gewj0snllZThl")
-        )
+    markup.add(
+        InlineKeyboardButton("SUPER YODDHA (Main Channel)", url=MAIN_CHANNEL_URL),
+        InlineKeyboardButton(f"EPISODE — {episodes}", callback_data="show_ep_details")
+    )
     return markup
 
 @bot.message_handler(commands=['setep'])
@@ -80,7 +73,7 @@ def set_episodes(message):
         save_settings(settings)
         bot.reply_to(message, f"✅ Episode range updated to: **{args[1]}**", parse_mode="Markdown")
     else:
-        bot.reply_to(message, "Example: `/setep 3517–3526`", parse_mode="Markdown")
+        bot.reply_to(message, "Example: `/setep 3517 TO 3526`", parse_mode="Markdown")
 
 @bot.message_handler(commands=['setprice'])
 def set_price(message):
@@ -90,10 +83,10 @@ def set_price(message):
     
     args = message.text.split(maxsplit=1)
     if len(args) > 1:
-        new_price = args[1].replace("₹", "").strip()
+        new_price = args[1].replace("₹", "").replace("RS", "").strip()
         settings["price"] = new_price
         save_settings(settings)
-        bot.reply_to(message, f"✅ Price updated to: **₹{new_price}**", parse_mode="Markdown")
+        bot.reply_to(message, f"✅ Price updated to: **₹{new_price}RS**", parse_mode="Markdown")
     else:
         bot.reply_to(message, "Example: `/setprice 70`", parse_mode="Markdown")
 
@@ -124,57 +117,83 @@ def send_to_main_channel(message):
     settings["admin_id"] = message.from_user.id
     save_settings(settings)
     
-    welcome_text = (
-        "🎧 **EPISODE PRICING** 🎧\n\n"
-        f"📦 **{settings['episodes']}**\n\n"
-        f"➡️ **10 Episodes — ₹{settings['price']}**\n\n"
-        "⚡ **INSTANT DELIVERY** 🎁\n\n"
-        "📩 **DM — [ROMEO_PAY_BOT](https://t.me/Romeo_pay_bot)** 🎉"
+    channel_text = (
+        "⚡ **SUPER YODDHA** ⚡\n\n"
+        f"EPISODE — {settings['episodes']}\n\n"
+        f"📦 TOTAL — {settings.get('total_eps', '10')} EPISODES\n"
+        f"💰 PRICE — ₹{settings['price']}RS ✅\n\n"
+        "⚡ INSTANT DELIVERY 🎁\n\n"
+        f"📩 **Bot Link:** [ROMEO_PAY_BOT](https://t.me/{BOT_USERNAME})"
+    )
+    
+    markup = InlineKeyboardMarkup()
+    bot_deeplink = f"https://t.me/{BOT_USERNAME}?start=menu"
+    markup.add(
+        InlineKeyboardButton("SUPER YODDHA (Main Channel)", url=MAIN_CHANNEL_URL),
+        InlineKeyboardButton(f"EPISODE — {settings['episodes']}", url=bot_deeplink)
     )
     
     try:
         bot.send_message(
             MAIN_CHANNEL_ID, 
-            welcome_text, 
+            channel_text, 
             parse_mode="Markdown", 
-            reply_markup=get_payment_markup(is_channel=True), 
+            reply_markup=markup, 
             disable_web_page_preview=True
         )
         bot.reply_to(message, "✅ Post channel par bhej di gayi hai!")
     except Exception as e:
         bot.reply_to(message, f"❌ Error: {e}")
 
-@bot.message_handler(commands=['start', 'menu', 'buy', 'qr'])
+@bot.message_handler(commands=['start', 'menu', 'buy'])
 def send_welcome(message):
     settings = load_settings()
     settings["admin_id"] = message.from_user.id
     save_settings(settings)
 
-    if len(message.text.split()) > 1 and message.text.split()[1] == "qr":
-        send_qr_code_logic(message.chat.id, settings)
+    if len(message.text.split()) > 1 and message.text.split()[1] == "menu":
+        show_episode_details(message.chat.id, settings)
         return
 
-    welcome_text = (
-        "🎧 **EPISODE PRICING** 🎧\n\n"
-        f"📦 **{settings['episodes']}**\n\n"
-        f"➡️ **10 Episodes — ₹{settings['price']}**\n\n"
-        "⚡ **INSTANT DELIVERY** 🎁\n\n"
-        "📩 **DM — [ROMEO_PAY_BOT](https://t.me/Romeo_pay_bot)** 🎉"
-    )
+    welcome_text = "⚡ **SUPER YODDHA** ⚡\n\nNeeche diye gaye buttons mein se select karein:"
     bot.reply_to(message, welcome_text, parse_mode="Markdown", reply_markup=ReplyKeyboardRemove())
-    bot.send_message(message.chat.id, "👇 Tap below to choose option:", reply_markup=get_payment_markup(is_channel=False))
+    bot.send_message(message.chat.id, "👇 **Menu:**", reply_markup=get_start_menu_markup())
+
+def show_episode_details(chat_id, settings):
+    episodes = settings.get("episodes", "3517 TO 3526")
+    price = settings.get("price", "70")
+    total_eps = settings.get("total_eps", "10")
+    
+    detail_text = (
+        "⚡ **SUPER YODDHA** ⚡\n\n"
+        f"EPISODE — {episodes}\n\n"
+        f"📦 TOTAL — {total_eps} EPISODES\n"
+        f"💰 PRICE — ₹{price}RS ✅\n\n"
+        "⚡ INSTANT DELIVERY"
+    )
+    
+    markup = InlineKeyboardMarkup()
+    markup.add(InlineKeyboardButton("💳 Pay Now (Get QR Code)", callback_data="show_qr"))
+    
+    bot.send_message(chat_id, detail_text, parse_mode="Markdown", reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data == "show_ep_details")
+def callback_ep_details(call):
+    settings = load_settings()
+    bot.answer_callback_query(call.id, "Loading Details...")
+    show_episode_details(call.message.chat.id, settings)
 
 def send_qr_code_logic(chat_id, settings):
-    price = settings.get("price", "70").replace("₹", "").strip()
-    upi_string = f"upi://pay?pa={UPI_ID}&pn=TheSuperYoddha&am={price}&cu=INR"
+    price = settings.get("price", "70").replace("₹", "").replace("RS", "").strip()
+    upi_string = f"upi://pay?pa={UPI_ID}&pn=SuperYoddha&am={price}&cu=INR"
     qr_image_url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={urllib.parse.quote(upi_string)}"
     
     qr_caption = (
-        "⚡ **The Super Yoddha Payment QR Code** ⚡\n\n"
+        "⚡ **SUPER YODDHA PAYMENT QR CODE** ⚡\n\n"
         f"• **UPI ID:** `{UPI_ID}`\n"
-        f"• **Amount:** ₹{price}\n"
+        f"• **Amount:** ₹{price}RS\n"
         f"• **Episodes:** {settings['episodes']}\n\n"
-        "1. Is QR code ko kisi bhi UPI app se scan karke pay karein.\n"
+        "1. Is QR code ko scan karke payment karein.\n"
         "2. Payment karne ke baad **screenshot yahin bot mein bhej dein**."
     )
     try:
@@ -183,9 +202,9 @@ def send_qr_code_logic(chat_id, settings):
         bot.send_message(chat_id, qr_caption, parse_mode="Markdown")
 
 @bot.callback_query_handler(func=lambda call: call.data == "show_qr")
-def callback_query(call):
+def callback_show_qr(call):
     settings = load_settings()
-    bot.answer_callback_query(call.id, "QR Code:")
+    bot.answer_callback_query(call.id, "Generating Barcode / QR...")
     send_qr_code_logic(call.message.chat.id, settings)
 
 @bot.message_handler(content_types=['photo'])

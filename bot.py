@@ -132,7 +132,7 @@ def send_to_main_channel(message):
         f"💰 **PRICE — ₹ {settings['price']}**\n\n"
         f"🎧 **TOTAL — {settings['total_eps']} EPISODES** 💰\n\n"
         "⚡ **INSTANT DELIVERY**🎁\n\n"
-        "📩 **DM — [ROMEO_PAY_BOT](https://t.me/Romeopaybot)** 🎉"
+        "📩 **DM — [ROMEO_PAY_BOT](https://t.me/Romeo_pay_bot)** 🎉"
     )
     
     try:
@@ -151,7 +151,7 @@ def send_welcome(message):
         f"💰 **PRICE — ₹ {settings['price']}**\n\n"
         f"🎧 **TOTAL — {settings['total_eps']} EPISODES** 💰\n\n"
         "⚡ **INSTANT DELIVERY**🎁\n\n"
-        "📩 **DM — [ROMEO_PAY_BOT](https://t.me/Romeopaybot)** 🎉"
+        "📩 **DM — [ROMEO_PAY_BOT](https://t.me/Romeo_pay_bot)** 🎉"
     )
     bot.reply_to(message, welcome_text, parse_mode="Markdown", reply_markup=get_payment_markup(), disable_web_page_preview=True)
 
@@ -214,7 +214,7 @@ def handle_payment_screenshot(message):
             bot.edit_message_text(
                 chat_id=chat_id,
                 message_id=message_id,
-                text="⏳ **Verification process mein thoda samay lag raha hai.**\n\nKripya thoda intezaار karein, jaise hi admin payment verify karenge, aapko turant link mil jayega! 🙏",
+                text="⏳ **Verification process mein thoda samay lag raha hai.**\n\nKripya thoda intezaar karein, jaise hi admin payment verify karenge, aapko turant link mil jayega! 🙏",
                 parse_mode="Markdown"
             )
         except Exception:
@@ -261,7 +261,7 @@ def handle_all_messages(message):
         f"💰 **PRICE — ₹ {settings['price']}**\n\n"
         f"🎧 **TOTAL — {settings['total_eps']} EPISODES** 💰\n\n"
         "⚡ **INSTANT DELIVERY**🎁\n\n"
-        "📩 **DM — [ROMEO_PAY_BOT](https://t.me/Romeopaybot)** 🎉"
+        "📩 **DM — [ROMEO_PAY_BOT](https://t.me/Romeo_pay_bot)** 🎉"
     )
     bot.reply_to(message, reply_text, parse_mode="Markdown", reply_markup=get_payment_markup(), disable_web_page_preview=True)
 

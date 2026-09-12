@@ -19,7 +19,7 @@ ADMIN_ID = 6817248389
 # Aapki Verified UPI ID
 UPI_ID = "badmashromeo0007@okaxis"
 
-# Bot ka Username (Channel ke buttons ke liye direct redirection ke liye)
+# Bot ka Username
 BOT_USERNAME = "Romeo_pay_bot"
 
 # Initialize Bot and Flask
@@ -73,7 +73,7 @@ def webhook():
 def index():
     return "The Super Yoddha Bot is running live!"
 
-# --- MARKUP (Channel ke liye jo seedha bot mein QR khole) ---
+# --- MARKUP ---
 def get_payment_markup(is_channel=False):
     settings = load_settings()
     episodes = settings.get("episodes", "3517–3526")
@@ -83,13 +83,11 @@ def get_payment_markup(is_channel=False):
     markup.row_width = 1
     
     if is_channel:
-        # Jab channel par post jayegi, yeh button click hote hi user ko bot par le jakar QR command trigger karega
         markup.add(
             InlineKeyboardButton(ep_text, url=f"https://t.me/{BOT_USERNAME}?start=qr"),
             InlineKeyboardButton("📢 Join Main Channel", url="https://t.me/+gy8gewj0snllZThl")
         )
     else:
-        # Jab user bot ke andar hoga
         markup.add(
             InlineKeyboardButton(ep_text, callback_data="show_qr"),
             InlineKeyboardButton("📢 Join Main Channel", url="https://t.me/+gy8gewj0snllZThl")
@@ -182,7 +180,6 @@ def send_to_main_channel(message):
 def send_welcome(message):
     settings = load_settings()
     
-    # Agar user channel ke button se aaya hai (jaise ?start=qr), toh seedha QR code bhej do
     if len(message.text.split()) > 1 and message.text.split()[1] == "qr":
         send_qr_code_logic(message.chat.id, settings)
         return
@@ -310,4 +307,4 @@ def handle_all_messages(message):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port)
-                
+    

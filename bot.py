@@ -18,6 +18,7 @@ def load_settings():
       "start_ep": 3527,
       "end_ep": 3533,
       "price": 100,
+      "delivery_mode": "⚡ INSTANT DELIVERY",
       "upi_id": "badmashromeo0007@okaxis",
   }
   if os.path.exists(SETTINGS_FILE):
@@ -56,6 +57,7 @@ def send_menu(message):
   start_ep = settings["start_ep"]
   end_ep = settings["end_ep"]
   price = settings["price"]
+  delivery_mode = settings.get("delivery_mode", "⚡ INSTANT DELIVERY")
   total_eps = (end_ep - start_ep) + 1
 
   text = (
@@ -63,7 +65,7 @@ def send_menu(message):
       f"📺 **EPISODE – {start_ep} - {end_ep}**\n\n"
       f"📦 **TOTAL – {total_eps} EPISODES**\n"
       f"💰 **PRICE – ₹{price}RS** ✅\n\n"
-      f"⚡ **INSTANT DELIVERY**"
+      f"{delivery_mode}"
   )
 
   markup = types.InlineKeyboardMarkup()
@@ -75,7 +77,6 @@ def send_menu(message):
   bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode="Markdown")
 
 
-# Episodes update karne ki command: /setep 3517 3526
 @bot.message_handler(commands=["setep"])
 def set_episodes(message):
   if message.from_user.id != ADMIN_ID:
@@ -111,7 +112,6 @@ def set_episodes(message):
     )
 
 
-# Price update karne ki command: /setprice 70
 @bot.message_handler(commands=["setprice"])
 def set_price(message):
   if message.from_user.id != ADMIN_ID:
@@ -119,7 +119,7 @@ def set_price(message):
     return
 
   try:
-    parts = message.text.split()
+    parts = message.text.split(maxsplit=1)
     price = int(parts[1])
 
     settings = load_settings()
@@ -132,6 +132,36 @@ def set_price(message):
         message,
         "Galat format! Sahi tareeqa yeh hai:\n`/setprice 70`",
         parse_mode="Markdown",
+    )
+
+
+@bot.message_handler(commands=["setmode"])
+def set_mode(message):
+  if message.from_user.id != ADMIN_ID:
+    bot.reply_to(message, "Aap admin nahi hain!")
+    return
+
+  try:
+    mode_text = message.text.replace("/setmode", "").strip()
+    if not mode_text:
+      bot.reply_to(
+          message,
+          "Kripya mode likhein. Jaise:\n`/setmode PRE-BOOKING`\nya\n`/setmode"
+          " INSTANT DELIVERY`",
+          parse_mode="Markdown",
+      )
+      return
+
+    settings = load_settings()
+    settings["delivery_mode"] = mode_text
+    save_settings(settings)
+
+    bot.reply_to(
+        message, f"✅ Delivery Mode Updated Successfully!\nMode: {mode_text}"
+    )
+  except Exception as e:
+    bot.reply_to(
+        message, "Galat format! Sahi tareeqa yeh hai:\n`/setmode PRE-BOOKING`"
     )
 
 

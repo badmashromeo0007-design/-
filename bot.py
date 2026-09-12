@@ -60,6 +60,21 @@ def send_menu(message):
   delivery_mode = settings.get("delivery_mode", "⚡ INSTANT DELIVERY")
   total_eps = (end_ep - start_ep) + 1
 
+  # 1. Pehle MP3 Audio bhejne ke liye (Apni audio file ka naam yahan dalein)
+  try:
+    audio_file_path = "preview.mp3"  # Yahan apni MP3 file ka naam likhein
+    if os.path.exists(audio_file_path):
+      with open(audio_file_path, "rb") as audio:
+        bot.send_audio(
+            message.chat.id,
+            audio,
+            caption="🎧 **Super Yoddha Audio Preview**",
+            parse_mode="Markdown",
+        )
+  except Exception as e:
+    print(f"Audio send karne mein error: {e}")
+
+  # 2. Phir menu text aur Pay Now button bhejne ke liye
   text = (
       f"⚡ **SUPER YODDA** ⚡\n\n"
       f"📺 **EPISODE – {start_ep} - {end_ep}**\n\n"
@@ -193,4 +208,3 @@ if __name__ == "__main__":
   bot.set_webhook(url=f"{RENDER_URL}/{TOKEN}")
 
   app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-  

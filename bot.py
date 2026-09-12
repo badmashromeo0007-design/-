@@ -1,18 +1,15 @@
 import json
 import os
-from flask import Flask
+from flask import Flask, request
 import telebot
 from telebot import types
 
-# Configurations
 TOKEN = "8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU"
 ADMIN_ID = 6817248389  # Aapki Admin ID
-CHANNEL_USERNAME = "@SUPER_YODDA"  # Main Channel
 
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
 
-# Settings file jo episodes aur price ko yaad rakhegi
 SETTINGS_FILE = "bot_settings.json"
 
 
@@ -39,7 +36,19 @@ def save_settings(data):
 
 @app.route("/")
 def home():
-  return "Bot is running 24/7!"
+  return "Bot is running 24/7 via Webhook!"
+
+
+# Telegram Webhook Endpoint
+@app.route(f"/{TOKEN}", methods=["POST"])
+def webhook():
+  if request.headers.get("content-type") == "application/json":
+    json_string = request.get_data().decode("utf-8")
+    update = telebot.types.Update.de_json(json_string)
+    bot.process_new_updates([update])
+    return "", 200
+  else:
+    return "Forbidden", 403
 
 
 @bot.message_handler(commands=["start", "menu"])
@@ -48,8 +57,6 @@ def send_menu(message):
   start_ep = settings["start_ep"]
   end_ep = settings["end_ep"]
   price = settings["price"]
-
-  # Automatic calculation: Total episodes khud calculate ho jayenge!
   total_eps = (end_ep - start_ep) + 1
 
   text = (
@@ -69,7 +76,6 @@ def send_menu(message):
   bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode="Markdown")
 
 
-# Admin command episodes change karne ke liye: /set 3534 3540 100
 @bot.message_handler(commands=["set"])
 def update_episodes(message):
   if message.from_user.id != ADMIN_ID:
@@ -123,13 +129,12 @@ def qr_handler(call):
 
 
 if __name__ == "__main__":
-  import threading
+  # Render ka live URL auto-detect karega aur webhook set kar dega
+  RENDER_URL = os.environ.get(
+      "RENDER_EXTERNAL_URL", "https://badmash-4k97.onrender.com"
+  )
+  bot.remove_webhook()
+  bot.set_webhook(url=f"{RENDER_URL}/{TOKEN}")
 
-  def run_flask():
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-
-  threading.Thread(target=run_flask).start()
-
-  # Conflict error (409) ko hatane ke liye skip_pending=True joda gaya hai
-  bot.infinity_polling(skip_pending=True)
+  app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
   

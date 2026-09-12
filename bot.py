@@ -65,7 +65,10 @@ def send_welcome(message):
     welcome_text = (
         f"Namaste {user_name}! 🙏\n\n"
         "Welcome to **The Super Yoddha Bot**.\n\n"
-        "Aap yahan se audio series links, updates aur premium content manage kar sakte hain.\n\n"
+        "🎬 **Latest Available Content:**\n"
+        "• Episodes: **EP 3517 - 3526**\n"
+        "• Price: **₹70**\n"
+        "• Delivery: **Turant Milega ⚡**\n\n"
         "📢 **Hamare main channel par episodes dale jate hain, kripya channel join karein:**\n"
         "👉 [The Super Yoddha Channel](https://t.me/+gy8gewj0snllZThl)"
     )
@@ -76,9 +79,15 @@ def handle_all_messages(message):
     user_text = message.text
     if gemini_model:
         try:
-            response = gemini_model.generate_content(user_text)
-            bot.reply_to(message, response.text)
+            response = gemini_model.generate_content(
+                f"You are the assistant for The Super Yoddha Bot. Current available stock is Episodes 3517 to 3526 for ₹70, available instantly (turant milega). User query: {user_text}"
+            )
+            if response and response.text:
+                bot.reply_to(message, response.text)
+            else:
+                bot.reply_to(message, "Kshama karein, AI se koi response nahi mila.")
         except Exception as e:
+            print(f"Gemini Generation Error: {e}")
             bot.reply_to(message, "Kshama karein, AI response generate karne mein samasya aayi.")
     else:
         bot.reply_to(message, f"Aapka sandesh mila: {user_text}")

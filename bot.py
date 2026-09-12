@@ -68,20 +68,15 @@ def webhook():
 def index():
     return "The Super Yoddha Bot is running live!"
 
-# --- PAYMENT MARKUP ---
+# --- MARKUP (Sirf Episode & Channel Button) ---
 def get_payment_markup():
     settings = load_settings()
-    price = settings.get("price", "70").replace("₹", "").strip()
     episodes = settings.get("episodes", "3517–3526")
     
-    pay_url = f"https://pay.google.com/gp/p/ui/pay?pa={UPI_ID}&pn=TheSuperYoddha&am={price}&cu=INR"
-
     markup = InlineKeyboardMarkup()
     markup.row_width = 1
     markup.add(
-        InlineKeyboardButton(f"💳 Pay ₹{price} & Get Episodes", url=pay_url),
-        InlineKeyboardButton(f"📦 Episode {episodes}", url=pay_url),
-        InlineKeyboardButton("📸 QR Code / Barcode Dekhein", callback_data="show_qr"),
+        InlineKeyboardButton(f"📦 Episode {episodes}", callback_data="show_qr"),
         InlineKeyboardButton("📢 Join Main Channel", url="https://t.me/+gy8gewj0snllZThl")
     )
     return markup
@@ -122,10 +117,14 @@ def set_link(message):
     else:
         bot.reply_to(message, "Example: `/setlink https://t.me/+8jC-...`", parse_mode="Markdown")
 
-@bot.message_handler(commands=['start', 'menu', 'buy', 'qr'])
-def send_welcome(message):
+# --- BROADCAST COMMAND TO SEND DIRECTLY TO MAIN CHANNEL ---
+@bot.message_handler(commands=['sendchannel', 'broadcast'])
+def send_to_main_channel(message):
+    if message.from_user.id != ADMIN_ID:
+        bot.reply_to(message, "❌ Aap admin nahi hain!")
+        return
+    
     settings = load_settings()
-    bot_username = bot.get_me().username
     
     welcome_text = (
         " 🎧  **SUPER YODDHA** 🎧 \n\n"
@@ -133,11 +132,30 @@ def send_welcome(message):
         f"💰 **PRICE — ₹ {settings['price']}**\n\n"
         f"🎧 **TOTAL — {settings['total_eps']} EPISODES** 💰\n\n"
         "⚡ **INSTANT DELIVERY**🎁\n\n"
-        f"📩 **DM — @{bot_username}** 🎉"
+        "📩 **DM — [ROMEO_PAY_BOT](https://t.me/Romeopaybot)** 🎉"
+    )
+    
+    try:
+        bot.send_message(MAIN_CHANNEL_ID, welcome_text, parse_mode="Markdown", reply_markup=get_payment_markup(), disable_web_page_preview=True)
+        bot.reply_to(message, f"✅ Post successfully **{MAIN_CHANNEL_ID}** par bhej di gayi hai!")
+    except Exception as e:
+        bot.reply_to(message, f"❌ Error: {e}")
+
+@bot.message_handler(commands=['start', 'menu', 'buy', 'qr'])
+def send_welcome(message):
+    settings = load_settings()
+    
+    welcome_text = (
+        " 🎧  **SUPER YODDHA** 🎧 \n\n"
+        f"✅ **EPISODES {settings['episodes']}** 🎉\n\n"
+        f"💰 **PRICE — ₹ {settings['price']}**\n\n"
+        f"🎧 **TOTAL — {settings['total_eps']} EPISODES** 💰\n\n"
+        "⚡ **INSTANT DELIVERY**🎁\n\n"
+        "📩 **DM — [ROMEO_PAY_BOT](https://t.me/Romeopaybot)** 🎉"
     )
     bot.reply_to(message, welcome_text, parse_mode="Markdown", reply_markup=get_payment_markup(), disable_web_page_preview=True)
 
-# QR Code Handler with Auto-Generated Payment Barcode
+# Episode button click par QR Code open hone ka handler
 @bot.callback_query_handler(func=lambda call: call.data == "show_qr")
 def callback_query(call):
     settings = load_settings()
@@ -196,7 +214,7 @@ def handle_payment_screenshot(message):
             bot.edit_message_text(
                 chat_id=chat_id,
                 message_id=message_id,
-                text="⏳ **Verification process mein thoda samay lag raha hai.**\n\nKripya thoda intezaar karein, jaise hi admin payment verify karenge, aapko turant link mil jayega! 🙏",
+                text="⏳ **Verification process mein thoda samay lag raha hai.**\n\nKripya thoda intezaار karein, jaise hi admin payment verify karenge, aapko turant link mil jayega! 🙏",
                 parse_mode="Markdown"
             )
         except Exception:
@@ -236,7 +254,6 @@ def admin_action_handler(call):
 @bot.message_handler(func=lambda message: True)
 def handle_all_messages(message):
     settings = load_settings()
-    bot_username = bot.get_me().username
     
     reply_text = (
         " 🎧  **SUPER YODDHA** 🎧 \n\n"
@@ -244,11 +261,11 @@ def handle_all_messages(message):
         f"💰 **PRICE — ₹ {settings['price']}**\n\n"
         f"🎧 **TOTAL — {settings['total_eps']} EPISODES** 💰\n\n"
         "⚡ **INSTANT DELIVERY**🎁\n\n"
-        f"📩 **DM — @{bot_username}** 🎉"
+        "📩 **DM — [ROMEO_PAY_BOT](https://t.me/Romeopaybot)** 🎉"
     )
     bot.reply_to(message, reply_text, parse_mode="Markdown", reply_markup=get_payment_markup(), disable_web_page_preview=True)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port)
-                               
+    

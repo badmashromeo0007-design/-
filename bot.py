@@ -11,7 +11,10 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 # Configuration
 TOKEN = os.environ.get('BOT_TOKEN', '8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU')
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', 'AQ.A80RH6kVs-703IHNMAZ9Bc52mPsf7SluJFwZQ91cduTud2jKjw')
-MAIN_CHANNEL_ID = "@TheSuperYoddha" 
+
+# Yahan aapka correct numeric channel ID set kar diya gaya hai
+MAIN_CHANNEL_ID = -1004382767346 
+
 ADMIN_ID = 6817248389
 
 # Aapki Verified UPI ID
@@ -68,7 +71,7 @@ def webhook():
 def index():
     return "The Super Yoddha Bot is running live!"
 
-# --- MARKUP (Sirf Episode & Channel Button) ---
+# --- MARKUP ---
 def get_payment_markup():
     settings = load_settings()
     episodes = settings.get("episodes", "3517–3526")
@@ -76,7 +79,7 @@ def get_payment_markup():
     markup = InlineKeyboardMarkup()
     markup.row_width = 1
     markup.add(
-        InlineKeyboardButton(f"📦 Episode {episodes}", callback_data="show_qr"),
+        InlineKeyboardButton(f"Episode {episodes.split('–')[0]} To {episodes.split('–')[1] if '–' in episodes else episodes}", callback_data="show_qr"),
         InlineKeyboardButton("📢 Join Main Channel", url="https://t.me/+gy8gewj0snllZThl")
     )
     return markup
@@ -117,7 +120,13 @@ def set_link(message):
     else:
         bot.reply_to(message, "Example: `/setlink https://t.me/+8jC-...`", parse_mode="Markdown")
 
-# --- BROADCAST COMMAND TO SEND DIRECTLY TO MAIN CHANNEL ---
+@bot.message_handler(content_types=['audio'])
+def handle_audio_upload(message):
+    if message.from_user.id != ADMIN_ID:
+        return
+    audio_file_id = message.audio.file_id
+    bot.reply_to(message, f"✅ Audio received!\n\n**File ID:** `{audio_file_id}`", parse_mode="Markdown")
+
 @bot.message_handler(commands=['sendchannel', 'broadcast'])
 def send_to_main_channel(message):
     if message.from_user.id != ADMIN_ID:
@@ -127,17 +136,33 @@ def send_to_main_channel(message):
     settings = load_settings()
     
     welcome_text = (
-        " 🎧  **SUPER YODDHA** 🎧 \n\n"
-        f"✅ **EPISODES {settings['episodes']}** 🎉\n\n"
-        f"💰 **PRICE — ₹ {settings['price']}**\n\n"
-        f"🎧 **TOTAL — {settings['total_eps']} EPISODES** 💰\n\n"
-        "⚡ **INSTANT DELIVERY**🎁\n\n"
+        "🎧 **EPISODE PRICING** 🎧\n\n"
+        f"📦 **{settings['episodes']}**\n\n"
+        f"➡️ **10 Episodes — ₹{settings['price']}**\n\n"
+        "⚡ **INSTANT DELIVERY** 🎁\n\n"
         "📩 **DM — [ROMEO_PAY_BOT](https://t.me/Romeo_pay_bot)** 🎉"
     )
     
+    AUDIO_FILE_ID = "YAHAN_APNI_AUDIO_KA_FILE_ID_DAALEIN"
+    
     try:
-        bot.send_message(MAIN_CHANNEL_ID, welcome_text, parse_mode="Markdown", reply_markup=get_payment_markup(), disable_web_page_preview=True)
-        bot.reply_to(message, f"✅ Post successfully **{MAIN_CHANNEL_ID}** par bhej di gayi hai!")
+        if AUDIO_FILE_ID != "YAHAN_APNI_AUDIO_KA_FILE_ID_DAALEIN":
+            bot.send_audio(
+                MAIN_CHANNEL_ID, 
+                audio=AUDIO_FILE_ID, 
+                caption=welcome_text, 
+                parse_mode="Markdown", 
+                reply_markup=get_payment_markup()
+            )
+        else:
+            bot.send_message(
+                MAIN_CHANNEL_ID, 
+                welcome_text, 
+                parse_mode="Markdown", 
+                reply_markup=get_payment_markup(), 
+                disable_web_page_preview=True
+            )
+        bot.reply_to(message, f"✅ Post successfully channel par bhej di gayi hai!")
     except Exception as e:
         bot.reply_to(message, f"❌ Error: {e}")
 
@@ -146,16 +171,14 @@ def send_welcome(message):
     settings = load_settings()
     
     welcome_text = (
-        " 🎧  **SUPER YODDHA** 🎧 \n\n"
-        f"✅ **EPISODES {settings['episodes']}** 🎉\n\n"
-        f"💰 **PRICE — ₹ {settings['price']}**\n\n"
-        f"🎧 **TOTAL — {settings['total_eps']} EPISODES** 💰\n\n"
-        "⚡ **INSTANT DELIVERY**🎁\n\n"
+        "🎧 **EPISODE PRICING** 🎧\n\n"
+        f"📦 **{settings['episodes']}**\n\n"
+        f"➡️ **10 Episodes — ₹{settings['price']}**\n\n"
+        "⚡ **INSTANT DELIVERY** 🎁\n\n"
         "📩 **DM — [ROMEO_PAY_BOT](https://t.me/Romeo_pay_bot)** 🎉"
     )
     bot.reply_to(message, welcome_text, parse_mode="Markdown", reply_markup=get_payment_markup(), disable_web_page_preview=True)
 
-# Episode button click par QR Code open hone ka handler
 @bot.callback_query_handler(func=lambda call: call.data == "show_qr")
 def callback_query(call):
     settings = load_settings()
@@ -255,15 +278,14 @@ def admin_action_handler(call):
 def handle_all_messages(message):
     settings = load_settings()
     
-    reply_text = (
-        " 🎧  **SUPER YODDHA** 🎧 \n\n"
-        f"✅ **EPISODES {settings['episodes']}** 🎉\n\n"
-        f"💰 **PRICE — ₹ {settings['price']}**\n\n"
-        f"🎧 **TOTAL — {settings['total_eps']} EPISODES** 💰\n\n"
-        "⚡ **INSTANT DELIVERY**🎁\n\n"
+    welcome_text = (
+        "🎧 **EPISODE PRICING** 🎧\n\n"
+        f"📦 **{settings['episodes']}**\n\n"
+        f"➡️ **10 Episodes — ₹{settings['price']}**\n\n"
+        "⚡ **INSTANT DELIVERY** 🎁\n\n"
         "📩 **DM — [ROMEO_PAY_BOT](https://t.me/Romeo_pay_bot)** 🎉"
     )
-    bot.reply_to(message, reply_text, parse_mode="Markdown", reply_markup=get_payment_markup(), disable_web_page_preview=True)
+    bot.reply_to(message, welcome_text, parse_mode="Markdown", reply_markup=get_payment_markup(), disable_web_page_preview=True)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))

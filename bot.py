@@ -5,19 +5,20 @@ import telebot
 import google.generativeai as genai
 
 # Configuration
-TOKEN = os.environ.get('BOT_TOKEN')  # Render par BOT_TOKEN environment variable set hona chahiye
-GEMINI_API_KEY = "AQ.Ab8RN6K8v-703IMMAZ9BcSS2mPsf1SLujFWZQ91cbd1U2DjXIw"
+TOKEN = os.environ.get('BOT_TOKEN', '8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU')
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', 'AQ.A80RH6kVs-703IHNMAZ9Bc52mPsf7SluJFwZQ91cduTud2jKjw')
 
 # Initialize Bot and Flask
 bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
 
-# Configure Gemini AI directly with your key
+# Configure Gemini AI Directly with your key
 if GEMINI_API_KEY:
     try:
         genai.configure(api_key=GEMINI_API_KEY)
         gemini_model = genai.GenerativeModel('gemini-1.5-flash')
-    except Exception:
+    except Exception as e:
+        print(f"Gemini Init Error: {e}")
         gemini_model = None
 else:
     gemini_model = None
@@ -41,7 +42,7 @@ def save_data(data):
     except Exception as e:
         print(f"Save error: {e}")
 
-# Flask Webhook Route to fix 404 Not Found Error
+# Flask webhook Route to fix 404 Not Found Error
 @app.route('/webhook', methods=['POST'])
 def webhook():
     if request.headers.get('content-type') == 'application/json':
@@ -62,11 +63,13 @@ def index():
 def send_welcome(message):
     user_name = message.from_user.first_name
     welcome_text = (
-        f"Namaste {user_name}! 🙏\n"
-        "Welcome to **The Super Yoddha** Bot.\n\n"
-        "Aap yahan se audio series links, updates aur premium content manage kar sakte hain."
+        f"Namaste {user_name}! 🙏\n\n"
+        "Welcome to **The Super Yoddha Bot**.\n\n"
+        "Aap yahan se audio series links, updates aur premium content manage kar sakte hain.\n\n"
+        "📢 **Hamare main channel par episodes dale jate hain, kripya channel join karein:**\n"
+        "👉 [The Super Yoddha Channel](https://t.me/+gy8gewj0snllZThl)"
     )
-    bot.reply_to(message, welcome_text, parse_mode="Markdown")
+    bot.reply_to(message, welcome_text, parse_mode="Markdown", disable_web_page_preview=True)
 
 @bot.message_handler(func=lambda message: True)
 def handle_all_messages(message):

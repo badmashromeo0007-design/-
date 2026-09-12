@@ -1,6 +1,5 @@
 import os
 import json
-import time
 import threading
 import urllib.parse
 from flask import Flask
@@ -43,7 +42,7 @@ def save_settings(settings):
 
 @app.route('/')
 def index():
-    return "The Super Yoddha Bot is running live with Polling!"
+    return "The Super Yoddha Bot is running live!"
 
 def get_payment_markup(is_channel=False):
     settings = load_settings()
@@ -160,7 +159,7 @@ def handle_payment_screenshot(message):
     user_id = message.from_user.id
     user_name = message.from_user.first_name
     
-    msg = bot.reply_to(message, "⏳ **Payment received!** Verify kiya ja raha hai...", parse_mode="Markdown")
+    bot.reply_to(message, "⏳ **Payment received!** Verify kiya ja raha hai...", parse_mode="Markdown")
     
     admin_markup = InlineKeyboardMarkup()
     admin_markup.add(
@@ -195,17 +194,13 @@ def admin_action_handler(call):
         except Exception as e:
             bot.answer_callback_query(call.id, f"Error: {e}")
 
-# Bot ko background thread mein chalane ke liye function
 def run_bot():
     bot.remove_webhook()
     print("Bot polling started in background...")
     bot.infinity_polling(skip_pending=True)
 
 if __name__ == '__main__':
-    # Bot ko background thread mein start karo taaki main thread mein Flask port bind ho sake
     threading.Thread(target=run_bot, daemon=True).start()
-    
-    # Render ke liye Flask web server port open rakhega
     port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port)
     

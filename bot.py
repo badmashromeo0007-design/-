@@ -2,6 +2,7 @@ import os
 import json
 import time
 import threading
+import urllib.parse
 from flask import Flask, request
 import telebot
 import google.generativeai as genai
@@ -67,14 +68,12 @@ def webhook():
 def index():
     return "The Super Yoddha Bot is running live!"
 
-# --- FIXED MARKUP FOR TELEGRAM URL BUTTONS ---
+# --- PAYMENT MARKUP ---
 def get_payment_markup():
     settings = load_settings()
     price = settings.get("price", "70").replace("₹", "").strip()
     episodes = settings.get("episodes", "3517–3526")
     
-    # Standard GPay / PhonePe / Paytm Web Links ya Universal Deep Link format
-    # Yeh Telegram ke unsupported url protocol error ko nahi aane dega
     pay_url = f"https://pay.google.com/gp/p/ui/pay?pa={UPI_ID}&pn=TheSuperYoddha&am={price}&cu=INR"
 
     markup = InlineKeyboardMarkup()
@@ -138,19 +137,26 @@ def send_welcome(message):
     )
     bot.reply_to(message, welcome_text, parse_mode="Markdown", reply_markup=get_payment_markup(), disable_web_page_preview=True)
 
+# QR Code Handler with Auto-Generated Payment Barcode
 @bot.callback_query_handler(func=lambda call: call.data == "show_qr")
 def callback_query(call):
     settings = load_settings()
-    bot.answer_callback_query(call.id, "Yeh raha payment barcode!")
+    price = settings.get("price", "70").replace("₹", "").strip()
+    bot.answer_callback_query(call.id, "Yeh raha aapka payment QR code!")
+    
+    upi_string = f"upi://pay?pa={UPI_ID}&pn=TheSuperYoddha&am={price}&cu=INR"
+    qr_image_url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={urllib.parse.quote(upi_string)}"
+    
     qr_caption = (
-        "⚡ **The Super Yoddha Payment QR Code**\n\n"
-        f"• **Episodes:** {settings['episodes']} (Price: ₹{settings['price']})\n\n"
-        f"• **UPI ID:** `{UPI_ID}`\n\n"
-        "1. Upar diye gaye button ya is QR code par pay karein.\n"
+        "⚡ **The Super Yoddha Payment QR Code** ⚡\n\n"
+        f"• **UPI ID:** `{UPI_ID}`\n"
+        f"• **Amount:** ₹{price}\n"
+        f"• **Episodes:** {settings['episodes']}\n\n"
+        "1. Is QR code ko kisi bhi UPI app se scan karke pay karein.\n"
         "2. Payment karne ke baad **screenshot yahin bot mein bhej dein**.\n"
         "3. Screenshot bhejte hi admin ke paas verification chali jayegi!"
     )
-    qr_image_url = "https://i.ibb.co/3ykB4rP/1000018603.png"
+    
     try:
         bot.send_photo(call.message.chat.id, qr_image_url, caption=qr_caption, parse_mode="Markdown")
     except Exception as e:
@@ -245,4 +251,4 @@ def handle_all_messages(message):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port)
-    
+                               

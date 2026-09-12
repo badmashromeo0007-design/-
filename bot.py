@@ -67,27 +67,26 @@ def webhook():
 def index():
     return "The Super Yoddha Bot is running live!"
 
-# --- DESIGNED LAYOUT MARKUP ---
+# --- FIXED MARKUP FOR TELEGRAM URL BUTTONS ---
 def get_payment_markup():
     settings = load_settings()
     price = settings.get("price", "70").replace("₹", "").strip()
     episodes = settings.get("episodes", "3517–3526")
     
-    # UPI Intent Direct Link
-    upi_url = f"upi://pay?pa={UPI_ID}&pn=TheSuperYoddha&am={price}&cu=INR"
-    bot_username = bot.get_me().username
+    # Standard GPay / PhonePe / Paytm Web Links ya Universal Deep Link format
+    # Yeh Telegram ke unsupported url protocol error ko nahi aane dega
+    pay_url = f"https://pay.google.com/gp/p/ui/pay?pa={UPI_ID}&pn=TheSuperYoddha&am={price}&cu=INR"
 
     markup = InlineKeyboardMarkup()
     markup.row_width = 1
     markup.add(
-        InlineKeyboardButton(f"💳 Pay ₹{price} & Get Episodes", url=upi_url),
-        InlineKeyboardButton(f"📦 Episode {episodes}", url=upi_url),
+        InlineKeyboardButton(f"💳 Pay ₹{price} & Get Episodes", url=pay_url),
+        InlineKeyboardButton(f"📦 Episode {episodes}", url=pay_url),
         InlineKeyboardButton("📸 QR Code / Barcode Dekhein", callback_data="show_qr"),
         InlineKeyboardButton("📢 Join Main Channel", url="https://t.me/+gy8gewj0snllZThl")
     )
     return markup
 
-# Admin Commands to Update Settings Dynamically
 @bot.message_handler(commands=['setep'])
 def set_episodes(message):
     args = message.text.split(maxsplit=1)
@@ -124,7 +123,6 @@ def set_link(message):
     else:
         bot.reply_to(message, "Example: `/setlink https://t.me/+8jC-...`", parse_mode="Markdown")
 
-# /start command with exact requested design
 @bot.message_handler(commands=['start', 'menu', 'buy', 'qr'])
 def send_welcome(message):
     settings = load_settings()
@@ -140,7 +138,6 @@ def send_welcome(message):
     )
     bot.reply_to(message, welcome_text, parse_mode="Markdown", reply_markup=get_payment_markup(), disable_web_page_preview=True)
 
-# QR Code Handler
 @bot.callback_query_handler(func=lambda call: call.data == "show_qr")
 def callback_query(call):
     settings = load_settings()
@@ -148,7 +145,8 @@ def callback_query(call):
     qr_caption = (
         "⚡ **The Super Yoddha Payment QR Code**\n\n"
         f"• **Episodes:** {settings['episodes']} (Price: ₹{settings['price']})\n\n"
-        "1. Upar diye gaye direct button ya is QR code par pay karein.\n"
+        f"• **UPI ID:** `{UPI_ID}`\n\n"
+        "1. Upar diye gaye button ya is QR code par pay karein.\n"
         "2. Payment karne ke baad **screenshot yahin bot mein bhej dein**.\n"
         "3. Screenshot bhejte hi admin ke paas verification chali jayegi!"
     )
@@ -158,7 +156,6 @@ def callback_query(call):
     except Exception as e:
         bot.send_message(call.message.chat.id, qr_caption, parse_mode="Markdown")
 
-# Handle User Screenshots & Forward to Admin
 @bot.message_handler(content_types=['photo'])
 def handle_payment_screenshot(message):
     user_id = message.from_user.id
@@ -201,7 +198,6 @@ def handle_payment_screenshot(message):
 
     threading.Thread(target=verification_timer, args=(message.chat.id, msg.message_id)).start()
 
-# Handle Admin Verify/Reject Actions
 @bot.callback_query_handler(func=lambda call: call.data.startswith("verify_") or call.data.startswith("reject_"))
 def admin_action_handler(call):
     data = call.data.split("_")
@@ -249,4 +245,4 @@ def handle_all_messages(message):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port)
-        
+    

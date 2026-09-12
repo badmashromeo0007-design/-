@@ -3,6 +3,7 @@ import json
 from flask import Flask, request
 import telebot
 import google.generativeai as genai
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 # Configuration
 TOKEN = os.environ.get('BOT_TOKEN', '8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU')
@@ -58,8 +59,19 @@ def webhook():
 def index():
     return "The Super Yoddha Bot is running live!"
 
+# Helper function for Buy Menu Markup
+def get_buy_markup():
+    markup = InlineKeyboardMarkup()
+    markup.row_width = 1
+    # Yahan aap apna UPI payment link ya Admin ka Telegram username daal sakte hain
+    markup.add(
+        InlineKeyboardButton("💳 Buy Now (₹70) - Turant Pay Karein", url="https://t.me/+gy8gewj0snllZThl"),
+        InlineKeyboardButton("📢 Join Main Channel", url="https://t.me/+gy8gewj0snllZThl")
+    )
+    return markup
+
 # Telegram Command Handlers
-@bot.message_handler(commands=['start'])
+@bot.message_handler(commands=['start', 'menu', 'buy'])
 def send_welcome(message):
     user_name = message.from_user.first_name
     welcome_text = (
@@ -69,28 +81,34 @@ def send_welcome(message):
         "• Episodes: **EP 3517 - 3526**\n"
         "• Price: **₹70**\n"
         "• Delivery: **Turant Milega ⚡**\n\n"
-        "📢 **Hamare main channel par episodes dale jate hain, kripya channel join karein:**\n"
-        "👉 [The Super Yoddha Channel](https://t.me/+gy8gewj0snllZThl)"
+        "Neeche diye gaye button par click karke payment karein aur turant episodes prapt karein!"
     )
-    bot.reply_to(message, welcome_text, parse_mode="Markdown", disable_web_page_preview=True)
+    bot.reply_to(message, welcome_text, parse_mode="Markdown", reply_markup=get_buy_markup(), disable_web_page_preview=True)
 
 @bot.message_handler(func=lambda message: True)
 def handle_all_messages(message):
-    user_text = message.text
-    if gemini_model:
-        try:
-            response = gemini_model.generate_content(
-                f"You are the assistant for The Super Yoddha Bot. Current available stock is Episodes 3517 to 3526 for ₹70, available instantly (turant milega). User query: {user_text}"
-            )
-            if response and response.text:
-                bot.reply_to(message, response.text)
-            else:
-                bot.reply_to(message, "Kshama karein, AI se koi response nahi mila.")
-        except Exception as e:
-            print(f"Gemini Generation Error: {e}")
-            bot.reply_to(message, "Kshama karein, AI response generate karne mein samasya aayi.")
+    user_text = message.text.lower()
+    
+    if "episode" in user_text or "chahiye" in user_text or "price" in user_text or "buy" in user_text:
+        reply_text = (
+            "🎬 **The Super Yoddha Content Details:**\n\n"
+            "• **Available Episodes:** EP 3517 - 3526\n"
+            "• **Price:** ₹70\n"
+            "• **Delivery:** Turant Milega ⚡\n\n"
+            "Payment karne ke liye neeche button par click karein:"
+        )
+        bot.reply_to(message, reply_text, parse_mode="Markdown", reply_markup=get_buy_markup(), disable_web_page_preview=True)
     else:
-        bot.reply_to(message, f"Aapka sandesh mila: {user_text}")
+        if gemini_model:
+            try:
+                response = gemini_model.generate_content(message.text)
+                if response and response.text:
+                    bot.reply_to(message, response.text, reply_markup=get_buy_markup())
+                    return
+            except Exception as e:
+                print(f"Gemini Error: {e}")
+        
+        bot.reply_to(message, "Aapko EP 3517 - 3526 sirf ₹70 mein turant mil jayenge! Kharidne ke liye button dabayein.", reply_markup=get_buy_markup())
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))

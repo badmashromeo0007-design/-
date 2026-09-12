@@ -67,6 +67,8 @@ def get_payment_markup(is_channel=False):
 
 @bot.message_handler(commands=['setep'])
 def set_episodes(message):
+    if message.from_user.id != ADMIN_ID:
+        return
     args = message.text.split(maxsplit=1)
     if len(args) > 1:
         settings = load_settings()
@@ -78,6 +80,8 @@ def set_episodes(message):
 
 @bot.message_handler(commands=['setprice'])
 def set_price(message):
+    if message.from_user.id != ADMIN_ID:
+        return
     args = message.text.split(maxsplit=1)
     if len(args) > 1:
         new_price = args[1].replace("₹", "").strip()
@@ -87,6 +91,28 @@ def set_price(message):
         bot.reply_to(message, f"✅ Price updated to: **₹{new_price}**", parse_mode="Markdown")
     else:
         bot.reply_to(message, "Example: `/setprice 70`", parse_mode="Markdown")
+
+@bot.message_handler(commands=['setlink'])
+def set_link(message):
+    if message.from_user.id != ADMIN_ID:
+        return
+    args = message.text.split(maxsplit=1)
+    if len(args) > 1:
+        new_link = args[1].strip()
+        settings = load_settings()
+        settings["access_link"] = new_link
+        save_settings(settings)
+        bot.reply_to(message, f"✅ Access link updated successfully to:\n`{new_link}`", parse_mode="Markdown")
+    else:
+        bot.reply_to(message, "Example: `/setlink https://t.me/+your_private_link`", parse_mode="Markdown")
+
+@bot.message_handler(commands=['getlink'])
+def get_link(message):
+    if message.from_user.id != ADMIN_ID:
+        return
+    settings = load_settings()
+    current_link = settings.get("access_link", "Not set")
+    bot.reply_to(message, f"🔗 **Current Access Link:**\n`{current_link}`", parse_mode="Markdown")
 
 @bot.message_handler(commands=['sendchannel', 'broadcast'])
 def send_to_main_channel(message):

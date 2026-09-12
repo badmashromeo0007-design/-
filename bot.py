@@ -5,7 +5,7 @@ import telebot
 from telebot import types
 
 # Configurations
-TOKEN = "YOUR_BOT_TOKEN"  # Apna bot token yahan daalein
+TOKEN = "8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU"
 ADMIN_ID = 6817248389  # Aapki Admin ID
 CHANNEL_USERNAME = "@SUPER_YODDA"  # Main Channel
 
@@ -17,7 +17,6 @@ SETTINGS_FILE = "bot_settings.json"
 
 
 def load_settings():
-  # Default settings agar file na ho
   default_data = {
       "start_ep": 3527,
       "end_ep": 3533,
@@ -120,21 +119,16 @@ def qr_handler(call):
       f"2. Payment karne ke baad screenshot yahin bot mein bhej dein."
   )
 
-  # Yahan aap apni QR code image ka file_id ya URL daal sakte hain
-  bot.send_message(
-      call.message.chat.id, caption, parse_mode="Markdown"
-  )  # Yahan photo bhi bhej sakte hain
+  bot.send_message(call.message.chat.id, caption, parse_mode="Markdown")
 
 
 if __name__ == "__main__":
   import threading
 
-  # Flask server background mein chalane ke liye taaki Render / UptimeRobot ping kar sake
   def run_flask():
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
 
   threading.Thread(target=run_flask).start()
 
-  # Bot polling start
   bot.infinity_polling()
-    
+  

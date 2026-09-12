@@ -3,6 +3,7 @@ import json
 import time
 import threading
 import urllib.parse
+from flask import Flask
 import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
@@ -14,6 +15,7 @@ UPI_ID = "badmashromeo0007@okaxis"
 BOT_USERNAME = "Romeo_pay_bot"
 
 bot = telebot.TeleBot(TOKEN, threaded=False)
+app = Flask(__name__)
 
 SETTINGS_FILE = "/tmp/bot_settings.json"
 
@@ -38,6 +40,10 @@ def save_settings(settings):
             json.dump(settings, f)
     except Exception as e:
         print(f"Save error: {e}")
+
+@app.route('/')
+def index():
+    return "The Super Yoddha Bot is running live with Polling!"
 
 def get_payment_markup(is_channel=False):
     settings = load_settings()
@@ -189,9 +195,17 @@ def admin_action_handler(call):
         except Exception as e:
             bot.answer_callback_query(call.id, f"Error: {e}")
 
-if __name__ == '__main__':
-    # Webhook hata kar direct polling shuru karein taaki loop error na aaye
+# Bot ko background thread mein chalane ke liye function
+def run_bot():
     bot.remove_webhook()
-    print("Bot is polling...")
+    print("Bot polling started in background...")
     bot.infinity_polling(skip_pending=True)
+
+if __name__ == '__main__':
+    # Bot ko background thread mein start karo taaki main thread mein Flask port bind ho sake
+    threading.Thread(target=run_bot, daemon=True).start()
+    
+    # Render ke liye Flask web server port open rakhega
+    port = int(os.environ.get('PORT', 10000))
+    app.run(host='0.0.0.0', port=port)
     

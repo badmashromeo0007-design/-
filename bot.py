@@ -12,13 +12,15 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 TOKEN = os.environ.get('BOT_TOKEN', '8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU')
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', 'AQ.A80RH6kVs-703IHNMAZ9Bc52mPsf7SluJFwZQ91cduTud2jKjw')
 
-# Yahan aapka correct numeric channel ID set kar diya gaya hai
+# Aapka Correct Numeric Channel ID
 MAIN_CHANNEL_ID = -1004382767346 
-
 ADMIN_ID = 6817248389
 
 # Aapki Verified UPI ID
 UPI_ID = "badmashromeo0007@okaxis"
+
+# Bot ka Username (Channel ke buttons ke liye direct redirection ke liye)
+BOT_USERNAME = "Romeo_pay_bot"
 
 # Initialize Bot and Flask
 bot = telebot.TeleBot(TOKEN, threaded=False)
@@ -71,17 +73,27 @@ def webhook():
 def index():
     return "The Super Yoddha Bot is running live!"
 
-# --- MARKUP ---
-def get_payment_markup():
+# --- MARKUP (Channel ke liye jo seedha bot mein QR khole) ---
+def get_payment_markup(is_channel=False):
     settings = load_settings()
     episodes = settings.get("episodes", "3517–3526")
+    ep_text = f"Episode {episodes.split('–')[0]} To {episodes.split('–')[1] if '–' in episodes else episodes}"
     
     markup = InlineKeyboardMarkup()
     markup.row_width = 1
-    markup.add(
-        InlineKeyboardButton(f"Episode {episodes.split('–')[0]} To {episodes.split('–')[1] if '–' in episodes else episodes}", callback_data="show_qr"),
-        InlineKeyboardButton("📢 Join Main Channel", url="https://t.me/+gy8gewj0snllZThl")
-    )
+    
+    if is_channel:
+        # Jab channel par post jayegi, yeh button click hote hi user ko bot par le jakar QR command trigger karega
+        markup.add(
+            InlineKeyboardButton(ep_text, url=f"https://t.me/{BOT_USERNAME}?start=qr"),
+            InlineKeyboardButton("📢 Join Main Channel", url="https://t.me/+gy8gewj0snllZThl")
+        )
+    else:
+        # Jab user bot ke andar hoga
+        markup.add(
+            InlineKeyboardButton(ep_text, callback_data="show_qr"),
+            InlineKeyboardButton("📢 Join Main Channel", url="https://t.me/+gy8gewj0snllZThl")
+        )
     return markup
 
 @bot.message_handler(commands=['setep'])
@@ -152,14 +164,14 @@ def send_to_main_channel(message):
                 audio=AUDIO_FILE_ID, 
                 caption=welcome_text, 
                 parse_mode="Markdown", 
-                reply_markup=get_payment_markup()
+                reply_markup=get_payment_markup(is_channel=True)
             )
         else:
             bot.send_message(
                 MAIN_CHANNEL_ID, 
                 welcome_text, 
                 parse_mode="Markdown", 
-                reply_markup=get_payment_markup(), 
+                reply_markup=get_payment_markup(is_channel=True), 
                 disable_web_page_preview=True
             )
         bot.reply_to(message, f"✅ Post successfully channel par bhej di gayi hai!")
@@ -170,6 +182,11 @@ def send_to_main_channel(message):
 def send_welcome(message):
     settings = load_settings()
     
+    # Agar user channel ke button se aaya hai (jaise ?start=qr), toh seedha QR code bhej do
+    if len(message.text.split()) > 1 and message.text.split()[1] == "qr":
+        send_qr_code_logic(message.chat.id, settings)
+        return
+
     welcome_text = (
         "🎧 **EPISODE PRICING** 🎧\n\n"
         f"📦 **{settings['episodes']}**\n\n"
@@ -177,13 +194,10 @@ def send_welcome(message):
         "⚡ **INSTANT DELIVERY** 🎁\n\n"
         "📩 **DM — [ROMEO_PAY_BOT](https://t.me/Romeo_pay_bot)** 🎉"
     )
-    bot.reply_to(message, welcome_text, parse_mode="Markdown", reply_markup=get_payment_markup(), disable_web_page_preview=True)
+    bot.reply_to(message, welcome_text, parse_mode="Markdown", reply_markup=get_payment_markup(is_channel=False))
 
-@bot.callback_query_handler(func=lambda call: call.data == "show_qr")
-def callback_query(call):
-    settings = load_settings()
+def send_qr_code_logic(chat_id, settings):
     price = settings.get("price", "70").replace("₹", "").strip()
-    bot.answer_callback_query(call.id, "Yeh raha aapka payment QR code!")
     
     upi_string = f"upi://pay?pa={UPI_ID}&pn=TheSuperYoddha&am={price}&cu=INR"
     qr_image_url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={urllib.parse.quote(upi_string)}"
@@ -199,9 +213,15 @@ def callback_query(call):
     )
     
     try:
-        bot.send_photo(call.message.chat.id, qr_image_url, caption=qr_caption, parse_mode="Markdown")
+        bot.send_photo(chat_id, qr_image_url, caption=qr_caption, parse_mode="Markdown")
     except Exception as e:
-        bot.send_message(call.message.chat.id, qr_caption, parse_mode="Markdown")
+        bot.send_message(chat_id, qr_caption, parse_mode="Markdown")
+
+@bot.callback_query_handler(func=lambda call: call.data == "show_qr")
+def callback_query(call):
+    settings = load_settings()
+    bot.answer_callback_query(call.id, "Yeh raha aapka payment QR code!")
+    send_qr_code_logic(call.message.chat.id, settings)
 
 @bot.message_handler(content_types=['photo'])
 def handle_payment_screenshot(message):
@@ -285,9 +305,9 @@ def handle_all_messages(message):
         "⚡ **INSTANT DELIVERY** 🎁\n\n"
         "📩 **DM — [ROMEO_PAY_BOT](https://t.me/Romeo_pay_bot)** 🎉"
     )
-    bot.reply_to(message, welcome_text, parse_mode="Markdown", reply_markup=get_payment_markup(), disable_web_page_preview=True)
+    bot.reply_to(message, welcome_text, parse_mode="Markdown", reply_markup=get_payment_markup(is_channel=False))
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port)
-    
+                

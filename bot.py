@@ -10,6 +10,7 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 # Configuration
 TOKEN = os.environ.get('BOT_TOKEN', '8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU')
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', 'AQ.A80RH6kVs-703IHNMAZ9Bc52mPsf7SluJFwZQ91cduTud2jKjw')
+MAIN_CHANNEL_ID = "@TheSuperYoddha" # Aap apne channel ka username ya id yahan rakh sakte hain
 
 # Initialize Bot and Flask
 bot = telebot.TeleBot(TOKEN, threaded=False)
@@ -33,7 +34,6 @@ def load_settings():
     default_settings = {
         "episodes": "EP 3517 - 3526",
         "price": "₹70",
-        "prebook_ep": "EP 3527 - 3536",
         "prebook_price": "₹100",
         "access_link": "https://t.me/+8jC-7scof6diNzNl"
     }
@@ -79,6 +79,16 @@ def get_payment_markup():
     )
     return markup
 
+# --- CHANNEL POST MARKUP WITH VOTE/BUY BUTTON ---
+def get_channel_post_markup():
+    markup = InlineKeyboardMarkup()
+    markup.row_width = 1
+    bot_username = bot.get_me().username
+    markup.add(
+        InlineKeyboardButton("🗳️ Vote & Buy Now (DM)", url=f"https://t.me/{bot_username}")
+    )
+    return markup
+
 # --- ADMIN COMMANDS ---
 @bot.message_handler(commands=['setep'])
 def set_episodes(message):
@@ -104,17 +114,17 @@ def set_price(message):
     else:
         bot.reply_to(message, "Example: `/setprice ₹70`", parse_mode="Markdown")
 
-@bot.message_handler(commands=['setprebook'])
-def set_prebook(message):
+@bot.message_handler(commands=['setprebookprice'])
+def set_prebook_price(message):
     args = message.text.split(maxsplit=1)
     if len(args) > 1:
         new_pre = args[1]
         settings = load_settings()
-        settings["prebook_ep"] = new_pre
+        settings["prebook_price"] = new_pre
         save_settings(settings)
-        bot.reply_to(message, f"✅ Pre-booking update ho gaya hai!\nNaya: **{new_pre}**", parse_mode="Markdown")
+        bot.reply_to(message, f"✅ Pre-booking price update ho gaya hai!\nNaya: **{new_pre}**", parse_mode="Markdown")
     else:
-        bot.reply_to(message, "Example: `/setprebook EP 3527 - 3536`", parse_mode="Markdown")
+        bot.reply_to(message, "Example: `/setprebookprice ₹100`", parse_mode="Markdown")
 
 @bot.message_handler(commands=['setlink'])
 def set_link(message):
@@ -128,6 +138,23 @@ def set_link(message):
     else:
         bot.reply_to(message, "Example: `/setlink https://t.me/+8jC-...`", parse_mode="Markdown")
 
+# --- COMMAND TO SEND SELLING POST TO CHANNEL AUTOMATICALLY ---
+@bot.message_handler(commands=['sendpost'])
+def send_post_to_channel(message):
+    settings = load_settings()
+    post_text = (
+        f"✅ **EPISODES {settings['episodes']}** 🎉\n\n"
+        f"💰 **PRICE — {settings['price']}**\n\n"
+        f"🎧 **TOTAL — 10 EPISODES** 💰\n\n"
+        f"⚡ **INSTANT DELIVERY 🎁**"
+    )
+    try:
+        # Aap apne channel ID ya username par bhej sakte hain
+        bot.send_message(MAIN_CHANNEL_ID, post_text, parse_mode="Markdown", reply_markup=get_channel_post_markup())
+        bot.reply_to(message, "✅ Post successfully channel par bhej di gayi hai!")
+    except Exception as e:
+        bot.reply_to(message, f"❌ Post bhejne mein error aayi: {e}\n(Ensure karein ki bot channel ka admin ho)")
+
 # Telegram Command Handlers
 @bot.message_handler(commands=['start', 'menu', 'buy', 'qr'])
 def send_welcome(message):
@@ -140,8 +167,8 @@ def send_welcome(message):
         f"• Episodes: **{settings['episodes']}**\n"
         f"• Price: **{settings['price']}**\n\n"
         "🔥 **Pre-Booking (Advance Booking):**\n"
-        f"• Episodes: **{settings['prebook_ep']}**\n"
-        f"• Price: **{settings['prebook_price']}**\n\n"
+        f"• Price: **{settings['prebook_price']}**\n"
+        "*(Aane wale naye episodes ke liye pehle se booking karein)*\n\n"
         "Payment karne ke liye neeche diye gaye button par click karein:"
     )
     bot.reply_to(message, welcome_text, parse_mode="Markdown", reply_markup=get_payment_markup(), disable_web_page_preview=True)
@@ -154,7 +181,7 @@ def callback_query(call):
     qr_caption = (
         "⚡ **The Super Yoddha Payment QR Code**\n\n"
         f"• **Instant Episodes:** {settings['episodes']} (Price: {settings['price']})\n"
-        f"• **Pre-booking Episodes:** {settings['prebook_ep']} (Price: {settings['prebook_price']})\n\n"
+        f"• **Pre-booking:** Price: {settings['prebook_price']}\n\n"
         "1. Is QR Code par GPay / PhonePe / Paytm se amount scan karke pay karein.\n"
         "2. Payment karne ke baad **payment ka screenshot yahin bot mein upload karein**.\n"
         "3. Screenshot bhejte hi verification timer shuru ho jayega!"
@@ -174,14 +201,11 @@ def handle_payment_screenshot(message):
     user_name = message.from_user.first_name
     chat_id = message.chat.id
     
-    # 1. User ko initial timer message bhejna
     msg = bot.reply_to(message, "⏳ **Payment received!** Aapka payment verify kiya ja raha hai...\n⏱️ **Time remaining:** 60 seconds", parse_mode="Markdown")
     
-    # Background timer function
     def verification_timer(chat_id, message_id):
-        time.sleep(60) # 1 minute wait
+        time.sleep(60)
         try:
-            # Agar 1 minute ke andar verify nahi hua (admin ne manual link nahi bheja)
             bot.edit_message_text(
                 chat_id=chat_id,
                 message_id=message_id,
@@ -191,7 +215,6 @@ def handle_payment_screenshot(message):
         except Exception as e:
             print(f"Timer update error: {e}")
 
-    # Start timer in background
     threading.Thread(target=verification_timer, args=(chat_id, msg.message_id)).start()
 
 @bot.message_handler(func=lambda message: True)
@@ -203,7 +226,7 @@ def handle_all_messages(message):
         reply_text = (
             "🎬 **The Super Yoddha Content Details:**\n\n"
             f"• **Available:** {settings['episodes']} — **{settings['price']}**\n"
-            f"• **Pre-booking:** {settings['prebook_ep']} — **{settings['prebook_price']}**\n"
+            f"• **Pre-booking:** — **{settings['prebook_price']}**\n"
             "• **Delivery:** Turant Milega ⚡\n\n"
             "Barcode dekhne ya payment karne ke liye neeche button dabayein:"
         )
@@ -218,9 +241,8 @@ def handle_all_messages(message):
             except Exception as e:
                 print(f"Gemini Error: {e}")
         
-        bot.reply_to(message, f"Aapko {settings['episodes']} ({settings['price']}) aur Pre-booking {settings['prebook_ep']} ({settings['prebook_price']}) mil jayenge! Barcode dekhne ke liye button dabayein.", reply_markup=get_payment_markup())
+        bot.reply_to(message, f"Aapko {settings['episodes']} ({settings['price']}) aur Pre-booking ({settings['prebook_price']}) mil jayenge! Barcode dekhne ke liye button dabayein.", reply_markup=get_payment_markup())
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port)
-    

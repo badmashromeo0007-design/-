@@ -130,5 +130,6 @@ if __name__ == "__main__":
 
   threading.Thread(target=run_flask).start()
 
-  bot.infinity_polling()
+  # Conflict error (409) ko hatane ke liye skip_pending=True joda gaya hai
+  bot.infinity_polling(skip_pending=True)
   

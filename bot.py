@@ -58,7 +58,7 @@ def save_settings(data):
 
 @app.route("/")
 def home():
-  return "Bot is running 24/7 via Webhook with QR Support!"
+  return "Bot is running 24/7 via Webhook with QR Image Support!"
 
 
 @app.route(f"/{TOKEN}", methods=["POST"])
@@ -294,17 +294,24 @@ def qr_handler(call):
       f"2. Payment karne ke baad screenshot yahin bot mein bhej dein."
   )
 
-  qr_image_path = "qr.jpg"
+  # Check multiple variations for the QR image file name
+  qr_found = False
+  for filename in ["qr.jpg", "qr.png", "QR.jpg", "QR.png"]:
+    if os.path.exists(filename):
+      try:
+        with open(filename, "rb") as photo:
+          bot.send_photo(
+              call.message.chat.id,
+              photo,
+              caption=caption,
+              parse_mode="Markdown",
+          )
+        qr_found = True
+        break
+      except Exception as e:
+        pass
 
-  if os.path.exists(qr_image_path):
-    with open(qr_image_path, "rb") as photo:
-      bot.send_photo(
-          call.message.chat.id,
-          photo,
-          caption=caption,
-          parse_mode="Markdown",
-      )
-  else:
+  if not qr_found:
     bot.send_message(
         call.message.chat.id,
         caption

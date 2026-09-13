@@ -7,6 +7,7 @@ from telebot import types
 
 TOKEN = "8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU"
 ADMIN_ID = 6817248389  # Aapki Admin ID
+CHANNEL_ID = -1004382767346  # Aapke JSON se mili Channel ID
 
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
@@ -57,7 +58,7 @@ def save_settings(data):
 
 @app.route("/")
 def home():
-  return "Bot is running 24/7 via Webhook!"
+  return "Bot is running 24/7 via Webhook with Full Features!"
 
 
 @app.route(f"/{TOKEN}", methods=["POST"])
@@ -93,7 +94,7 @@ def send_menu(message):
   except Exception as e:
     pass
 
-  # Aapka naya wala professional design layout
+  # Aapka professional design layout
   text = (
       f"🎧  **EPISODE PACK**\n"
       f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -176,6 +177,35 @@ def set_price(message):
     )
 
 
+# Bot se seedha main channel par post bhejne ke liye command
+@bot.message_handler(commands=["post"])
+def post_to_channel(message):
+  if message.from_user.id != ADMIN_ID:
+    bot.reply_to(message, "Aap admin nahi hain!")
+    return
+
+  post_text = message.text.replace("/post", "").strip()
+  if not post_text:
+    bot.reply_to(
+        message,
+        "Kripya post ka content bhi likhein. Jaise:\n`/post Naye episodes aa"
+        " gaye hain!`",
+        parse_mode="Markdown",
+    )
+    return
+
+  try:
+    bot.send_message(CHANNEL_ID, post_text, parse_mode="Markdown")
+    bot.reply_to(message, "✅ Post successfully channel par bhej di gayi hai!")
+  except Exception as e:
+    bot.reply_to(
+        message,
+        f"❌ Post bhejne mein error aayi:\n{e}\n(Dhyan rahe bot channel par"
+        " Admin ho)",
+    )
+
+
+# Database wale sabhi buyers ko broadcast karne ke liye
 @bot.message_handler(commands=["broadcast"])
 def broadcast_message(message):
   if message.from_user.id != ADMIN_ID:
@@ -233,7 +263,7 @@ def qr_handler(call):
   bot.send_message(call.message.chat.id, caption, parse_mode="Markdown")
 
 
-# User jab payment ka screenshot (photo) bhejega
+# User ka payment screenshot handle karna aur admin ko approve button dena
 @bot.message_handler(content_types=["photo"])
 def handle_screenshot(message):
   if message.from_user.id == ADMIN_ID:
@@ -273,7 +303,7 @@ def handle_screenshot(message):
   )
 
 
-# Admin jab Approve ya Reject button par click karega
+# Admin approval action handler
 @bot.callback_query_handler(
     func=lambda call: call.data.startswith("approve_")
     or call.data.startswith("reject_")
@@ -304,7 +334,7 @@ def handle_approval(call):
     user_msg = (
         f"🎉 **Payment Approved Successfully!**\n\n"
         f"Aapke episodes ({start_ep} - {end_ep}) ki delivery yeh rahi:\n"
-        f"[Yahan apna channel link ya episodes file daalein]"
+        f"🔗 [Yahan apne channel/episodes ka link dalein]"
     )
     try:
       bot.send_message(target_user_id, user_msg, parse_mode="Markdown")

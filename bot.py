@@ -56,7 +56,7 @@ def save_settings(data):
 
 @app.route("/")
 def home():
-  return "Bot is running 24/7 via Webhook with Database!"
+  return "Bot is running 24/7 via Webhook with Auto-Approval System!"
 
 
 @app.route(f"/{TOKEN}", methods=["POST"])
@@ -72,16 +72,6 @@ def webhook():
 
 @bot.message_handler(commands=["start", "menu"])
 def send_menu(message):
-  # User ko database mein register karne ke liye
-  conn = sqlite3.connect(DB_FILE)
-  cursor = conn.cursor()
-  cursor.execute(
-      "INSERT OR IGNORE INTO buyers (user_id, username) VALUES (?, ?)",
-      (message.from_user.id, message.from_user.username or "No Username"),
-  )
-  conn.commit()
-  conn.close()
-
   settings = load_settings()
   start_ep = settings["start_ep"]
   end_ep = settings["end_ep"]
@@ -235,6 +225,122 @@ def qr_handler(call):
   bot.send_message(call.message.chat.id, caption, parse_mode="Markdown")
 
 
+# User jab photo (screenshot) bhejega
+@bot.message_handler(content_types=["photo"])
+def handle_screenshot(message):
+  # Agar admin ne photo bheji hai toh ignore karein
+  if message.from_user.id == ADMIN_ID:
+    return
+
+  user_id = message.from_user.id
+  username = message.from_user.username or "No Username"
+  name = message.from_user.first_name
+
+  # Admin ko screenshot forward karein sath mein Approve/Reject button ke sath
+  markup = types.InlineKeyboardMarkup()
+  btn_approve = types.InlineKeyboardButton(
+      "✅ Approve & Send Access", callback_data=f"approve_{user_id}"
+  )
+  btn_reject = types.InlineKeyboardButton(
+      "❌ Reject", callback_data=f"reject_{user_id}"
+  )
+  markup.add(btn_approve, btn_reject)
+
+  caption = (
+      f"📥 **NEW PAYMENT SCREENSHOT**\n\n"
+      f"• Name: {name}\n"
+      f"• User ID: `{user_id}`\n"
+      f"• Username: @{username}"
+  )
+
+  # Admin ke paas photo aur buttons bhej dein
+  bot.send_photo(
+      ADMIN_ID,
+      message.photo[-1].file_id,
+      caption=caption,
+      reply_markup=markup,
+      parse_mode="Markdown",
+  )
+  bot.reply_to(
+      message,
+      "✅ Aapka screenshot mil gaya hai! Admin verification ke baad aapko"
+      " episodes mil jayenge.",
+  )
+
+
+# Admin jab Approve ya Reject button par click karega
+@bot.callback_query_handler(
+    func=lambda call: call.data.startswith("approve_")
+    or call.data.startswith("reject_")
+)
+def handle_approval(call):
+  if call.from_user.id != ADMIN_ID:
+    bot.answer_callback_query(
+        call.id, "Aap yeh action nahi le sakte!", show_alert=True
+    )
+    return
+
+  action, user_id_str = call.data.split("_")
+  target_user_id = int(user_id_str)
+
+  if action == "approve":
+    # User ko database mein save karein taaki future update mil sake
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT OR IGNORE INTO buyers (user_id) VALUES (?)", (target_user_id,)
+    )
+    conn.commit()
+    conn.close()
+
+    # User ko success message aur episodes link/files bhejein
+    settings = load_settings()
+    start_ep = settings["start_ep"]
+    end_ep = settings["end_ep"]
+
+    user_msg = (
+        f"🎉 **Payment Approved Successfully!**\n\n"
+        f"Aapke episodes ({start_ep} - {end_ep}) ki delivery yeh rahi:\n"
+        f"[Yahan apna channel link ya episodes file daalein]"
+    )
+    try:
+      bot.send_message(target_user_id, user_msg, parse_mode="Markdown")
+      bot.answer_callback_query(
+          call.id, "Payment approved & access sent successfully!"
+      )
+      bot.edit_message_caption(
+          chat_id=call.message.chat.id,
+          message_id=call.message.message_id,
+          caption=call.message.caption + "\n\n**[ STATUS: APPROVED ✅ ]**",
+          parse_mode="Markdown",
+          reply_markup=None,
+      )
+    except Exception as e:
+      bot.answer_callback_query(
+          call.id, f"Error sending message to user: {e}", show_alert=True
+      )
+
+  elif action == "reject":
+    try:
+      bot.send_message(
+          target_user_id,
+          "❌ Aapka payment screenshot reject kar diya gaya hai. Kripya sahi"
+          " payment karke dobara bhejein.",
+      )
+      bot.answer_callback_query(call.id, "Payment rejected.")
+      bot.edit_message_caption(
+          chat_id=call.message.chat.id,
+          message_id=call.message.message_id,
+          caption=call.message.caption + "\n\n**[ STATUS: REJECTED ❌ ]**",
+          parse_mode="Markdown",
+          reply_markup=None,
+      )
+    except Exception as e:
+      bot.answer_callback_query(
+          call.id, f"Error rejecting: {e}", show_alert=True
+      )
+
+
 if __name__ == "__main__":
   RENDER_URL = os.environ.get(
       "RENDER_EXTERNAL_URL", "https://badmash-4k97.onrender.com"
@@ -243,3 +349,4 @@ if __name__ == "__main__":
   bot.set_webhook(url=f"{RENDER_URL}/{TOKEN}")
 
   app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+  

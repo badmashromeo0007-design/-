@@ -27,6 +27,13 @@ def init_db():
                     joined_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )"""
   )
+  cursor.execute(
+      """CREATE TABLE IF NOT EXISTS pre_bookings (
+                    user_id INTEGER PRIMARY KEY,
+                    username TEXT,
+                    joined_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )"""
+  )
   conn.commit()
   conn.close()
 
@@ -41,11 +48,20 @@ def load_settings():
       "price": 50,
       "total_eps": 6,
       "upi_id": "badmashromeo0007@okaxis",
+      "pre_start": 3527,
+      "pre_end": 3535,
+      "pre_price": 70,
   }
   if os.path.exists(SETTINGS_FILE):
     try:
       with open(SETTINGS_FILE, "r") as f:
-        return json.load(f)
+        data = json.load(f)
+        # Ensure pre-booking keys exist
+        if "pre_start" not in data:
+          data["pre_start"] = 3527
+          data["pre_end"] = 3535
+          data["pre_price"] = 70
+        return data
     except:
       return default_data
   return default_data
@@ -58,7 +74,7 @@ def save_settings(data):
 
 @app.route("/")
 def home():
-  return "Bot is running 24/7 via Webhook with QR Image Support!"
+  return "Bot is running 24/7 with Pre-Booking Support!"
 
 
 @app.route(f"/{TOKEN}", methods=["POST"])
@@ -80,20 +96,6 @@ def send_menu(message):
   price = settings.get("price", 50)
   total_eps = settings.get("total_eps", (end_ep - start_ep) + 1)
 
-  # Optional Audio Preview
-  try:
-    audio_file_path = "preview.mp3"
-    if os.path.exists(audio_file_path):
-      with open(audio_file_path, "rb") as audio:
-        bot.send_audio(
-            message.chat.id,
-            audio,
-            caption="🎧 **Super Yoddha Audio Preview**",
-            parse_mode="Markdown",
-        )
-  except Exception as e:
-    pass
-
   text = (
       f"🎧  **EPISODE PACK**\n"
       f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -112,7 +114,11 @@ def send_menu(message):
   btn_pay = types.InlineKeyboardButton(
       "💳 Pay Now (Get QR Code)", callback_data="get_qr"
   )
+  btn_prebook = types.InlineKeyboardButton(
+      "🚀 Pre-Book Upcoming Episodes", callback_data="get_prebook_qr"
+  )
   markup.add(btn_pay)
+  markup.add(btn_prebook)
 
   bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode="Markdown")
 
@@ -143,8 +149,7 @@ def set_episodes(message):
     bot.reply_to(
         message,
         f"✅ Episodes Updated Successfully!\nRange: {start_ep} →"
-        f" {end_ep}\nTotal: {total_eps} Episodes\n\n(Channel par bhejane ke"
-        " liye ab `/setpost` command bhejein)",
+        f" {end_ep}\nTotal: {total_eps} Episodes",
     )
   except Exception as e:
     bot.reply_to(
@@ -173,6 +178,38 @@ def set_price(message):
     bot.reply_to(
         message,
         "Galat format! Sahi tareeqa yeh hai:\n`/setprice 50`",
+        parse_mode="Markdown",
+    )
+
+
+@bot.message_handler(commands=["setprebook"])
+def set_prebook(message):
+  if message.from_user.id != ADMIN_ID:
+    bot.reply_to(message, "Aap admin nahi hain!")
+    return
+
+  try:
+    # Format: /setprebook 3527 3535 70
+    parts = message.text.replace("/setprebook", "").strip().split()
+    p_start = int(parts[0])
+    p_end = int(parts[1])
+    p_price = int(parts[2])
+
+    settings = load_settings()
+    settings["pre_start"] = p_start
+    settings["pre_end"] = p_end
+    settings["pre_price"] = p_price
+    save_settings(settings)
+
+    bot.reply_to(
+        message,
+        f"✅ Pre-Booking Details Updated!\nRange: {p_start} →"
+        f" {p_end}\nPrice: ₹{p_price}",
+    )
+  except Exception as e:
+    bot.reply_to(
+        message,
+        "Galat format! Sahi tareeqa yeh hai:\n`/setprebook 3527 3535 70`",
         parse_mode="Markdown",
     )
 
@@ -215,66 +252,7 @@ def push_menu_to_channel(message):
     )
     bot.reply_to(message, "✅ Menu successfully main channel par post ho gaya hai!")
   except Exception as e:
-    bot.reply_to(
-        message,
-        f"❌ Channel par post bhejne mein error aayi:\n{e}\n(Dhyan rahe bot"
-        " channel par Admin ho)",
-    )
-
-
-@bot.message_handler(commands=["post"])
-def post_to_channel(message):
-  if message.from_user.id != ADMIN_ID:
-    bot.reply_to(message, "Aap admin nahi hain!")
-    return
-
-  post_text = message.text.replace("/post", "").strip()
-  if not post_text:
-    bot.reply_to(
-        message,
-        "Kripya post ka content bhi likhein. Jaise:\n`/post Naye episodes aa"
-        " gaye hain!`",
-        parse_mode="Markdown",
-    )
-    return
-
-  try:
-    bot.send_message(CHANNEL_ID, post_text, parse_mode="Markdown")
-    bot.reply_to(message, "✅ Post successfully channel par bhej di gayi hai!")
-  except Exception as e:
     bot.reply_to(message, f"❌ Error: {e}")
-
-
-@bot.message_handler(commands=["broadcast"])
-def broadcast_message(message):
-  if message.from_user.id != ADMIN_ID:
-    bot.reply_to(message, "Aap admin nahi hain!")
-    return
-
-  msg_text = message.text.replace("/broadcast", "").strip()
-  if not msg_text:
-    bot.reply_to(message, "Kripya message bhi likhein.")
-    return
-
-  conn = sqlite3.connect(DB_FILE)
-  cursor = conn.cursor()
-  cursor.execute("SELECT user_id FROM buyers")
-  buyers = cursor.fetchall()
-  conn.close()
-
-  success_count = 0
-  for (user_id,) in buyers:
-    try:
-      bot.send_message(user_id, msg_text)
-      success_count += 1
-    except Exception as e:
-      pass
-
-  bot.reply_to(
-      message,
-      f"✅ Broadcast complete! {success_count} users ko message bhej diya gaya"
-      " hai.",
-  )
 
 
 @bot.callback_query_handler(func=lambda call: call.data == "get_qr")
@@ -294,7 +272,6 @@ def qr_handler(call):
       f"2. Payment karne ke baad screenshot yahin bot mein bhej dein."
   )
 
-  # Check multiple variations for the QR image file name
   qr_found = False
   for filename in ["qr.jpg", "qr.png", "QR.jpg", "QR.png"]:
     if os.path.exists(filename):
@@ -308,15 +285,55 @@ def qr_handler(call):
           )
         qr_found = True
         break
-      except Exception as e:
+      except:
         pass
 
   if not qr_found:
     bot.send_message(
         call.message.chat.id,
-        caption
-        + "\n\n*(Note: QR image server par nahi mili, kripya UPI ID par direct"
-        " pay karein)*",
+        caption + "\n\n*(Note: QR image server par nahi mili)*",
+        parse_mode="Markdown",
+    )
+
+
+@bot.callback_query_handler(func=lambda call: call.data == "get_prebook_qr")
+def prebook_qr_handler(call):
+  settings = load_settings()
+  p_start = settings.get("pre_start", 3527)
+  p_end = settings.get("pre_end", 3535)
+  p_price = settings.get("pre_price", 70)
+  upi = settings.get("upi_id", "badmashromeo0007@okaxis")
+
+  caption = (
+      f"🚀 **PRE-BOOKING QR CODE** 🚀\n\n"
+      f"• Upcoming Episodes: {p_start} TO {p_end}\n"
+      f"• Pre-Book Price: ₹{p_price}\n"
+      f"• UPI ID: `{upi}`\n\n"
+      f"1. Is QR code par payment karke advance booking karein.\n"
+      f"2. Payment ka screenshot yahin bot mein bhej dein taaki aapka slot"
+      f" secure ho sake."
+  )
+
+  qr_found = False
+  for filename in ["qr.jpg", "qr.png", "QR.jpg", "QR.png"]:
+    if os.path.exists(filename):
+      try:
+        with open(filename, "rb") as photo:
+          bot.send_photo(
+              call.message.chat.id,
+              photo,
+              caption=caption,
+              parse_mode="Markdown",
+          )
+        qr_found = True
+        break
+      except:
+        pass
+
+  if not qr_found:
+    bot.send_message(
+        call.message.chat.id,
+        caption + "\n\n*(Note: QR image server par nahi mili)*",
         parse_mode="Markdown",
     )
 
@@ -340,7 +357,7 @@ def handle_screenshot(message):
   markup.add(btn_approve, btn_reject)
 
   caption = (
-      f"📥 **NEW PAYMENT SCREENSHOT**\n\n"
+      f"📥 **NEW PAYMENT / PRE-BOOK SCREENSHOT**\n\n"
       f"• Name: {name}\n"
       f"• User ID: `{user_id}`\n"
       f"• Username: @{username}"
@@ -355,8 +372,8 @@ def handle_screenshot(message):
   )
   bot.reply_to(
       message,
-      "✅ Aapka screenshot mil gaya hai! Admin verification ke baad aapko"
-      " episodes mil jayenge.",
+      "✅ Aapka screenshot mil gaya hai! Admin verification ke baad aapko update"
+      " mil jayega.",
   )
 
 
@@ -366,37 +383,21 @@ def handle_screenshot(message):
 )
 def handle_approval(call):
   if call.from_user.id != ADMIN_ID:
-    bot.answer_callback_query(
-        call.id, "Aap yeh action nahi le sakte!", show_alert=True
-    )
+    bot.answer_callback_query(call.id, "Aap admin nahi hain!", show_alert=True)
     return
 
   action, user_id_str = call.data.split("_")
   target_user_id = int(user_id_str)
 
   if action == "approve":
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT OR IGNORE INTO buyers (user_id) VALUES (?)", (target_user_id,)
-    )
-    conn.commit()
-    conn.close()
-
-    settings = load_settings()
-    start_ep = settings.get("start_ep", 3517)
-    end_ep = settings.get("end_ep", 3526)
-
     user_msg = (
-        f"🎉 **Payment Approved Successfully!**\n\n"
-        f"Aapke episodes ({start_ep} - {end_ep}) ki delivery yeh rahi:\n"
-        f"🔗 [Yahan apne channel/episodes ka link dalein]"
+        f"🎉 **Payment / Pre-Booking Approved!**\n\n"
+        f"Aapka slot successfully secure ho gaya hai. Jaise hi episodes aayenge,"
+        f" aapko access mil jayega."
     )
     try:
       bot.send_message(target_user_id, user_msg, parse_mode="Markdown")
-      bot.answer_callback_query(
-          call.id, "Payment approved & access sent successfully!"
-      )
+      bot.answer_callback_query(call.id, "Approved & notified user!")
       bot.edit_message_caption(
           chat_id=call.message.chat.id,
           message_id=call.message.message_id,
@@ -405,16 +406,13 @@ def handle_approval(call):
           reply_markup=None,
       )
     except Exception as e:
-      bot.answer_callback_query(
-          call.id, f"Error sending message to user: {e}", show_alert=True
-      )
+      bot.answer_callback_query(call.id, f"Error: {e}", show_alert=True)
 
   elif action == "reject":
     try:
       bot.send_message(
           target_user_id,
-          "❌ Aapka payment screenshot reject kar diya gaya hai. Kripya sahi"
-          " payment karke dobara bhejein.",
+          "❌ Aapka payment screenshot reject kar diya gaya hai.",
       )
       bot.answer_callback_query(call.id, "Payment rejected.")
       bot.edit_message_caption(
@@ -425,9 +423,7 @@ def handle_approval(call):
           reply_markup=None,
       )
     except Exception as e:
-      bot.answer_callback_query(
-          call.id, f"Error rejecting: {e}", show_alert=True
-      )
+      bot.answer_callback_query(call.id, f"Error: {e}", show_alert=True)
 
 
 if __name__ == "__main__":

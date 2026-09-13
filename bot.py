@@ -58,7 +58,7 @@ def save_settings(data):
 
 @app.route("/")
 def home():
-  return "Bot is running 24/7 via Webhook with Channel Menu Push!"
+  return "Bot is running 24/7 via Webhook with QR Support!"
 
 
 @app.route(f"/{TOKEN}", methods=["POST"])
@@ -94,7 +94,6 @@ def send_menu(message):
   except Exception as e:
     pass
 
-  # Aapka professional design layout
   text = (
       f"🎧  **EPISODE PACK**\n"
       f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -178,7 +177,6 @@ def set_price(message):
     )
 
 
-# 🚀 NEW: Yeh command exact wahi Menu/Poster seedha Main Channel par bhej degi!
 @bot.message_handler(commands=["setpost", "push"])
 def push_menu_to_channel(message):
   if message.from_user.id != ADMIN_ID:
@@ -191,7 +189,6 @@ def push_menu_to_channel(message):
   price = settings.get("price", 50)
   total_eps = settings.get("total_eps", (end_ep - start_ep) + 1)
 
-  # Wahi same design layout jo bot ke andar dikhta hai
   text = (
       f"🎧  **EPISODE PACK**\n"
       f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -207,7 +204,6 @@ def push_menu_to_channel(message):
   )
 
   markup = types.InlineKeyboardMarkup()
-  # Channel par button click karne par user seedha aapke bot par aa jayega
   btn_bot = types.InlineKeyboardButton(
       "💳 Get Episodes Now", url="https://t.me/ROMEO_bot"
   )
@@ -226,7 +222,6 @@ def push_menu_to_channel(message):
     )
 
 
-# Standard text post karne ke liye
 @bot.message_handler(commands=["post"])
 def post_to_channel(message):
   if message.from_user.id != ADMIN_ID:
@@ -299,7 +294,24 @@ def qr_handler(call):
       f"2. Payment karne ke baad screenshot yahin bot mein bhej dein."
   )
 
-  bot.send_message(call.message.chat.id, caption, parse_mode="Markdown")
+  qr_image_path = "qr.jpg"
+
+  if os.path.exists(qr_image_path):
+    with open(qr_image_path, "rb") as photo:
+      bot.send_photo(
+          call.message.chat.id,
+          photo,
+          caption=caption,
+          parse_mode="Markdown",
+      )
+  else:
+    bot.send_message(
+        call.message.chat.id,
+        caption
+        + "\n\n*(Note: QR image server par nahi mili, kripya UPI ID par direct"
+        " pay karein)*",
+        parse_mode="Markdown",
+    )
 
 
 @bot.message_handler(content_types=["photo"])
@@ -342,8 +354,7 @@ def handle_screenshot(message):
 
 
 @bot.callback_query_handler(
-    func=lambda call: call.data.startswith("approve_`")
-    or call.data.startswith("approve_")
+    func=lambda call: call.data.startswith("approve_")
     or call.data.startswith("reject_")
 )
 def handle_approval(call):
@@ -420,4 +431,4 @@ if __name__ == "__main__":
   bot.set_webhook(url=f"{RENDER_URL}/{TOKEN}")
 
   app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-  
+    

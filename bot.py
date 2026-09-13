@@ -7,7 +7,7 @@ from telebot import types
 
 TOKEN = "8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU"
 ADMIN_ID = 6817248389  # Aapki Admin ID
-CHANNEL_ID = -1004382767346  # Aapke JSON se mili Channel ID
+CHANNEL_ID = -1004382767346  # Aapka Main Channel ID
 
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
@@ -58,7 +58,7 @@ def save_settings(data):
 
 @app.route("/")
 def home():
-  return "Bot is running 24/7 via Webhook with Full Features!"
+  return "Bot is running 24/7 via Webhook with Channel Menu Push!"
 
 
 @app.route(f"/{TOKEN}", methods=["POST"])
@@ -144,7 +144,8 @@ def set_episodes(message):
     bot.reply_to(
         message,
         f"✅ Episodes Updated Successfully!\nRange: {start_ep} →"
-        f" {end_ep}\nTotal: {total_eps} Episodes",
+        f" {end_ep}\nTotal: {total_eps} Episodes\n\n(Channel par bhejane ke"
+        " liye ab `/setpost` command bhejein)",
     )
   except Exception as e:
     bot.reply_to(
@@ -177,7 +178,55 @@ def set_price(message):
     )
 
 
-# Bot se seedha main channel par post bhejne ke liye command
+# 🚀 NEW: Yeh command exact wahi Menu/Poster seedha Main Channel par bhej degi!
+@bot.message_handler(commands=["setpost", "push"])
+def push_menu_to_channel(message):
+  if message.from_user.id != ADMIN_ID:
+    bot.reply_to(message, "Aap admin nahi hain!")
+    return
+
+  settings = load_settings()
+  start_ep = settings.get("start_ep", 3517)
+  end_ep = settings.get("end_ep", 3526)
+  price = settings.get("price", 50)
+  total_eps = settings.get("total_eps", (end_ep - start_ep) + 1)
+
+  # Wahi same design layout jo bot ke andar dikhta hai
+  text = (
+      f"🎧  **EPISODE PACK**\n"
+      f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+      f"  ◆  🎵  Episode  {start_ep}  →  {end_ep}\n"
+      f"  ◆  📦  {total_eps} Episodes  ·  Full Audio Access\n\n"
+      f"·  ·  ·  ·  ·  ·  ·  ·  ·  ·\n\n"
+      f"  ◆  💰  Price      ›  {price} ₹\n"
+      f"  ◆  ⚡  Instant Delivery  ·  Access immediately\n\n"
+      f"·  ·  ·  ·  ·  ·  ·  ·  ·  ·\n\n"
+      f"  🔐  QR Payment  ·  100% Secure\n"
+      f"  ✅  Verified Store  ·  Instant Auto-Delivery\n\n"
+      f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  )
+
+  markup = types.InlineKeyboardMarkup()
+  # Channel par button click karne par user seedha aapke bot par aa jayega
+  btn_bot = types.InlineKeyboardButton(
+      "💳 Get Episodes Now", url="https://t.me/ROMEO_bot"
+  )
+  markup.add(btn_bot)
+
+  try:
+    bot.send_message(
+        CHANNEL_ID, text, reply_markup=markup, parse_mode="Markdown"
+    )
+    bot.reply_to(message, "✅ Menu successfully main channel par post ho gaya hai!")
+  except Exception as e:
+    bot.reply_to(
+        message,
+        f"❌ Channel par post bhejne mein error aayi:\n{e}\n(Dhyan rahe bot"
+        " channel par Admin ho)",
+    )
+
+
+# Standard text post karne ke liye
 @bot.message_handler(commands=["post"])
 def post_to_channel(message):
   if message.from_user.id != ADMIN_ID:
@@ -198,14 +247,9 @@ def post_to_channel(message):
     bot.send_message(CHANNEL_ID, post_text, parse_mode="Markdown")
     bot.reply_to(message, "✅ Post successfully channel par bhej di gayi hai!")
   except Exception as e:
-    bot.reply_to(
-        message,
-        f"❌ Post bhejne mein error aayi:\n{e}\n(Dhyan rahe bot channel par"
-        " Admin ho)",
-    )
+    bot.reply_to(message, f"❌ Error: {e}")
 
 
-# Database wale sabhi buyers ko broadcast karne ke liye
 @bot.message_handler(commands=["broadcast"])
 def broadcast_message(message):
   if message.from_user.id != ADMIN_ID:
@@ -214,12 +258,7 @@ def broadcast_message(message):
 
   msg_text = message.text.replace("/broadcast", "").strip()
   if not msg_text:
-    bot.reply_to(
-        message,
-        "Kripya message bhi likhein. Jaise:\n`/broadcast Yeh rahe naye"
-        " episodes...`",
-        parse_mode="Markdown",
-    )
+    bot.reply_to(message, "Kripya message bhi likhein.")
     return
 
   conn = sqlite3.connect(DB_FILE)
@@ -263,7 +302,6 @@ def qr_handler(call):
   bot.send_message(call.message.chat.id, caption, parse_mode="Markdown")
 
 
-# User ka payment screenshot handle karna aur admin ko approve button dena
 @bot.message_handler(content_types=["photo"])
 def handle_screenshot(message):
   if message.from_user.id == ADMIN_ID:
@@ -303,9 +341,9 @@ def handle_screenshot(message):
   )
 
 
-# Admin approval action handler
 @bot.callback_query_handler(
-    func=lambda call: call.data.startswith("approve_")
+    func=lambda call: call.data.startswith("approve_`")
+    or call.data.startswith("approve_")
     or call.data.startswith("reject_")
 )
 def handle_approval(call):
@@ -382,3 +420,4 @@ if __name__ == "__main__":
   bot.set_webhook(url=f"{RENDER_URL}/{TOKEN}")
 
   app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+  

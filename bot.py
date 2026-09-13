@@ -35,9 +35,10 @@ init_db()
 
 def load_settings():
   default_data = {
-      "start_ep": 3527,
-      "end_ep": 3533,
-      "price": 100,
+      "start_ep": 3517,
+      "end_ep": 3526,
+      "price": 50,
+      "total_eps": 6,
       "upi_id": "badmashromeo0007@okaxis",
   }
   if os.path.exists(SETTINGS_FILE):
@@ -56,7 +57,7 @@ def save_settings(data):
 
 @app.route("/")
 def home():
-  return "Bot is running 24/7 via Webhook with Auto-Approval System!"
+  return "Bot is running 24/7 via Webhook!"
 
 
 @app.route(f"/{TOKEN}", methods=["POST"])
@@ -73,10 +74,10 @@ def webhook():
 @bot.message_handler(commands=["start", "menu"])
 def send_menu(message):
   settings = load_settings()
-  start_ep = settings["start_ep"]
-  end_ep = settings["end_ep"]
-  price = settings["price"]
-  total_eps = (end_ep - start_ep) + 1
+  start_ep = settings.get("start_ep", 3517)
+  end_ep = settings.get("end_ep", 3526)
+  price = settings.get("price", 50)
+  total_eps = settings.get("total_eps", (end_ep - start_ep) + 1)
 
   # Optional Audio Preview
   try:
@@ -92,13 +93,19 @@ def send_menu(message):
   except Exception as e:
     pass
 
-  # Aapka exact design format
+  # Aapka naya wala professional design layout
   text = (
-      f"⚡ **SUPER YODDA** ⚡\n\n"
-      f"📺 **EPISODE – {start_ep} - {end_ep}**\n\n"
-      f"📦 **TOTAL – {total_eps} EPISODES**\n\n"
-      f"💰 **PRICE – ₹{price}RS** ✅\n\n"
-      f"⚡ **INSTANT DELIVERY**"
+      f"🎧  **EPISODE PACK**\n"
+      f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+      f"  ◆  🎵  Episode  {start_ep}  →  {end_ep}\n"
+      f"  ◆  📦  {total_eps} Episodes  ·  Full Audio Access\n\n"
+      f"·  ·  ·  ·  ·  ·  ·  ·  ·  ·\n\n"
+      f"  ◆  💰  Price      ›  {price} ₹\n"
+      f"  ◆  ⚡  Instant Delivery  ·  Access immediately\n\n"
+      f"·  ·  ·  ·  ·  ·  ·  ·  ·  ·\n\n"
+      f"  🔐  QR Payment  ·  100% Secure\n"
+      f"  ✅  Verified Store  ·  Instant Auto-Delivery\n\n"
+      f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   )
 
   markup = types.InlineKeyboardMarkup()
@@ -125,22 +132,23 @@ def set_episodes(message):
 
     start_ep = int(parts[0].strip())
     end_ep = int(parts[1].strip())
+    total_eps = (end_ep - start_ep) + 1
 
     settings = load_settings()
     settings["start_ep"] = start_ep
     settings["end_ep"] = end_ep
+    settings["total_eps"] = total_eps
     save_settings(settings)
 
-    total_eps = (end_ep - start_ep) + 1
     bot.reply_to(
         message,
-        f"✅ Episodes Updated Successfully!\nRange: {start_ep} - {end_ep}\nTotal:"
-        f" {total_eps} Episodes",
+        f"✅ Episodes Updated Successfully!\nRange: {start_ep} →"
+        f" {end_ep}\nTotal: {total_eps} Episodes",
     )
   except Exception as e:
     bot.reply_to(
         message,
-        "Galat format! Sahi tareeqa yeh hai:\n`/setep 3527 3533`",
+        "Galat format! Sahi tareeqa yeh hai:\n`/setep 3517 3526`",
         parse_mode="Markdown",
     )
 
@@ -159,11 +167,11 @@ def set_price(message):
     settings["price"] = price
     save_settings(settings)
 
-    bot.reply_to(message, f"✅ Price Updated Successfully!\nPrice: ₹{price}RS")
+    bot.reply_to(message, f"✅ Price Updated Successfully!\nPrice: ₹{price}")
   except Exception as e:
     bot.reply_to(
         message,
-        "Galat format! Sahi tareeqa yeh hai:\n`/setprice 100`",
+        "Galat format! Sahi tareeqa yeh hai:\n`/setprice 50`",
         parse_mode="Markdown",
     )
 
@@ -208,15 +216,15 @@ def broadcast_message(message):
 @bot.callback_query_handler(func=lambda call: call.data == "get_qr")
 def qr_handler(call):
   settings = load_settings()
-  start_ep = settings["start_ep"]
-  end_ep = settings["end_ep"]
-  price = settings["price"]
-  upi = settings["upi_id"]
+  start_ep = settings.get("start_ep", 3517)
+  end_ep = settings.get("end_ep", 3526)
+  price = settings.get("price", 50)
+  upi = settings.get("upi_id", "badmashromeo0007@okaxis")
 
   caption = (
-      f"⚡ **SUPER YODDA PAYMENT QR CODE** ⚡\n\n"
+      f"⚡ **PAYMENT QR CODE** ⚡\n\n"
       f"• UPI ID: `{upi}`\n"
-      f"• Amount: ₹{price}RS\n"
+      f"• Amount: ₹{price}\n"
       f"• Episodes: {start_ep} TO {end_ep}\n\n"
       f"1. Is QR code ko scan karke payment karein.\n"
       f"2. Payment karne ke baad screenshot yahin bot mein bhej dein."
@@ -225,10 +233,9 @@ def qr_handler(call):
   bot.send_message(call.message.chat.id, caption, parse_mode="Markdown")
 
 
-# User jab photo (screenshot) bhejega
+# User jab payment ka screenshot (photo) bhejega
 @bot.message_handler(content_types=["photo"])
 def handle_screenshot(message):
-  # Agar admin ne photo bheji hai toh ignore karein
   if message.from_user.id == ADMIN_ID:
     return
 
@@ -236,7 +243,6 @@ def handle_screenshot(message):
   username = message.from_user.username or "No Username"
   name = message.from_user.first_name
 
-  # Admin ko screenshot forward karein sath mein Approve/Reject button ke sath
   markup = types.InlineKeyboardMarkup()
   btn_approve = types.InlineKeyboardButton(
       "✅ Approve & Send Access", callback_data=f"approve_{user_id}"
@@ -253,7 +259,6 @@ def handle_screenshot(message):
       f"• Username: @{username}"
   )
 
-  # Admin ke paas photo aur buttons bhej dein
   bot.send_photo(
       ADMIN_ID,
       message.photo[-1].file_id,
@@ -284,7 +289,6 @@ def handle_approval(call):
   target_user_id = int(user_id_str)
 
   if action == "approve":
-    # User ko database mein save karein taaki future update mil sake
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     cursor.execute(
@@ -293,10 +297,9 @@ def handle_approval(call):
     conn.commit()
     conn.close()
 
-    # User ko success message aur episodes link/files bhejein
     settings = load_settings()
-    start_ep = settings["start_ep"]
-    end_ep = settings["end_ep"]
+    start_ep = settings.get("start_ep", 3517)
+    end_ep = settings.get("end_ep", 3526)
 
     user_msg = (
         f"🎉 **Payment Approved Successfully!**\n\n"

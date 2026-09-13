@@ -1,5 +1,6 @@
 import json
 import os
+import sqlite3
 from flask import Flask, request
 import telebot
 from telebot import types
@@ -11,6 +12,25 @@ bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
 
 SETTINGS_FILE = "bot_settings.json"
+DB_FILE = "bot_database.db"
+
+
+# Database Initialize karne ke liye
+def init_db():
+  conn = sqlite3.connect(DB_FILE)
+  cursor = conn.cursor()
+  cursor.execute(
+      """CREATE TABLE IF NOT EXISTS buyers (
+                    user_id INTEGER PRIMARY KEY,
+                    username TEXT,
+                    joined_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )"""
+  )
+  conn.commit()
+  conn.close()
+
+
+init_db()
 
 
 def load_settings():
@@ -18,7 +38,6 @@ def load_settings():
       "start_ep": 3527,
       "end_ep": 3533,
       "price": 100,
-      "delivery_mode": "⚡ INSTANT DELIVERY",
       "upi_id": "badmashromeo0007@okaxis",
   }
   if os.path.exists(SETTINGS_FILE):
@@ -37,7 +56,7 @@ def save_settings(data):
 
 @app.route("/")
 def home():
-  return "Bot is running 24/7 via Webhook!"
+  return "Bot is running 24/7 via Webhook with Database!"
 
 
 @app.route(f"/{TOKEN}", methods=["POST"])
@@ -53,16 +72,25 @@ def webhook():
 
 @bot.message_handler(commands=["start", "menu"])
 def send_menu(message):
+  # User ko database mein register karne ke liye
+  conn = sqlite3.connect(DB_FILE)
+  cursor = conn.cursor()
+  cursor.execute(
+      "INSERT OR IGNORE INTO buyers (user_id, username) VALUES (?, ?)",
+      (message.from_user.id, message.from_user.username or "No Username"),
+  )
+  conn.commit()
+  conn.close()
+
   settings = load_settings()
   start_ep = settings["start_ep"]
   end_ep = settings["end_ep"]
   price = settings["price"]
-  delivery_mode = settings.get("delivery_mode", "⚡ INSTANT DELIVERY")
   total_eps = (end_ep - start_ep) + 1
 
-  # 1. Pehle MP3 Audio bhejne ke liye (Apni audio file ka naam yahan dalein)
+  # Optional Audio Preview
   try:
-    audio_file_path = "preview.mp3"  # Yahan apni MP3 file ka naam likhein
+    audio_file_path = "preview.mp3"
     if os.path.exists(audio_file_path):
       with open(audio_file_path, "rb") as audio:
         bot.send_audio(
@@ -72,15 +100,15 @@ def send_menu(message):
             parse_mode="Markdown",
         )
   except Exception as e:
-    print(f"Audio send karne mein error: {e}")
+    pass
 
-  # 2. Phir menu text aur Pay Now button bhejne ke liye
+  # Aapka exact design format
   text = (
       f"⚡ **SUPER YODDA** ⚡\n\n"
       f"📺 **EPISODE – {start_ep} - {end_ep}**\n\n"
-      f"📦 **TOTAL – {total_eps} EPISODES**\n"
+      f"📦 **TOTAL – {total_eps} EPISODES**\n\n"
       f"💰 **PRICE – ₹{price}RS** ✅\n\n"
-      f"{delivery_mode}"
+      f"⚡ **INSTANT DELIVERY**"
   )
 
   markup = types.InlineKeyboardMarkup()
@@ -122,7 +150,7 @@ def set_episodes(message):
   except Exception as e:
     bot.reply_to(
         message,
-        "Galat format! Sahi tareeqa yeh hai:\n`/setep 3517 3526`",
+        "Galat format! Sahi tareeqa yeh hai:\n`/setep 3527 3533`",
         parse_mode="Markdown",
     )
 
@@ -145,39 +173,46 @@ def set_price(message):
   except Exception as e:
     bot.reply_to(
         message,
-        "Galat format! Sahi tareeqa yeh hai:\n`/setprice 70`",
+        "Galat format! Sahi tareeqa yeh hai:\n`/setprice 100`",
         parse_mode="Markdown",
     )
 
 
-@bot.message_handler(commands=["setmode"])
-def set_mode(message):
+@bot.message_handler(commands=["broadcast"])
+def broadcast_message(message):
   if message.from_user.id != ADMIN_ID:
     bot.reply_to(message, "Aap admin nahi hain!")
     return
 
-  try:
-    mode_text = message.text.replace("/setmode", "").strip()
-    if not mode_text:
-      bot.reply_to(
-          message,
-          "Kripya mode likhein. Jaise:\n`/setmode PRE-BOOKING`\nya\n`/setmode"
-          " INSTANT DELIVERY`",
-          parse_mode="Markdown",
-      )
-      return
-
-    settings = load_settings()
-    settings["delivery_mode"] = mode_text
-    save_settings(settings)
-
+  msg_text = message.text.replace("/broadcast", "").strip()
+  if not msg_text:
     bot.reply_to(
-        message, f"✅ Delivery Mode Updated Successfully!\nMode: {mode_text}"
+        message,
+        "Kripya message bhi likhein. Jaise:\n`/broadcast Yeh rahe naye"
+        " episodes...`",
+        parse_mode="Markdown",
     )
-  except Exception as e:
-    bot.reply_to(
-        message, "Galat format! Sahi tareeqa yeh hai:\n`/setmode PRE-BOOKING`"
-    )
+    return
+
+  conn = sqlite3.connect(DB_FILE)
+  cursor = conn.cursor()
+  cursor.execute("SELECT user_id FROM buyers")
+  buyers = cursor.fetchall()
+  conn.close()
+
+  success_count = 0
+  for (user_id,) in buyers:
+    try:
+      bot.send_message(user_id, msg_text)
+      success_count += 1
+    except Exception as e:
+      pass
+
+  bot.reply_to(
+      message,
+      f"✅ Broadcast complete! {success_count} users ko message bhej diya gaya"
+      " hai.",
+  )
 
 
 @bot.callback_query_handler(func=lambda call: call.data == "get_qr")

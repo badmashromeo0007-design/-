@@ -14,6 +14,7 @@ app = Flask(__name__)
 
 SETTINGS_FILE = "bot_settings.json"
 DB_FILE = "bot_database.db"
+QR_IMAGE_NAME = "IMG_20260809_210858.png"  # Aapke phone/storage wali exact image
 
 
 # Database Initialize karne ke liye
@@ -56,7 +57,6 @@ def load_settings():
     try:
       with open(SETTINGS_FILE, "r") as f:
         data = json.load(f)
-        # Ensure pre-booking keys exist
         if "pre_start" not in data:
           data["pre_start"] = 3527
           data["pre_end"] = 3535
@@ -74,7 +74,7 @@ def save_settings(data):
 
 @app.route("/")
 def home():
-  return "Bot is running 24/7 with Pre-Booking Support!"
+  return "Bot is running 24/7 with QR Support!"
 
 
 @app.route(f"/{TOKEN}", methods=["POST"])
@@ -189,7 +189,6 @@ def set_prebook(message):
     return
 
   try:
-    # Format: /setprebook 3527 3535 70
     parts = message.text.replace("/setprebook", "").strip().split()
     p_start = int(parts[0])
     p_end = int(parts[1])
@@ -272,28 +271,22 @@ def qr_handler(call):
       f"2. Payment karne ke baad screenshot yahin bot mein bhej dein."
   )
 
-  qr_found = False
-  for filename in ["qr.jpg", "qr.png", "QR.jpg", "QR.png"]:
-    if os.path.exists(filename):
-      try:
-        with open(filename, "rb") as photo:
-          bot.send_photo(
-              call.message.chat.id,
-              photo,
-              caption=caption,
-              parse_mode="Markdown",
-          )
-        qr_found = True
-        break
-      except:
-        pass
+  if os.path.exists(QR_IMAGE_NAME):
+    try:
+      with open(QR_IMAGE_NAME, "rb") as photo:
+        bot.send_photo(
+            call.message.chat.id, photo, caption=caption, parse_mode="Markdown"
+        )
+      return
+    except Exception as e:
+      pass
 
-  if not qr_found:
-    bot.send_message(
-        call.message.chat.id,
-        caption + "\n\n*(Note: QR image server par nahi mili)*",
-        parse_mode="Markdown",
-    )
+  bot.send_message(
+      call.message.chat.id,
+      caption
+      + f"\n\n*(Note: '{QR_IMAGE_NAME}' file server par nahi mil rahi hai)*",
+      parse_mode="Markdown",
+  )
 
 
 @bot.callback_query_handler(func=lambda call: call.data == "get_prebook_qr")
@@ -314,28 +307,22 @@ def prebook_qr_handler(call):
       f" secure ho sake."
   )
 
-  qr_found = False
-  for filename in ["qr.jpg", "qr.png", "QR.jpg", "QR.png"]:
-    if os.path.exists(filename):
-      try:
-        with open(filename, "rb") as photo:
-          bot.send_photo(
-              call.message.chat.id,
-              photo,
-              caption=caption,
-              parse_mode="Markdown",
-          )
-        qr_found = True
-        break
-      except:
-        pass
+  if os.path.exists(QR_IMAGE_NAME):
+    try:
+      with open(QR_IMAGE_NAME, "rb") as photo:
+        bot.send_photo(
+            call.message.chat.id, photo, caption=caption, parse_mode="Markdown"
+        )
+      return
+    except Exception as e:
+      pass
 
-  if not qr_found:
-    bot.send_message(
-        call.message.chat.id,
-        caption + "\n\n*(Note: QR image server par nahi mili)*",
-        parse_mode="Markdown",
-    )
+  bot.send_message(
+      call.message.chat.id,
+      caption
+      + f"\n\n*(Note: '{QR_IMAGE_NAME}' file server par nahi mil rahi hai)*",
+      parse_mode="Markdown",
+  )
 
 
 @bot.message_handler(content_types=["photo"])
@@ -422,8 +409,8 @@ def handle_approval(call):
           parse_mode="Markdown",
           reply_markup=None,
       )
-    except Exception as e:
-      bot.answer_callback_query(call.id, f"Error: {e}", show_alert=True)
+    except Exception as /call/e:
+      pass
 
 
 if __name__ == "__main__":

@@ -50,7 +50,7 @@ def load_settings():
       "pre_start": 3527,
       "pre_end": 3535,
       "pre_price": 70,
-      "access_link": "https://t.me/+AapkaPrivateChannelLink",  # Default Link
+      "access_link": "https://t.me/+AapkaPrivateChannelLink",
   }
   if os.path.exists(SETTINGS_FILE):
     try:
@@ -186,7 +186,6 @@ def set_access_link(message):
     return
 
   try:
-    # Command ke baad wala naya link alag karna
     new_link = message.text.replace("/setlink", "").strip()
     if not new_link:
       bot.reply_to(
@@ -316,9 +315,6 @@ def prebook_qr_handler(call):
 
 @bot.message_handler(content_types=["photo"])
 def handle_screenshot(message):
-  if message.from_user.id == ADMIN_ID:
-    return
-
   user_id = message.from_user.id
   username = message.from_user.username or "No Username"
   name = message.from_user.first_name
@@ -366,7 +362,6 @@ def handle_approval(call):
   target_user_id = int(user_id_str)
 
   if action == "approve":
-    # Database se current link load karna
     settings = load_settings()
     current_link = settings.get(
         "access_link", "https://t.me/+AapkaPrivateChannelLink"

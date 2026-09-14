@@ -14,7 +14,7 @@ app = Flask(__name__)
 
 SETTINGS_FILE = "bot_settings.json"
 DB_FILE = "bot_database.db"
-QR_IMAGE_NAME = "IMG_20260809_210858.png"  # Yehi image file server par honi chahiye
+QR_IMAGE_NAME = "IMG_20260809_210858.png"
 
 
 def init_db():
@@ -221,7 +221,7 @@ def qr_handler(call):
   upi = settings.get("upi_id", "badmashromeo0007@okaxis")
 
   caption = (
-      f"⚡ **PAYMENT QR CODE** ⚡\n\n"
+      f"⚡ **SUPER YODDHA PAYMENT QR CODE** ⚡\n\n"
       f"• UPI ID: `{upi}`\n"
       f"• Amount: ₹{price}\n"
       f"• Episodes: {start_ep} TO {end_ep}\n\n"
@@ -347,8 +347,8 @@ def handle_approval(call):
           chat_id=call.message.chat.id,
           message_id=call.message.message_id,
           caption=call.message.caption + "\n\n**[ STATUS: APPROVED ✅ ]**",
-            parse_mode="Markdown",
-            reply_markup=None,
+          parse_mode="Markdown",
+          reply_markup=None,
       )
     except Exception as e:
       bot.answer_callback_query(call.id, f"Error: {e}", show_alert=True)
@@ -364,19 +364,19 @@ def handle_approval(call):
           chat_id=call.message.chat.id,
           message_id=call.message.message_id,
           caption=call.message.caption + "\n\n**[ STATUS: REJECTED ❌ ]**",
-            parse_mode="Markdown",
-            reply_markup=None,
+          parse_mode="Markdown",
+          reply_markup=None,
       )
     except Exception as e:
       bot.answer_callback_query(call.id, f"Error: {e}", show_alert=True)
 
 
 if __name__ == "__main__":
-  export_url = os.environ.get(
+  RENDER_URL = os.environ.get(
       "RENDER_EXTERNAL_URL", "https://badmash-4k97.onrender.com"
   )
   bot.remove_webhook()
-  bot.set_webhook(url=f"{export_url}/{TOKEN}")
+  bot.set_webhook(url=f"{RENDER_URL}/{TOKEN}")
 
   app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-  
+          

@@ -347,7 +347,7 @@ def handle_approval(call):
           chat_id=call.message.chat.id,
           message_id=call.message.message_id,
           caption=call.message.caption + "\n\n**[ STATUS: APPROVED ✅ ]**",
-          parse_mode="Markdown",
+          parse_Markdown=True,
           reply_markup=None,
       )
     except Exception as e:

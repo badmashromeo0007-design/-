@@ -72,7 +72,7 @@ def save_settings(data):
 
 @app.route("/")
 def home():
-  return "Bot is running 24/7 with Online QR Support!"
+  return "Bot is running 24/7 with Online QR Support & Channel Broadcast!"
 
 
 @app.route(f"/{TOKEN}", methods=["POST"])
@@ -211,6 +211,41 @@ def set_prebook(message):
     )
 
 
+@bot.message_handler(commands=["post"])
+def post_to_channel(message):
+  if message.from_user.id != ADMIN_ID:
+    bot.reply_to(message, "Aap admin nahi hain!")
+    return
+
+  # Agar aapne command ke sath text likha hai, ya kisi message ko reply karke /post likha hai
+  if message.reply_to_message:
+    try:
+      bot.copy_message(
+          chat_id=CHANNEL_ID,
+          from_chat_id=message.chat.id,
+          message_id=message.reply_to_message.message_id,
+      )
+      bot.reply_to(message, "✅ Post successfully channel par bhej di gayi hai!")
+    except Exception as e:
+      bot.reply_to(message, f"❌ Error: {e}")
+  else:
+    text_to_send = message.text.replace("/post", "").strip()
+    if text_to_send:
+      try:
+        bot.send_message(CHANNEL_ID, text_to_send, parse_mode="Markdown")
+        bot.reply_to(
+            message, "✅ Message successfully channel par bhej diya gaya hai!"
+        )
+      except Exception as e:
+        bot.reply_to(message, f"❌ Error: {e}")
+    else:
+      bot.reply_to(
+          message,
+          "⚠️ Sahi tareeqa:\n1. Kisi bhi message/photo ko reply karke"
+          " `/post` likhein.\n2. Ya fir `/post [Aapka Message]` likhein.",
+      )
+
+
 @bot.callback_query_handler(func=lambda call: call.data == "get_qr")
 def qr_handler(call):
   settings = load_settings()
@@ -219,7 +254,6 @@ def qr_handler(call):
   price = settings.get("price", 50)
   upi = settings.get("upi_id", "badmashromeo0007@okaxis")
 
-  # UPI payment link jo automatic QR code generate karega
   upi_link = (
       f"upi://pay?pa={upi}&pn=SuperYoddha&am={price}&cu=INR&tn=Episodes"
       f"%20{start_ep}%20to%20{end_ep}"
@@ -379,4 +413,4 @@ if __name__ == "__main__":
   bot.set_webhook(url=f"{RENDER_URL}/{TOKEN}")
 
   app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-  
+      

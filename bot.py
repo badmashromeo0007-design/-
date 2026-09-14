@@ -14,10 +14,9 @@ app = Flask(__name__)
 
 SETTINGS_FILE = "bot_settings.json"
 DB_FILE = "bot_database.db"
-QR_IMAGE_NAME = "IMG_20260809_210858.png"  # Aapke phone/storage wali exact image
+QR_IMAGE_NAME = "IMG_20260809_210858.png"  # Yehi image file server par honi chahiye
 
 
-# Database Initialize karne ke liye
 def init_db():
   conn = sqlite3.connect(DB_FILE)
   cursor = conn.cursor()
@@ -213,47 +212,6 @@ def set_prebook(message):
     )
 
 
-@bot.message_handler(commands=["setpost", "push"])
-def push_menu_to_channel(message):
-  if message.from_user.id != ADMIN_ID:
-    bot.reply_to(message, "Aap admin nahi hain!")
-    return
-
-  settings = load_settings()
-  start_ep = settings.get("start_ep", 3517)
-  end_ep = settings.get("end_ep", 3526)
-  price = settings.get("price", 50)
-  total_eps = settings.get("total_eps", (end_ep - start_ep) + 1)
-
-  text = (
-      f"🎧  **EPISODE PACK**\n"
-      f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-      f"  ◆  🎵  Episode  {start_ep}  →  {end_ep}\n"
-      f"  ◆  📦  {total_eps} Episodes  ·  Full Audio Access\n\n"
-      f"·  ·  ·  ·  ·  ·  ·  ·  ·  ·\n\n"
-      f"  ◆  💰  Price      ›  {price} ₹\n"
-      f"  ◆  ⚡  Instant Delivery  ·  Access immediately\n\n"
-      f"·  ·  ·  ·  ·  ·  ·  ·  ·  ·\n\n"
-      f"  🔐  QR Payment  ·  100% Secure\n"
-      f"  ✅  Verified Store  ·  Instant Auto-Delivery\n\n"
-      f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  )
-
-  markup = types.InlineKeyboardMarkup()
-  btn_bot = types.InlineKeyboardButton(
-      "💳 Get Episodes Now", url="https://t.me/ROMEO_bot"
-  )
-  markup.add(btn_bot)
-
-  try:
-    bot.send_message(
-        CHANNEL_ID, text, reply_markup=markup, parse_mode="Markdown"
-    )
-    bot.reply_to(message, "✅ Menu successfully main channel par post ho gaya hai!")
-  except Exception as e:
-    bot.reply_to(message, f"❌ Error: {e}")
-
-
 @bot.callback_query_handler(func=lambda call: call.data == "get_qr")
 def qr_handler(call):
   settings = load_settings()
@@ -389,8 +347,8 @@ def handle_approval(call):
           chat_id=call.message.chat.id,
           message_id=call.message.message_id,
           caption=call.message.caption + "\n\n**[ STATUS: APPROVED ✅ ]**",
-          parse_mode="Markdown",
-          reply_markup=None,
+            parse_mode="Markdown",
+            reply_markup=None,
       )
     except Exception as e:
       bot.answer_callback_query(call.id, f"Error: {e}", show_alert=True)
@@ -406,19 +364,19 @@ def handle_approval(call):
           chat_id=call.message.chat.id,
           message_id=call.message.message_id,
           caption=call.message.caption + "\n\n**[ STATUS: REJECTED ❌ ]**",
-          parse_mode="Markdown",
-          reply_markup=None,
+            parse_mode="Markdown",
+            reply_markup=None,
       )
-    except Exception as /call/e:
-      pass
+    except Exception as e:
+      bot.answer_callback_query(call.id, f"Error: {e}", show_alert=True)
 
 
 if __name__ == "__main__":
-  RENDER_URL = os.environ.get(
+  export_url = os.environ.get(
       "RENDER_EXTERNAL_URL", "https://badmash-4k97.onrender.com"
   )
   bot.remove_webhook()
-  bot.set_webhook(url=f"{RENDER_URL}/{TOKEN}")
+  bot.set_webhook(url=f"{export_url}/{TOKEN}")
 
   app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
   

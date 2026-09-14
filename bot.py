@@ -50,15 +50,14 @@ def load_settings():
       "pre_start": 3527,
       "pre_end": 3535,
       "pre_price": 70,
+      "access_link": "https://t.me/+AapkaPrivateChannelLink",  # Default Link
   }
   if os.path.exists(SETTINGS_FILE):
     try:
       with open(SETTINGS_FILE, "r") as f:
         data = json.load(f)
-        if "pre_start" not in data:
-          data["pre_start"] = 3527
-          data["pre_end"] = 3535
-          data["pre_price"] = 70
+        if "access_link" not in data:
+          data["access_link"] = "https://t.me/+AapkaPrivateChannelLink"
         return data
     except:
       return default_data
@@ -72,7 +71,7 @@ def save_settings(data):
 
 @app.route("/")
 def home():
-  return "Bot is running 24/7 with Online QR Support & Channel Broadcast!"
+  return "Bot is running 24/7 with Online QR & Dynamic Link Support!"
 
 
 @app.route(f"/{TOKEN}", methods=["POST"])
@@ -180,35 +179,34 @@ def set_price(message):
     )
 
 
-@bot.message_handler(commands=["setprebook"])
-def set_prebook(message):
+@bot.message_handler(commands=["setlink"])
+def set_access_link(message):
   if message.from_user.id != ADMIN_ID:
     bot.reply_to(message, "Aap admin nahi hain!")
     return
 
   try:
-    parts = message.text.replace("/setprebook", "").strip().split()
-    p_start = int(parts[0])
-    p_end = int(parts[1])
-    p_price = int(parts[2])
+    # Command ke baad wala naya link alag karna
+    new_link = message.text.replace("/setlink", "").strip()
+    if not new_link:
+      bot.reply_to(
+          message,
+          "⚠️ Sahi tareeqa:\n`/setlink https://t.me/+YourNewLine`",
+          parse_mode="Markdown",
+      )
+      return
 
     settings = load_settings()
-    settings["pre_start"] = p_start
-    settings["pre_end"] = p_end
-    settings["pre_price"] = p_price
+    settings["access_link"] = new_link
     save_settings(settings)
 
     bot.reply_to(
         message,
-        f"✅ Pre-Booking Details Updated!\nRange: {p_start} →"
-        f" {p_end}\nPrice: ₹{p_price}",
-    )
-  except Exception as e:
-    bot.reply_to(
-        message,
-        "Galat format! Sahi tareeqa yeh hai:\n`/setprebook 3527 3535 70`",
+        f"✅ Access Link Successfully Updated!\nNaya Link: `{new_link}`",
         parse_mode="Markdown",
     )
+  except Exception as e:
+    bot.reply_to(message, f"❌ Error: {e}")
 
 
 @bot.message_handler(commands=["post"])
@@ -217,7 +215,6 @@ def post_to_channel(message):
     bot.reply_to(message, "Aap admin nahi hain!")
     return
 
-  # Agar aapne command ke sath text likha hai, ya kisi message ko reply karke /post likha hai
   if message.reply_to_message:
     try:
       bot.copy_message(
@@ -369,10 +366,16 @@ def handle_approval(call):
   target_user_id = int(user_id_str)
 
   if action == "approve":
+    # Database se current link load karna
+    settings = load_settings()
+    current_link = settings.get(
+        "access_link", "https://t.me/+AapkaPrivateChannelLink"
+    )
+
     user_msg = (
         f"🎉 **Payment / Pre-Booking Approved!**\n\n"
-        f"Aapka slot successfully secure ho gaya hai. Jaise hi episodes aayenge,"
-        f" aapko access mil jayega."
+        f"Aapka payment verify ho gaya hai! Yahan se aap episodes access kar"
+        f" sakte hain:\n🔗 **{current_link}**"
     )
     try:
       bot.send_message(target_user_id, user_msg, parse_mode="Markdown")
@@ -413,4 +416,4 @@ if __name__ == "__main__":
   bot.set_webhook(url=f"{RENDER_URL}/{TOKEN}")
 
   app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-      
+  

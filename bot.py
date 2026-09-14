@@ -14,7 +14,6 @@ app = Flask(__name__)
 
 SETTINGS_FILE = "bot_settings.json"
 DB_FILE = "bot_database.db"
-QR_IMAGE_NAME = "IMG_20260809_210858.png"
 
 
 def init_db():
@@ -73,7 +72,7 @@ def save_settings(data):
 
 @app.route("/")
 def home():
-  return "Bot is running 24/7 with QR Support!"
+  return "Bot is running 24/7 with Online QR Support!"
 
 
 @app.route(f"/{TOKEN}", methods=["POST"])
@@ -220,6 +219,13 @@ def qr_handler(call):
   price = settings.get("price", 50)
   upi = settings.get("upi_id", "badmashromeo0007@okaxis")
 
+  # UPI payment link jo automatic QR code generate karega
+  upi_link = (
+      f"upi://pay?pa={upi}&pn=SuperYoddha&am={price}&cu=INR&tn=Episodes"
+      f"%20{start_ep}%20to%20{end_ep}"
+  )
+  qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={upi_link}"
+
   caption = (
       f"⚡ **SUPER YODDHA PAYMENT QR CODE** ⚡\n\n"
       f"• UPI ID: `{upi}`\n"
@@ -229,22 +235,16 @@ def qr_handler(call):
       f"2. Payment karne ke baad screenshot yahin bot mein bhej dein."
   )
 
-  if os.path.exists(QR_IMAGE_NAME):
-    try:
-      with open(QR_IMAGE_NAME, "rb") as photo:
-        bot.send_photo(
-            call.message.chat.id, photo, caption=caption, parse_mode="Markdown"
-        )
-      return
-    except Exception as e:
-      pass
-
-  bot.send_message(
-      call.message.chat.id,
-      caption
-      + f"\n\n*(Note: '{QR_IMAGE_NAME}' file server par nahi mil rahi hai)*",
-      parse_mode="Markdown",
-  )
+  try:
+    bot.send_photo(
+        call.message.chat.id, qr_url, caption=caption, parse_mode="Markdown"
+    )
+  except Exception as e:
+    bot.send_message(
+        call.message.chat.id,
+        caption + f"\n\n*(Error generating QR: {e})*",
+        parse_mode="Markdown",
+    )
 
 
 @bot.callback_query_handler(func=lambda call: call.data == "get_prebook_qr")
@@ -254,6 +254,12 @@ def prebook_qr_handler(call):
   p_end = settings.get("pre_end", 3535)
   p_price = settings.get("pre_price", 70)
   upi = settings.get("upi_id", "badmashromeo0007@okaxis")
+
+  upi_link = (
+      f"upi://pay?pa={upi}&pn=SuperYoddhaPreBook&am={p_price}&cu=INR&tn=PreBook"
+      f"%20{p_start}%20to%20{p_end}"
+  )
+  qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={upi_link}"
 
   caption = (
       f"🚀 **PRE-BOOKING QR CODE** 🚀\n\n"
@@ -265,22 +271,16 @@ def prebook_qr_handler(call):
       f" secure ho sake."
   )
 
-  if os.path.exists(QR_IMAGE_NAME):
-    try:
-      with open(QR_IMAGE_NAME, "rb") as photo:
-        bot.send_photo(
-            call.message.chat.id, photo, caption=caption, parse_mode="Markdown"
-        )
-      return
-    except Exception as e:
-      pass
-
-  bot.send_message(
-      call.message.chat.id,
-      caption
-      + f"\n\n*(Note: '{QR_IMAGE_NAME}' file server par nahi mil rahi hai)*",
-      parse_mode="Markdown",
-  )
+  try:
+    bot.send_photo(
+        call.message.chat.id, qr_url, caption=caption, parse_mode="Markdown"
+    )
+  except Exception as e:
+    bot.send_message(
+        call.message.chat.id,
+        caption + f"\n\n*(Error generating QR: {e})*",
+        parse_mode="Markdown",
+    )
 
 
 @bot.message_handler(content_types=["photo"])
@@ -347,7 +347,7 @@ def handle_approval(call):
           chat_id=call.message.chat.id,
           message_id=call.message.message_id,
           caption=call.message.caption + "\n\n**[ STATUS: APPROVED ✅ ]**",
-          parse_Markdown=True,
+          parse_mode="Markdown",
           reply_markup=None,
       )
     except Exception as e:

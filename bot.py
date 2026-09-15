@@ -1,7 +1,6 @@
 import json
 import os
 import sqlite3
-from flask import Flask, request
 from apscheduler.schedulers.background import BackgroundScheduler
 import telebot
 from telebot import types
@@ -88,7 +87,7 @@ def save_last_post_id(msg_id):
 
 @app.route("/")
 def home():
-  return "Bot is running 24/7 with Auto-Posting & Unique Link Support!"
+  return "Bot is running 24/7 smoothly!"
 
 
 @app.route(f"/{TOKEN}", methods=["POST"])
@@ -196,7 +195,6 @@ def set_price(message):
     )
 
 
-# Automatic posting function jo har 10 minute mein chalega
 def auto_post_job():
   try:
     settings = load_settings()
@@ -205,14 +203,6 @@ def auto_post_job():
     total_eps = settings.get("total_eps", 11)
     price = settings.get("price", 180)
 
-    post_text = (
-        f"𝗘𝗣𝗜𝗦𝗢𝗗𝗘 — 𝟯𝟱{start_ep if str(start_ep)[-2:] else '27'} 𝗧𝗢 𝟯𝟱{end_ep if str(end_ep)[-2:] else '37'}\n\n"
-        f"📦 𝗧𝗢𝗧𝗔𝗟 — {total_eps} 𝗘𝗣𝗜𝗦𝗢𝗗𝗘𝗦\n\n"
-        f"💰 𝗣𝗥𝗜𝗖𝗘 — ₹{price} ✅\n\n"
-        f"⚡ 𝗜𝗡𝗦𝗧𝗔𝗡𝗧 𝗗𝗘𝗟𝗜𝗩𝗘𝗥𝗬"
-    )
-
-    # Behtar format ke liye standard text use karte hain
     formatted_text = (
         f"EPISODE — {start_ep} TO {end_ep}\n\n📦 TOTAL — {total_eps}"
         f" EPISODES\n\n💰 PRICE — ₹{price} ✅\n\n⚡ INSTANT DELIVERY"
@@ -224,7 +214,6 @@ def auto_post_job():
     )
     markup.add(btn_dm)
 
-    # Purana post delete karna agar pehle se saved hai
     old_msg_id = get_last_post_id()
     if old_msg_id:
       try:
@@ -232,7 +221,6 @@ def auto_post_job():
       except Exception:
         pass
 
-    # Naya post bhejna
     new_msg = bot.send_message(
         CHANNEL_ID, formatted_text, reply_markup=markup, parse_mode="Markdown"
     )
@@ -267,7 +255,6 @@ def post_to_channel(message):
         )
         markup.add(btn_dm)
 
-        # Purana delete karke naya save karna
         old_msg_id = get_last_post_id()
         if old_msg_id:
           try:
@@ -281,9 +268,7 @@ def post_to_channel(message):
         save_last_post_id(new_msg.message_id)
 
         bot.reply_to(
-            message,
-            "✅ Message aur button channel par bhej diya gaya hai (Purana"
-            " delete kar diya hai)!",
+            message, "✅ Message aur button channel par bhej diya gaya hai!"
         )
       except Exception as e:
         bot.reply_to(message, f"❌ Error: {e}")
@@ -350,8 +335,7 @@ def prebook_qr_handler(call):
       f"• Pre-Book Price: ₹{p_price}\n"
       f"• UPI ID: `{upi}`\n\n"
       f"1. Is QR code par payment karke advance booking karein.\n"
-      f"2. Payment ka screenshot yahin bot mein bhej dein taaki aapka slot"
-      f" secure ho sake."
+      f"2. Payment ka screenshot yahin bot mein bhej dein."
   )
 
   try:
@@ -382,24 +366,27 @@ def handle_screenshot(message):
   markup.add(btn_approve, btn_reject)
 
   caption = (
-      f"📥 **NEW PAYMENT / PRE-BOOK SCREENSHOT**\n\n"
+      f"📥 **NEW PAYMENT SCREENSHOT**\n\n"
       f"• Name: {name}\n"
       f"• User ID: `{user_id}`\n"
       f"• Username: @{username}"
   )
 
-  bot.send_photo(
-      ADMIN_ID,
-      message.photo[-1].file_id,
-      caption=caption,
-      reply_markup=markup,
-      parse_mode="Markdown",
-  )
-  bot.reply_to(
-      message,
-      "✅ Aapka screenshot mil gaya hai! Admin verification ke baad aapko update"
-      " mil jayega.",
-  )
+  try:
+    bot.send_photo(
+        ADMIN_ID,
+        message.photo[-1].file_id,
+        caption=caption,
+        reply_markup=markup,
+        parse_mode="Markdown",
+    )
+    bot.reply_to(
+        message,
+        "✅ Aapka screenshot mil gaya hai! Admin verification ke baad aapko"
+        " unique link mil jayega.",
+    )
+  except Exception as e:
+    bot.reply_to(message, f"❌ Error sending to admin: {e}")
 
 
 @bot.callback_query_handler(
@@ -422,11 +409,10 @@ def handle_approval(call):
       unique_link = invite_link.invite_link
 
       user_msg = (
-          f"🎉 **Payment / Pre-Booking Approved!**\n\n"
+          f"🎉 **Payment Approved!**\n\n"
           f"Aapka payment verify ho gaya hai! Yahan aapka personal invite link"
           f" hai (Yeh sirf aapke liye hai):\n🔗 **{unique_link}**"
       )
-
       bot.send_message(target_user_id, user_msg, parse_mode="Markdown")
       bot.answer_callback_query(
           call.id, "Approved & Unique Link Sent to User!"
@@ -461,7 +447,6 @@ def handle_approval(call):
 
 
 if __name__ == "__main__":
-  # Scheduler setup: Har 10 minute mein auto_post_job run hoga
   scheduler = BackgroundScheduler()
   scheduler.add_job(auto_post_job, "interval", minutes=10)
   scheduler.start()

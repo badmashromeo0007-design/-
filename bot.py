@@ -5,16 +5,18 @@ from flask import Flask
 from apscheduler.schedulers.background import BackgroundScheduler
 
 # --- CONFIGURATION ---
-TOKEN = "YOUR_BOT_TOKEN"  # Apna sahi token daalein (colon ke sath)
-ADMIN_ID = 6817248389     # Aapki Admin ID
+TOKEN = "8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU"  # Sahi token colon ke sath
+ADMIN_ID = 6817248389  # Aapki Admin ID
 
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
 
+# --- FLASK ROUTES ---
 @app.route('/')
 def home():
-    return "Bot is running live!"
+    return "Bot is running live 24/7!"
 
+# --- TELEGRAM BOT HANDLERS ---
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     markup = types.InlineKeyboardMarkup()
@@ -34,29 +36,27 @@ def handle_buy(call):
         "2. Payment karne ke baad screenshot yahin bot mein bhej dein."
     )
 
-# --- IMPORTANT: SCREENSHOT HANDLER (Isi se admin ke paas jayega) ---
+# --- SCREENSHOT HANDLER ---
 @bot.message_handler(content_types=['photo'])
 def handle_screenshot(message):
     user = message.from_user
     caption = (
         f"📥 **NEW PAYMENT / PRE-BOOK SCREENSHOT**\n\n"
         f"• Name: {user.first_name}\n"
-        f"• User ID: {user.id}\n"
+        f"• User ID: `{user.id}`\n"
         f"• Username: @{user.username if user.username else 'N/A'}"
     )
     
-    # Admin ke paas approval buttons ke sath bhejne ke liye
     markup = types.InlineKeyboardMarkup()
     approve_btn = types.InlineKeyboardButton("✅ Approve & Send Uniq", callback_data=f"approve_{user.id}")
     reject_btn = types.InlineKeyboardButton("❌ Reject", callback_data=f"reject_{user.id}")
     markup.add(approve_btn, reject_btn)
     
     try:
-        # Admin ko photo forward karein
-        bot.send_photo(ADMIN_ID, message.photo[-1].file_id, caption=caption, reply_markup=markup)
+        bot.send_photo(ADMIN_ID, message.photo[-1].file_id, caption=caption, reply_markup=markup, parse_mode="Markdown")
         bot.reply_to(message, "✅ Aapka screenshot mil gaya hai! Admin verification ke baad aapko update mil jayega.")
     except Exception as e:
-        bot.reply_to(message, f"❌ Error: Admin ko screenshot bhejne mein samasya aayi. (Kripya ensure karein ki aapne admin bot ko /start kiya hai)")
+        bot.reply_to(message, f"❌ Error: Admin ko screenshot bhejne mein samasya aayi.")
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('approve_') or call.data.startswith('reject_'))
 def handle_admin_action(call):
@@ -69,11 +69,11 @@ def handle_admin_action(call):
     
     if action == 'approve':
         bot.answer_callback_query(call.id, "Approved successfully!")
-        bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.id, caption=call.message.caption + "\n\nSTATUS: ✅ APPROVED")
+        bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.id, caption=call.message.caption + "\n\nSTATUS: ✅ APPROVED", parse_mode="Markdown")
         bot.send_message(target_user_id, "🎉 Aapka payment verify ho gaya hai! Yeh raha aapka unique channel join link: [Yahan Link Dalein]")
     else:
         bot.answer_callback_query(call.id, "Rejected!")
-        bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.id, caption=call.message.caption + "\n\nSTATUS: ❌ REJECTED")
+        bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.id, caption=call.message.caption + "\n\nSTATUS: ❌ REJECTED", parse_mode="Markdown")
         bot.send_message(target_user_id, "❌ Aapka payment screenshot reject kar diya gaya hai.")
 
 # --- APSCHEDULER SETUP ---

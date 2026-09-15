@@ -2,12 +2,13 @@ import json
 import os
 import sqlite3
 from flask import Flask, request
+from apscheduler.schedulers.background import BackgroundScheduler
 import telebot
 from telebot import types
 
 TOKEN = "8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU"
 ADMIN_ID = 6817248389  # Aapki Admin ID
-CHANNEL_ID = -1004382767346  # Aapka Main Channel ID (Yahan bot Admin hona chahiye)
+CHANNEL_ID = -1004382767346  # Aapka Main Channel ID
 
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
@@ -27,10 +28,9 @@ def init_db():
                 )"""
   )
   cursor.execute(
-      """CREATE TABLE IF NOT EXISTS pre_bookings (
-                    user_id INTEGER PRIMARY KEY,
-                    username TEXT,
-                    joined_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      """CREATE TABLE IF NOT EXISTS bot_state (
+                    key TEXT PRIMARY KEY,
+                    value TEXT
                 )"""
   )
   conn.commit()
@@ -42,10 +42,10 @@ init_db()
 
 def load_settings():
   default_data = {
-      "start_ep": 3517,
-      "end_ep": 3526,
-      "price": 50,
-      "total_eps": 6,
+      "start_ep": 3527,
+      "end_ep": 3537,
+      "price": 180,
+      "total_eps": 11,
       "upi_id": "badmashromeo0007@okaxis",
       "pre_start": 3527,
       "pre_end": 3535,
@@ -65,9 +65,30 @@ def save_settings(data):
     json.dump(data, f)
 
 
+def get_last_post_id():
+  conn = sqlite3.connect(DB_FILE)
+  cursor = conn.cursor()
+  cursor.execute("SELECT value FROM bot_state WHERE key = 'last_post_id'")
+  row = cursor.fetchone()
+  conn.close()
+  return int(row[0]) if row else None
+
+
+def save_last_post_id(msg_id):
+  conn = sqlite3.connect(DB_FILE)
+  cursor = conn.cursor()
+  cursor.execute(
+      "INSERT OR REPLACE INTO bot_state (key, value) VALUES ('last_post_id',"
+      " ?)",
+      (str(msg_id),),
+  )
+  conn.commit()
+  conn.close()
+
+
 @app.route("/")
 def home():
-  return "Bot is running 24/7 with Unique Invite Link Support!"
+  return "Bot is running 24/7 with Auto-Posting & Unique Link Support!"
 
 
 @app.route(f"/{TOKEN}", methods=["POST"])
@@ -84,10 +105,10 @@ def webhook():
 @bot.message_handler(commands=["start", "menu"])
 def send_menu(message):
   settings = load_settings()
-  start_ep = settings.get("start_ep", 3517)
-  end_ep = settings.get("end_ep", 3526)
-  price = settings.get("price", 50)
-  total_eps = settings.get("total_eps", (end_ep - start_ep) + 1)
+  start_ep = settings.get("start_ep", 3527)
+  end_ep = settings.get("end_ep", 3537)
+  price = settings.get("price", 180)
+  total_eps = settings.get("total_eps", 11)
 
   text = (
       f"🎧  **EPISODE PACK**\n"
@@ -147,7 +168,7 @@ def set_episodes(message):
   except Exception as e:
     bot.reply_to(
         message,
-        "Galat format! Sahi tareeqa yeh hai:\n`/setep 3517 3526`",
+        "Galat format! Sahi tareeqa yeh hai:\n`/setep 3527 3537`",
         parse_mode="Markdown",
     )
 
@@ -170,9 +191,54 @@ def set_price(message):
   except Exception as e:
     bot.reply_to(
         message,
-        "Galat format! Sahi tareeqa yeh hai:\n`/setprice 50`",
+        "Galat format! Sahi tareeqa yeh hai:\n`/setprice 180`",
         parse_mode="Markdown",
     )
+
+
+# Automatic posting function jo har 10 minute mein chalega
+def auto_post_job():
+  try:
+    settings = load_settings()
+    start_ep = settings.get("start_ep", 3527)
+    end_ep = settings.get("end_ep", 3537)
+    total_eps = settings.get("total_eps", 11)
+    price = settings.get("price", 180)
+
+    post_text = (
+        f"𝗘𝗣𝗜𝗦𝗢𝗗𝗘 — 𝟯𝟱{start_ep if str(start_ep)[-2:] else '27'} 𝗧𝗢 𝟯𝟱{end_ep if str(end_ep)[-2:] else '37'}\n\n"
+        f"📦 𝗧𝗢𝗧𝗔𝗟 — {total_eps} 𝗘𝗣𝗜𝗦𝗢𝗗𝗘𝗦\n\n"
+        f"💰 𝗣𝗥𝗜𝗖𝗘 — ₹{price} ✅\n\n"
+        f"⚡ 𝗜𝗡𝗦𝗧𝗔𝗡𝗧 𝗗𝗘𝗟𝗜𝗩𝗘𝗥𝗬"
+    )
+
+    # Behtar format ke liye standard text use karte hain
+    formatted_text = (
+        f"EPISODE — {start_ep} TO {end_ep}\n\n📦 TOTAL — {total_eps}"
+        f" EPISODES\n\n💰 PRICE — ₹{price} ✅\n\n⚡ INSTANT DELIVERY"
+    )
+
+    markup = types.InlineKeyboardMarkup()
+    btn_dm = types.InlineKeyboardButton(
+        "📥 Click Here To Buy / DM", url="https://t.me/Romeo_pay_bot"
+    )
+    markup.add(btn_dm)
+
+    # Purana post delete karna agar pehle se saved hai
+    old_msg_id = get_last_post_id()
+    if old_msg_id:
+      try:
+        bot.delete_message(CHANNEL_ID, old_msg_id)
+      except Exception:
+        pass
+
+    # Naya post bhejna
+    new_msg = bot.send_message(
+        CHANNEL_ID, formatted_text, reply_markup=markup, parse_mode="Markdown"
+    )
+    save_last_post_id(new_msg.message_id)
+  except Exception as e:
+    print(f"Auto-post error: {e}")
 
 
 @bot.message_handler(commands=["post"])
@@ -201,16 +267,23 @@ def post_to_channel(message):
         )
         markup.add(btn_dm)
 
-        bot.send_message(
-            CHANNEL_ID,
-            text_to_send,
-            reply_markup=markup,
-            parse_mode="Markdown",
+        # Purana delete karke naya save karna
+        old_msg_id = get_last_post_id()
+        if old_msg_id:
+          try:
+            bot.delete_message(CHANNEL_ID, old_msg_id)
+          except:
+            pass
+
+        new_msg = bot.send_message(
+            CHANNEL_ID, text_to_send, reply_markup=markup, parse_mode="Markdown"
         )
+        save_last_post_id(new_msg.message_id)
+
         bot.reply_to(
             message,
-            "✅ Message aur clickable button successfully channel par bhej diya"
-            " gaya hai!",
+            "✅ Message aur button channel par bhej diya gaya hai (Purana"
+            " delete kar diya hai)!",
         )
       except Exception as e:
         bot.reply_to(message, f"❌ Error: {e}")
@@ -225,9 +298,9 @@ def post_to_channel(message):
 @bot.callback_query_handler(func=lambda call: call.data == "get_qr")
 def qr_handler(call):
   settings = load_settings()
-  start_ep = settings.get("start_ep", 3517)
-  end_ep = settings.get("end_ep", 3526)
-  price = settings.get("price", 50)
+  start_ep = settings.get("start_ep", 3527)
+  end_ep = settings.get("end_ep", 3537)
+  price = settings.get("price", 180)
   upi = settings.get("upi_id", "badmashromeo0007@okaxis")
 
   upi_link = (
@@ -343,10 +416,8 @@ def handle_approval(call):
 
   if action == "approve":
     try:
-      # Har user ke liye ek naya alag (unique) invite link generate karna
       invite_link = bot.create_chat_invite_link(
-          chat_id=CHANNEL_ID,
-          member_limit=1,  # Yeh link sirf ek hi user ke liye chalega
+          chat_id=CHANNEL_ID, member_limit=1
       )
       unique_link = invite_link.invite_link
 
@@ -364,8 +435,7 @@ def handle_approval(call):
           chat_id=call.message.chat.id,
           message_id=call.message.message_id,
           caption=call.message.caption
-          + f"\n\n**[ STATUS: APPROVED ✅ ]**\nLink: `{unique_link}`",
-          parse_mode="Markdown",
+          + f"\n\n[ STATUS: APPROVED ✅ ]\nLink: {unique_link}",
           reply_markup=None,
       )
     except Exception as e:
@@ -383,8 +453,7 @@ def handle_approval(call):
       bot.edit_message_caption(
           chat_id=call.message.chat.id,
           message_id=call.message.message_id,
-          caption=call.message.caption + "\n\n**[ STATUS: REJECTED ❌ ]**",
-          parse_mode="Markdown",
+          caption=call.message.caption + "\n\n[ STATUS: REJECTED ❌ ]",
           reply_markup=None,
       )
     except Exception as e:
@@ -392,6 +461,11 @@ def handle_approval(call):
 
 
 if __name__ == "__main__":
+  # Scheduler setup: Har 10 minute mein auto_post_job run hoga
+  scheduler = BackgroundScheduler()
+  scheduler.add_job(auto_post_job, "interval", minutes=10)
+  scheduler.start()
+
   RENDER_URL = os.environ.get(
       "RENDER_EXTERNAL_URL", "https://badmash-4k97.onrender.com"
   )

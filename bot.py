@@ -132,7 +132,7 @@ def post_pack2(message):
     bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode="Markdown")
 
 
-# --- UPDATED START COMMAND (Shows both packs directly) ---
+# --- START COMMAND (Shows both packs directly) ---
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     markup = types.InlineKeyboardMarkup()

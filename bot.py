@@ -9,18 +9,14 @@ TOKEN = "8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU"
 ADMIN_ID = 6817248389  # Aapki Admin ID
 
 bot = telebot.TeleBot(TOKEN)
-
-# --- IMPORTANT: Purana webhook hatane ke liye ---
 bot.remove_webhook()
 
 app = Flask(__name__)
 
-# --- FLASK ROUTES ---
 @app.route('/')
 def home():
     return "Bot is running live 24/7!"
 
-# --- TELEGRAM BOT HANDLERS ---
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     markup = types.InlineKeyboardMarkup()
@@ -40,16 +36,17 @@ def handle_buy(call):
         "2. Payment karne ke baad screenshot yahin bot mein bhej dein."
     )
 
-# --- SCREENSHOT HANDLER ---
+# --- SAFE SCREENSHOT HANDLER (No Markdown Errors) ---
 @bot.message_handler(content_types=['photo'])
 def handle_screenshot(message):
     user = message.from_user
     bot.reply_to(message, "✅ Aapka screenshot mil gaya hai! Verification ke liye admin ke paas bhej diya gaya hai.")
     
+    # Simple plain text caption to avoid any formatting crashes
     caption = (
-        f"📥 **NEW PAYMENT SCREENSHOT**\n\n"
+        "📥 NEW PAYMENT SCREENSHOT\n\n"
         f"• Name: {user.first_name}\n"
-        f"• User ID: `{user.id}`\n"
+        f"• User ID: {user.id}\n"
         f"• Username: @{user.username if user.username else 'N/A'}"
     )
     
@@ -60,7 +57,8 @@ def handle_screenshot(message):
     
     try:
         photo_id = message.photo[-1].file_id
-        bot.send_photo(ADMIN_ID, photo_id, caption=caption, reply_markup=markup, parse_mode="Markdown")
+        # parse_mode hata diya gaya hai taaki koi crash na ho
+        bot.send_photo(ADMIN_ID, photo_id, caption=caption, reply_markup=markup)
     except Exception as e:
         bot.send_message(ADMIN_ID, f"⚠️ Error forwarding photo to admin: {e}")
 
@@ -75,11 +73,17 @@ def handle_admin_action(call):
     
     if action == 'approve':
         bot.answer_callback_query(call.id, "Approved successfully!")
-        bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.id, caption=call.message.caption + "\n\nSTATUS: ✅ APPROVED", parse_mode="Markdown")
-        bot.send_message(target_user_id, "🎉 Aapka payment verify ho gaya hai! Yeh raha aapka unique channel join link: [Yahan Link Dalein]")
+        try:
+            bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.id, caption=call.message.caption + "\n\nSTATUS: ✅ APPROVED")
+        except:
+            pass
+        bot.send_message(target_user_id, "🎉 Aapka payment verify ho gaya hai! Yeh raha aapka unique channel join link: https://t.me/+-Zv45jwRBJUyYjE1")
     else:
         bot.answer_callback_query(call.id, "Rejected!")
-        bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.id, caption=call.message.caption + "\n\nSTATUS: ❌ REJECTED", parse_mode="Markdown")
+        try:
+            bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.id, caption=call.message.caption + "\n\nSTATUS: ❌ REJECTED")
+        except:
+            pass
         bot.send_message(target_user_id, "❌ Aapka payment screenshot reject kar diya gaya hai.")
 
 # --- APSCHEDULER SETUP ---

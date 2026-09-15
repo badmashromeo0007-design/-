@@ -15,12 +15,12 @@ app = Flask(__name__)
 
 # --- DYNAMIC SETTINGS FOR MULTIPLE PACKS ---
 bot_settings = {
-    "price1": "100",
-    "episodes1": "3527 TO 3537",
-    "link1": "https://t.me/+-Zv45jwRBJUyYjE1",
+    "price1": "70",
+    "episodes1": "3538 - 3543",
+    "link1": "https://t.me/+ebSSIzOxKfRmNWU9",
     
     "price2": "150",
-    "episodes2": "3538 TO 3550",
+    "episodes2": "3544 - 3550",
     "link2": "https://t.me/+AnotherUniqueLinkHere"
 }
 
@@ -38,7 +38,7 @@ def set_price1(message):
         bot_settings["price1"] = parts[1]
         bot.reply_to(message, f"✅ Pack 1 Price Updated: ₹{bot_settings['price1']}")
     else:
-        bot.reply_to(message, "⚠️ Format: /setprice1 100")
+        bot.reply_to(message, "⚠️ Format: /setprice1 70")
 
 @bot.message_handler(commands=['setep1'])
 def set_ep1(message):
@@ -49,7 +49,7 @@ def set_ep1(message):
         bot_settings["episodes1"] = parts[1]
         bot.reply_to(message, f"✅ Pack 1 Episodes Updated: {bot_settings['episodes1']}")
     else:
-        bot.reply_to(message, "⚠️ Format: /setep1 3527 - 3537")
+        bot.reply_to(message, "⚠️ Format: /setep1 3538 - 3543")
 
 @bot.message_handler(commands=['setlink1'])
 def set_link1(message):
@@ -84,7 +84,7 @@ def set_ep2(message):
         bot_settings["episodes2"] = parts[1]
         bot.reply_to(message, f"✅ Pack 2 Episodes Updated: {bot_settings['episodes2']}")
     else:
-        bot.reply_to(message, "⚠️ Format: /setep2 3538 - 3550")
+        bot.reply_to(message, "⚠️ Format: /setep2 3544 - 3550")
 
 @bot.message_handler(commands=['setlink2'])
 def set_link2(message):
@@ -132,6 +132,21 @@ def post_pack2(message):
     bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode="Markdown")
 
 
+# --- UPDATED START COMMAND (Shows both packs directly) ---
+@bot.message_handler(commands=['start'])
+def send_welcome(message):
+    markup = types.InlineKeyboardMarkup()
+    btn1 = types.InlineKeyboardButton(f"🎧 Pack 1 (₹{bot_settings['price1']})", callback_data="buy_pack1")
+    btn2 = types.InlineKeyboardButton(f"🎧 Pack 2 (₹{bot_settings['price2']})", callback_data="buy_pack2")
+    markup.add(btn1, btn2)
+    
+    welcome_text = (
+        "👋 **Welcome to Episode Bot!**\n\n"
+        "Niche diye gaye packs mein se apna pasandeeda pack select karein aur payment karke turant access payen:"
+    )
+    bot.reply_to(message, welcome_text, reply_markup=markup, parse_mode="Markdown")
+
+
 # --- CALLBACKS FOR BUY BUTTONS ---
 @bot.callback_query_handler(func=lambda call: call.data in ["buy_pack1", "buy_pack2"])
 def handle_buy(call):
@@ -157,10 +172,6 @@ def handle_buy(call):
             "2. Screenshot yahin bot mein bhej dein."
         )
 
-# --- STANDARD START COMMAND ---
-@bot.message_handler(commands=['start'])
-def send_welcome(message):
-    bot.reply_to(message, "Namaste! Kripya channel par diye gaye posts mein se kisi ek ke 'Pay Now' button par click karein.")
 
 # --- SCREENSHOT HANDLER ---
 @bot.message_handler(content_types=['photo'])
@@ -187,6 +198,7 @@ def handle_screenshot(message):
         bot.send_photo(ADMIN_ID, photo_id, caption=caption, reply_markup=markup)
     except Exception as e:
         bot.send_message(ADMIN_ID, f"⚠️ Error forwarding photo: {e}")
+
 
 # --- ADMIN APPROVAL HANDLER FOR BOTH PACKS ---
 @bot.callback_query_handler(func=lambda call: call.data.startswith('approve1_') or call.data.startswith('approve2_') or call.data.startswith('reject_'))
@@ -222,6 +234,7 @@ def handle_admin_action(call):
         except:
             pass
         bot.send_message(target_user_id, "❌ Aapka payment screenshot reject kar diya gaya hai.")
+
 
 # --- APSCHEDULER SETUP ---
 scheduler = BackgroundScheduler()

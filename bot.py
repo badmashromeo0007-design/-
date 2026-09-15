@@ -15,12 +15,10 @@ app = Flask(__name__)
 
 # --- DYNAMIC SETTINGS FOR MULTIPLE PACKS ---
 bot_settings = {
-    # Pack 1 Settings
     "price1": "100",
     "episodes1": "3527 TO 3537",
     "link1": "https://t.me/+-Zv45jwRBJUyYjE1",
     
-    # Pack 2 Settings
     "price2": "150",
     "episodes2": "3538 TO 3550",
     "link2": "https://t.me/+AnotherUniqueLinkHere"
@@ -33,7 +31,8 @@ def home():
 # --- ADMIN COMMANDS FOR PACK 1 ---
 @bot.message_handler(commands=['setprice1'])
 def set_price1(message):
-    if message.from_user.id != ADMIN_ID: return
+    if message.from_user.id != ADMIN_ID:
+        return
     parts = message.text.split(maxsplit=1)
     if len(parts) > 1:
         bot_settings["price1"] = parts[1]
@@ -43,7 +42,8 @@ def set_price1(message):
 
 @bot.message_handler(commands=['setep1'])
 def set_ep1(message):
-    if message.from_user.id != ADMIN_ID: return
+    if message.from_user.id != ADMIN_ID:
+        return
     parts = message.text.split(maxsplit=1)
     if len(parts) > 1:
         bot_settings["episodes1"] = parts[1]
@@ -53,7 +53,8 @@ def set_ep1(message):
 
 @bot.message_handler(commands=['setlink1'])
 def set_link1(message):
-    if message.from_user.id != ADMIN_ID: return
+    if message.from_user.id != ADMIN_ID:
+        return
     parts = message.text.split(maxsplit=1)
     if len(parts) > 1:
         bot_settings["link1"] = parts[1]
@@ -65,7 +66,8 @@ def set_link1(message):
 # --- ADMIN COMMANDS FOR PACK 2 ---
 @bot.message_handler(commands=['setprice2'])
 def set_price2(message):
-    if message.from_user.id != ADMIN_ID: return
+    if message.from_user.id != ADMIN_ID:
+        return
     parts = message.text.split(maxsplit=1)
     if len(parts) > 1:
         bot_settings["price2"] = parts[1]
@@ -75,7 +77,8 @@ def set_price2(message):
 
 @bot.message_handler(commands=['setep2'])
 def set_ep2(message):
-    if message.from_user.id != ADMIN_ID: return
+    if message.from_user.id != ADMIN_ID:
+        return
     parts = message.text.split(maxsplit=1)
     if len(parts) > 1:
         bot_settings["episodes2"] = parts[1]
@@ -85,7 +88,8 @@ def set_ep2(message):
 
 @bot.message_handler(commands=['setlink2'])
 def set_link2(message):
-    if message.from_user.id != ADMIN_ID: return
+    if message.from_user.id != ADMIN_ID:
+        return
     parts = message.text.split(maxsplit=1)
     if len(parts) > 1:
         bot_settings["link2"] = parts[1]
@@ -97,7 +101,8 @@ def set_link2(message):
 # --- POST COMMANDS FOR CHANNEL ---
 @bot.message_handler(commands=['post1'])
 def post_pack1(message):
-    if message.from_user.id != ADMIN_ID: return
+    if message.from_user.id != ADMIN_ID:
+        return
     markup = types.InlineKeyboardMarkup()
     btn = types.InlineKeyboardButton("✨ Pay Now (Pack 1)", callback_data="buy_pack1")
     markup.add(btn)
@@ -112,7 +117,8 @@ def post_pack1(message):
 
 @bot.message_handler(commands=['post2'])
 def post_pack2(message):
-    if message.from_user.id != ADMIN_ID: return
+    if message.from_user.id != ADMIN_ID:
+        return
     markup = types.InlineKeyboardMarkup()
     btn = types.InlineKeyboardButton("✨ Pay Now (Pack 2)", callback_data="buy_pack2")
     markup.add(btn)
@@ -197,21 +203,24 @@ def handle_admin_action(call):
         bot.answer_callback_query(call.id, "Pack 1 Approved!")
         try:
             bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.id, caption=call.message.caption + "\n\nSTATUS: ✅ APPROVED (PACK 1)")
-        except: pass
+        except:
+            pass
         bot.send_message(target_user_id, f"🎉 Aapka Pack 1 verify ho gaya hai! Yeh raha aapka link:\n{bot_settings['link1']}")
         
     elif action == 'approve2':
         bot.answer_callback_query(call.id, "Pack 2 Approved!")
         try:
             bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.id, caption=call.message.caption + "\n\nSTATUS: ✅ APPROVED (PACK 2)")
-        except: pass
+        except:
+            pass
         bot.send_message(target_user_id, f"🎉 Aapka Pack 2 verify ho gaya hai! Yeh raha aapka link:\n{bot_settings['link2']}")
         
     else:
         bot.answer_callback_query(call.id, "Rejected!")
         try:
             bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.id, caption=call.message.caption + "\n\nSTATUS: ❌ REJECTED")
-        except: pass
+        except:
+            pass
         bot.send_message(target_user_id, "❌ Aapka payment screenshot reject kar diya gaya hai.")
 
 # --- APSCHEDULER SETUP ---

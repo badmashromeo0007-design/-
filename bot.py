@@ -7,7 +7,7 @@ from telebot import types
 
 TOKEN = "8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU"
 ADMIN_ID = 6817248389  # Aapki Admin ID
-CHANNEL_ID = -1004382767346  # Aapka Main Channel ID
+CHANNEL_ID = -1004382767346  # Aapka Main Channel ID (Yahan bot Admin hona chahiye)
 
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
@@ -50,15 +50,11 @@ def load_settings():
       "pre_start": 3527,
       "pre_end": 3535,
       "pre_price": 70,
-      "access_link": "https://t.me/+AapkaPrivateChannelLink",
   }
   if os.path.exists(SETTINGS_FILE):
     try:
       with open(SETTINGS_FILE, "r") as f:
-        data = json.load(f)
-        if "access_link" not in data:
-          data["access_link"] = "https://t.me/+AapkaPrivateChannelLink"
-        return data
+        return json.load(f)
     except:
       return default_data
   return default_data
@@ -71,7 +67,7 @@ def save_settings(data):
 
 @app.route("/")
 def home():
-  return "Bot is running 24/7 with Online QR & Dynamic Link Support!"
+  return "Bot is running 24/7 with Unique Invite Link Support!"
 
 
 @app.route(f"/{TOKEN}", methods=["POST"])
@@ -103,7 +99,7 @@ def send_menu(message):
       f"  ◆  ⚡  Instant Delivery  ·  Access immediately\n\n"
       f"·  ·  ·  ·  ·  ·  ·  ·  ·  ·\n\n"
       f"  🔐  QR Payment  ·  100% Secure\n"
-      f"  ✅  Verified Store  ·  Instant Auto-Delivery\n\n"
+      f"  ✅  Verified Store  ·  Auto-Unique Link\n\n"
       f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   )
 
@@ -179,35 +175,6 @@ def set_price(message):
     )
 
 
-@bot.message_handler(commands=["setlink"])
-def set_access_link(message):
-  if message.from_user.id != ADMIN_ID:
-    bot.reply_to(message, "Aap admin nahi hain!")
-    return
-
-  try:
-    new_link = message.text.replace("/setlink", "").strip()
-    if not new_link:
-      bot.reply_to(
-          message,
-          "⚠️ Sahi tareeqa:\n`/setlink https://t.me/+YourNewLine`",
-          parse_mode="Markdown",
-      )
-      return
-
-    settings = load_settings()
-    settings["access_link"] = new_link
-    save_settings(settings)
-
-    bot.reply_to(
-        message,
-        f"✅ Access Link Successfully Updated!\nNaya Link: `{new_link}`",
-        parse_mode="Markdown",
-    )
-  except Exception as e:
-    bot.reply_to(message, f"❌ Error: {e}")
-
-
 @bot.message_handler(commands=["post"])
 def post_to_channel(message):
   if message.from_user.id != ADMIN_ID:
@@ -228,9 +195,22 @@ def post_to_channel(message):
     text_to_send = message.text.replace("/post", "").strip()
     if text_to_send:
       try:
-        bot.send_message(CHANNEL_ID, text_to_send, parse_mode="Markdown")
+        markup = types.InlineKeyboardMarkup()
+        btn_dm = types.InlineKeyboardButton(
+            "📥 Click Here To Buy / DM", url="https://t.me/Romeo_pay_bot"
+        )
+        markup.add(btn_dm)
+
+        bot.send_message(
+            CHANNEL_ID,
+            text_to_send,
+            reply_markup=markup,
+            parse_mode="Markdown",
+        )
         bot.reply_to(
-            message, "✅ Message successfully channel par bhej diya gaya hai!"
+            message,
+            "✅ Message aur clickable button successfully channel par bhej diya"
+            " gaya hai!",
         )
       except Exception as e:
         bot.reply_to(message, f"❌ Error: {e}")
@@ -321,7 +301,7 @@ def handle_screenshot(message):
 
   markup = types.InlineKeyboardMarkup()
   btn_approve = types.InlineKeyboardButton(
-      "✅ Approve & Send Access", callback_data=f"approve_{user_id}"
+      "✅ Approve & Send Unique Link", callback_data=f"approve_{user_id}"
   )
   btn_reject = types.InlineKeyboardButton(
       "❌ Reject", callback_data=f"reject_{user_id}"
@@ -362,28 +342,36 @@ def handle_approval(call):
   target_user_id = int(user_id_str)
 
   if action == "approve":
-    settings = load_settings()
-    current_link = settings.get(
-        "access_link", "https://t.me/+AapkaPrivateChannelLink"
-    )
-
-    user_msg = (
-        f"🎉 **Payment / Pre-Booking Approved!**\n\n"
-        f"Aapka payment verify ho gaya hai! Yahan se aap episodes access kar"
-        f" sakte hain:\n🔗 **{current_link}**"
-    )
     try:
+      # Har user ke liye ek naya alag (unique) invite link generate karna
+      invite_link = bot.create_chat_invite_link(
+          chat_id=CHANNEL_ID,
+          member_limit=1,  # Yeh link sirf ek hi user ke liye chalega
+      )
+      unique_link = invite_link.invite_link
+
+      user_msg = (
+          f"🎉 **Payment / Pre-Booking Approved!**\n\n"
+          f"Aapka payment verify ho gaya hai! Yahan aapka personal invite link"
+          f" hai (Yeh sirf aapke liye hai):\n🔗 **{unique_link}**"
+      )
+
       bot.send_message(target_user_id, user_msg, parse_mode="Markdown")
-      bot.answer_callback_query(call.id, "Approved & notified user!")
+      bot.answer_callback_query(
+          call.id, "Approved & Unique Link Sent to User!"
+      )
       bot.edit_message_caption(
           chat_id=call.message.chat.id,
           message_id=call.message.message_id,
-          caption=call.message.caption + "\n\n**[ STATUS: APPROVED ✅ ]**",
+          caption=call.message.caption
+          + f"\n\n**[ STATUS: APPROVED ✅ ]**\nLink: `{unique_link}`",
           parse_mode="Markdown",
           reply_markup=None,
       )
     except Exception as e:
-      bot.answer_callback_query(call.id, f"Error: {e}", show_alert=True)
+      bot.answer_callback_query(
+          call.id, f"Error generating link: {e}", show_alert=True
+      )
 
   elif action == "reject":
     try:

@@ -5,7 +5,7 @@ from flask import Flask
 from apscheduler.schedulers.background import BackgroundScheduler
 
 # --- CONFIGURATION ---
-TOKEN = "8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU"  # Sahi token colon ke sath
+TOKEN = "8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU"
 ADMIN_ID = 6817248389  # Aapki Admin ID
 
 bot = telebot.TeleBot(TOKEN)
@@ -36,27 +36,31 @@ def handle_buy(call):
         "2. Payment karne ke baad screenshot yahin bot mein bhej dein."
     )
 
-# --- SCREENSHOT HANDLER ---
+# --- FIXED SCREENSHOT HANDLER ---
 @bot.message_handler(content_types=['photo'])
 def handle_screenshot(message):
     user = message.from_user
+    
+    # User ko turant confirmation bhejiye
+    bot.reply_to(message, "✅ Aapka screenshot mil gaya hai! Verification ke liye admin ke paas bhej diya gaya hai.")
+    
     caption = (
-        f"📥 **NEW PAYMENT / PRE-BOOK SCREENSHOT**\n\n"
+        f"📥 **NEW PAYMENT SCREENSHOT**\n\n"
         f"• Name: {user.first_name}\n"
         f"• User ID: `{user.id}`\n"
         f"• Username: @{user.username if user.username else 'N/A'}"
     )
     
     markup = types.InlineKeyboardMarkup()
-    approve_btn = types.InlineKeyboardButton("✅ Approve & Send Uniq", callback_data=f"approve_{user.id}")
+    approve_btn = types.InlineKeyboardButton("✅ Approve", callback_data=f"approve_{user.id}")
     reject_btn = types.InlineKeyboardButton("❌ Reject", callback_data=f"reject_{user.id}")
     markup.add(approve_btn, reject_btn)
     
     try:
-        bot.send_photo(ADMIN_ID, message.photo[-1].file_id, caption=caption, reply_markup=markup, parse_mode="Markdown")
-        bot.reply_to(message, "✅ Aapka screenshot mil gaya hai! Admin verification ke baad aapko update mil jayega.")
+        photo_id = message.photo[-1].file_id
+        bot.send_photo(ADMIN_ID, photo_id, caption=caption, reply_markup=markup, parse_mode="Markdown")
     except Exception as e:
-        bot.reply_to(message, f"❌ Error: Admin ko screenshot bhejne mein samasya aayi.")
+        bot.send_message(ADMIN_ID, f"⚠️ Error forwarding photo to admin: {e}")
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('approve_') or call.data.startswith('reject_'))
 def handle_admin_action(call):

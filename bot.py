@@ -15,13 +15,15 @@ app = Flask(__name__)
 
 # --- DYNAMIC SETTINGS FOR MULTIPLE PACKS ---
 bot_settings = {
-    "price1": "70",
+    "price1": "120",
     "episodes1": "3538 - 3543",
     "link1": "https://t.me/+ebSSIzOxKfRmNWU9",
     
     "price2": "150",
     "episodes2": "3544 - 3550",
-    "link2": "https://t.me/+AnotherUniqueLinkHere"
+    "link2": "https://t.me/+AnotherUniqueLinkHere",
+    
+    "upi_id": "badmashromeo0007@okaxis"
 }
 
 @app.route('/')
@@ -29,7 +31,7 @@ def home():
     return "Bot is running live 24/7!"
 
 # --- ADMIN COMMANDS FOR PACK 1 ---
-@bot.message_handler(commands=['setprice1'])
+@bot.message_handler(commands=['setprice', 'setprice1'])
 def set_price1(message):
     if message.from_user.id != ADMIN_ID:
         return
@@ -38,9 +40,9 @@ def set_price1(message):
         bot_settings["price1"] = parts[1]
         bot.reply_to(message, f"✅ Pack 1 Price Updated: ₹{bot_settings['price1']}")
     else:
-        bot.reply_to(message, "⚠️ Format: /setprice1 70")
+        bot.reply_to(message, "⚠️ Format: /setprice 120")
 
-@bot.message_handler(commands=['setep1'])
+@bot.message_handler(commands=['setep', 'setep1'])
 def set_ep1(message):
     if message.from_user.id != ADMIN_ID:
         return
@@ -49,9 +51,9 @@ def set_ep1(message):
         bot_settings["episodes1"] = parts[1]
         bot.reply_to(message, f"✅ Pack 1 Episodes Updated: {bot_settings['episodes1']}")
     else:
-        bot.reply_to(message, "⚠️ Format: /setep1 3538 - 3543")
+        bot.reply_to(message, "⚠️ Format: /setep 3538 - 3543")
 
-@bot.message_handler(commands=['setlink1'])
+@bot.message_handler(commands=['setlink', 'setlink1'])
 def set_link1(message):
     if message.from_user.id != ADMIN_ID:
         return
@@ -60,7 +62,7 @@ def set_link1(message):
         bot_settings["link1"] = parts[1]
         bot.reply_to(message, f"✅ Pack 1 Link Updated: {bot_settings['link1']}")
     else:
-        bot.reply_to(message, "⚠️ Format: /setlink1 https://t.me/...")
+        bot.reply_to(message, "⚠️ Format: /setlink https://t.me/...")
 
 
 # --- ADMIN COMMANDS FOR PACK 2 ---
@@ -132,7 +134,7 @@ def post_pack2(message):
     bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode="Markdown")
 
 
-# --- START COMMAND (Shows both packs directly) ---
+# --- START COMMAND ---
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     markup = types.InlineKeyboardMarkup()
@@ -147,30 +149,39 @@ def send_welcome(message):
     bot.reply_to(message, welcome_text, reply_markup=markup, parse_mode="Markdown")
 
 
-# --- CALLBACKS FOR BUY BUTTONS ---
+# --- CALLBACKS FOR BUY BUTTONS (Generates Dynamic UPI QR Code) ---
 @bot.callback_query_handler(func=lambda call: call.data in ["buy_pack1", "buy_pack2"])
 def handle_buy(call):
     bot.answer_callback_query(call.id)
+    
     if call.data == "buy_pack1":
-        bot.send_message(
-            call.message.chat.id, 
-            f"⚡ **PACK 1 PAYMENT QR CODE** ⚡\n\n"
-            f"• UPI ID: badmashromeo0007@okaxis\n"
-            f"• Amount: ₹{bot_settings['price1']}\n"
-            f"• Episodes: {bot_settings['episodes1']}\n\n"
-            "1. Is QR code ko scan karke payment karein.\n"
-            "2. Screenshot yahin bot mein bhej dein."
-        )
+        price = bot_settings["price1"]
+        episodes = bot_settings["episodes1"]
+        pack_name = "PACK 1"
     else:
-        bot.send_message(
-            call.message.chat.id, 
-            f"⚡ **PACK 2 PAYMENT QR CODE** ⚡\n\n"
-            f"• UPI ID: badmashromeo0007@okaxis\n"
-            f"• Amount: ₹{bot_settings['price2']}\n"
-            f"• Episodes: {bot_settings['episodes2']}\n\n"
-            "1. Is QR code ko scan karke payment karein.\n"
-            "2. Screenshot yahin bot mein bhej dein."
-        )
+        price = bot_settings["price2"]
+        episodes = bot_settings["episodes2"]
+        pack_name = "PACK 2"
+    
+    # UPI Intent string jo QR code mein convert hogi
+    upi_string = f"upi://pay?pa={bot_settings['upi_id']}&pn=Romeo&am={price}&cu=INR"
+    
+    # Public QR Code API URL
+    qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={upi_string}"
+    
+    caption = (
+        f"⚡ **{pack_name} PAYMENT QR CODE** ⚡\n\n"
+        f"• UPI ID: `{bot_settings['upi_id']}`\n"
+        f"• Amount: ₹{price}\n"
+        f"• Episodes: {episodes}\n\n"
+        "1. Is QR code ko kisi bhi UPI app (GPay/PhonePe/Paytm) se scan karein.\n"
+        "2. Payment karne ke baad screenshot yahin bot mein bhej dein."
+    )
+    
+    try:
+        bot.send_photo(call.message.chat.id, qr_url, caption=caption, parse_mode="Markdown")
+    except Exception as e:
+        bot.send_message(call.message.chat.id, f"{caption}\n\n⚠️ QR Code generate karne mein error aayi: {e}")
 
 
 # --- SCREENSHOT HANDLER ---
@@ -200,7 +211,7 @@ def handle_screenshot(message):
         bot.send_message(ADMIN_ID, f"⚠️ Error forwarding photo: {e}")
 
 
-# --- ADMIN APPROVAL HANDLER FOR BOTH PACKS ---
+# --- ADMIN APPROVAL HANDLER ---
 @bot.callback_query_handler(func=lambda call: call.data.startswith('approve1_') or call.data.startswith('approve2_') or call.data.startswith('reject_'))
 def handle_admin_action(call):
     if call.from_user.id != ADMIN_ID:

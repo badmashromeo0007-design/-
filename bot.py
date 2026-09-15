@@ -9,7 +9,7 @@ TOKEN = "8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU"
 ADMIN_ID = 6817248389  # Aapki Admin ID
 
 bot = telebot.TeleBot(TOKEN)
-bot.remove_webhook()
+bot.remove_webhook()  # Conflict error hatane ke liye purane webhook/connections clear karta hai
 
 app = Flask(__name__)
 
@@ -106,14 +106,14 @@ def post_pack1(message):
     if message.from_user.id != ADMIN_ID:
         return
     markup = types.InlineKeyboardMarkup()
-    btn = types.InlineKeyboardButton("✨ Pay Now (Pack 1)", callback_data="buy_pack1")
+    btn = types.InlineKeyboardButton(f"✨ Buy Pack 1 (₹{bot_settings['price1']})", callback_data="buy_pack1")
     markup.add(btn)
     
     text = (
-        f"🎧 **EPISODE PACK 1**\n\n"
-        f"• 📻 Episodes: {bot_settings['episodes1']}\n"
-        f"• 💰 Price: ₹{bot_settings['price1']}\n\n"
-        "Niche diye gaye button par click karke payment karein."
+        f"🔥 **EPISODES – {bot_settings['episodes1']}** 🔥\n\n"
+        f"✔️ **PRICE – ₹{bot_settings['price1']}** 💰\n\n"
+        f"⚡ **INSTANT GET – ALL EPISODES** 💥\n\n"
+        "👇 Niche diye gaye button par click karke payment karein."
     )
     bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode="Markdown")
 
@@ -122,14 +122,14 @@ def post_pack2(message):
     if message.from_user.id != ADMIN_ID:
         return
     markup = types.InlineKeyboardMarkup()
-    btn = types.InlineKeyboardButton("✨ Pay Now (Pack 2)", callback_data="buy_pack2")
+    btn = types.InlineKeyboardButton(f"✨ Buy Pack 2 (₹{bot_settings['price2']})", callback_data="buy_pack2")
     markup.add(btn)
     
     text = (
-        f"🎧 **EPISODE PACK 2**\n\n"
-        f"• 📻 Episodes: {bot_settings['episodes2']}\n"
-        f"• 💰 Price: ₹{bot_settings['price2']}\n\n"
-        "Niche diye gaye button par click karke payment karein."
+        f"🔥 **EPISODES – {bot_settings['episodes2']}** 🔥\n\n"
+        f"✔️ **PRICE – ₹{bot_settings['price2']}** 💰\n\n"
+        f"⚡ **INSTANT GET – ALL EPISODES** 💥\n\n"
+        "👇 Niche diye gaye button par click karke payment karein."
     )
     bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode="Markdown")
 
@@ -163,10 +163,7 @@ def handle_buy(call):
         episodes = bot_settings["episodes2"]
         pack_name = "PACK 2"
     
-    # UPI Intent string jo QR code mein convert hogi
     upi_string = f"upi://pay?pa={bot_settings['upi_id']}&pn=Romeo&am={price}&cu=INR"
-    
-    # Public QR Code API URL
     qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={upi_string}"
     
     caption = (

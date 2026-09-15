@@ -1,7 +1,10 @@
+import io
 import json
 import os
 import sqlite3
 from apscheduler.schedulers.background import BackgroundScheduler
+from PIL import Image
+import pytesseract
 import telebot
 from telebot import types
 
@@ -87,7 +90,7 @@ def save_last_post_id(msg_id):
 
 @app.route("/")
 def home():
-  return "Bot is running 24/7 smoothly!"
+  return "Bot is running 24/7 with AI Auto-Verification & Unique Links!"
 
 
 @app.route(f"/{TOKEN}", methods=["POST"])
@@ -116,7 +119,7 @@ def send_menu(message):
       f"  ◆  📦  {total_eps} Episodes  ·  Full Audio Access\n\n"
       f"·  ·  ·  ·  ·  ·  ·  ·  ·  ·\n\n"
       f"  ◆  💰  Price      ›  {price} ₹\n"
-      f"  ◆  ⚡  Instant Delivery  ·  Access immediately\n\n"
+      f"  ◆  ⚡  Instant Delivery  ·  AI Auto-Verified\n\n"
       f"·  ·  ·  ·  ·  ·  ·  ·  ·  ·\n\n"
       f"  🔐  QR Payment  ·  100% Secure\n"
       f"  ✅  Verified Store  ·  Auto-Unique Link\n\n"
@@ -267,9 +270,7 @@ def post_to_channel(message):
         )
         save_last_post_id(new_msg.message_id)
 
-        bot.reply_to(
-            message, "✅ Message aur button channel par bhej diya gaya hai!"
-        )
+        bot.reply_to(message, "✅ Message aur button channel par bhej diya gaya hai!")
       except Exception as e:
         bot.reply_to(message, f"❌ Error: {e}")
     else:
@@ -350,43 +351,121 @@ def prebook_qr_handler(call):
     )
 
 
+# 🤖 AI / OCR Auto-Verification Feature for Screenshots
 @bot.message_handler(content_types=["photo"])
 def handle_screenshot(message):
   user_id = message.from_user.id
   username = message.from_user.username or "No Username"
   name = message.from_user.first_name
 
-  markup = types.InlineKeyboardMarkup()
-  btn_approve = types.InlineKeyboardButton(
-      "✅ Approve & Send Unique Link", callback_data=f"approve_{user_id}"
-  )
-  btn_reject = types.InlineKeyboardButton(
-      "❌ Reject", callback_data=f"reject_{user_id}"
-  )
-  markup.add(btn_approve, btn_reject)
-
-  caption = (
-      f"📥 **NEW PAYMENT SCREENSHOT**\n\n"
-      f"• Name: {name}\n"
-      f"• User ID: `{user_id}`\n"
-      f"• Username: @{username}"
-  )
+  bot.reply_to(message, "🤖 AI payment scan kar raha hai, kripya intezaar karein...")
 
   try:
+    # Download photo file from Telegram
+    file_info = bot.get_file(message.photo[-1].file_id)
+    downloaded_file = bot.download_file(file_info.file_path)
+
+    # Use PIL and Tesseract to extract text from screenshot image
+    image = Image.open(io.BytesIO(downloaded_file))
+    extracted_text = pytesseract.image_to_string(image)
+
+    settings = load_settings()
+    required_price = str(settings.get("price", 180))
+
+    # Check if required amount text is found in the screenshot
+    if required_price in extracted_text or f"₹{required_price}" in extracted_text:
+      # Auto-approve: Generate unique invite link automatically!
+      invite_link = bot.create_chat_invite_link(
+          chat_id=CHANNEL_ID, member_limit=1
+      )
+      unique_link = invite_link.invite_link
+
+      user_msg = (
+          f"🎉 **Payment AI-Verified & Approved Successfully!**\n\n"
+          f"Aapka ₹{required_price} ka payment match ho gaya hai! Yahan aapka"
+          f" personal invite link hai (Yeh sirf aapke liye hai):\n🔗"
+          f" **{unique_link}**"
+      )
+      bot.send_message(user_id, user_msg, parse_mode="Markdown")
+
+      # Notify Admin about auto-approval
+      admin_msg = (
+          f"🤖 **AI AUTO-APPROVED PAYMENT**\n\n"
+          f"• Name: {name}\n"
+          f"• User ID: `{user_id}`\n"
+          f"• Username: @{username}\n"
+          f"• Status: Approved by AI (Amount ₹{required_price} matched)\n"
+          f"• Link: {unique_link}"
+      )
+      bot.send_photo(
+          ADMIN_ID,
+          message.photo[-1].file_id,
+          caption=admin_msg,
+          parse_mode="Markdown",
+      )
+
+    else:
+      # If amount does not match or unclear, send to admin with manual buttons
+      markup = types.InlineKeyboardMarkup()
+      btn_approve = types.InlineKeyboardButton(
+          "✅ Force Approve & Send Link", callback_data=f"approve_{user_id}"
+      )
+      btn_reject = types.InlineKeyboardButton(
+          "❌ Reject", callback_data=f"reject_{user_id}"
+      )
+      markup.add(btn_approve, btn_reject)
+
+      admin_msg = (
+          f"⚠️ **AI WARNING: AMOUNT MISMATCH OR BLURRED**\n\n"
+          f"• Name: {name}\n"
+          f"• User ID: `{user_id}`\n"
+          f"• Username: @{username}\n"
+          f"• Note: Required ₹{required_price} text clear nahi mila."
+      )
+      bot.send_photo(
+          ADMIN_ID,
+          message.photo[-1].file_id,
+          caption=admin_msg,
+          reply_markup=markup,
+          parse_mode="Markdown",
+      )
+      bot.send_message(
+          user_id,
+          "⚠️ Aapka screenshot AI verify nahi kar paya (Amount match nahi hua"
+          " ya clear nahi hai). Admin ko bhej diya gaya hai, woh check karke"
+          " approve karenge.",
+      )
+
+  except Exception as e:
+    # Fallback to manual admin review if OCR fails
+    markup = types.InlineKeyboardMarkup()
+    btn_approve = types.InlineKeyboardButton(
+        "✅ Approve & Send Link", callback_data=f"approve_{user_id}"
+    )
+    btn_reject = types.InlineKeyboardButton(
+        "❌ Reject", callback_data=f"reject_{user_id}"
+    )
+    markup.add(btn_approve, btn_reject)
+
+    admin_msg = (
+        f"📥 **NEW PAYMENT (AI Error Fallback)**\n\n"
+        f"• Name: {name}\n"
+        f"• User ID: `{user_id}`\n"
+        f"• Username: @{username}\n"
+        f"• Error: {e}"
+    )
     bot.send_photo(
         ADMIN_ID,
         message.photo[-1].file_id,
-        caption=caption,
+        caption=admin_msg,
         reply_markup=markup,
         parse_mode="Markdown",
     )
-    bot.reply_to(
-        message,
-        "✅ Aapka screenshot mil gaya hai! Admin verification ke baad aapko"
-        " unique link mil jayega.",
+    bot.send_message(
+        user_id,
+        "✅ Aapka screenshot mil gaya hai! Admin verification ke baad aapko update"
+        " mil jayega.",
     )
-  except Exception as e:
-    bot.reply_to(message, f"❌ Error sending to admin: {e}")
 
 
 @bot.callback_query_handler(
@@ -409,9 +488,9 @@ def handle_approval(call):
       unique_link = invite_link.invite_link
 
       user_msg = (
-          f"🎉 **Payment Approved!**\n\n"
+          f"🎉 **Payment / Pre-Booking Approved!**\n\n"
           f"Aapka payment verify ho gaya hai! Yahan aapka personal invite link"
-          f" hai (Yeh sirf aapke liye hai):\n🔗 **{unique_link}**"
+          f" hai:\n🔗 **{unique_link}**"
       )
       bot.send_message(target_user_id, user_msg, parse_mode="Markdown")
       bot.answer_callback_query(

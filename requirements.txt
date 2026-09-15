@@ -1,3 +1,5 @@
-pyTelegramBotAPI
+pytelegrambotapi
 Flask
-google-generativeai
+APScheduler
+Pillow
+

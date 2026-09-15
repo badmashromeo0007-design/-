@@ -9,6 +9,10 @@ TOKEN = "8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU"
 ADMIN_ID = 6817248389  # Aapki Admin ID
 
 bot = telebot.TeleBot(TOKEN)
+
+# --- IMPORTANT: Purana webhook hatane ke liye ---
+bot.remove_webhook()
+
 app = Flask(__name__)
 
 # --- FLASK ROUTES ---
@@ -36,12 +40,10 @@ def handle_buy(call):
         "2. Payment karne ke baad screenshot yahin bot mein bhej dein."
     )
 
-# --- FIXED SCREENSHOT HANDLER ---
+# --- SCREENSHOT HANDLER ---
 @bot.message_handler(content_types=['photo'])
 def handle_screenshot(message):
     user = message.from_user
-    
-    # User ko turant confirmation bhejiye
     bot.reply_to(message, "✅ Aapka screenshot mil gaya hai! Verification ke liye admin ke paas bhej diya gaya hai.")
     
     caption = (

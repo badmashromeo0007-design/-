@@ -116,10 +116,10 @@ def send_welcome(message):
         return
 
     welcome_text = (
-        "🔥 **SUPER YODDHA — EPISODE SALE & PRE-BOOKING** 🔥\n\n"
+        "🔥 SUPER YODDHA — EPISODE SALE & PRE-BOOKING 🔥\n\n"
         "Niche diye gaye packs mein se select karein:"
     )
-    bot.reply_to(message, welcome_text, reply_markup=markup, parse_mode="Markdown")
+    bot.reply_to(message, welcome_text, reply_markup=markup)
 
 # --- HELPER FUNCTION: Channel par post bhejane ke liye ---
 def send_post_to_channel(pack_id):
@@ -131,15 +131,15 @@ def send_post_to_channel(pack_id):
     btn = types.InlineKeyboardButton(btn_text, callback_data=f"buy_{pack_id}")
     markup.add(btn)
     
-    sub_text = "⚡️ **Episodes Release hote hi mil jayenge!**" if data["is_prebook"] else "⚡️ **Turant Saare Episodes Mil Jayenge!**"
+    sub_text = "⚡️ Episodes Release hote hi mil jayenge!" if data["is_prebook"] else "⚡️ Turant Saare Episodes Mil Jayenge!"
     
     text = (
         f"⚡ 𝐒𝐔𝐏𝐄𝐑 𝐘𝐎𝐃𝐃𝐇𝐀 ⚡\n\n"
         f"EPISODE {data['episodes']}\n\n"
-        f"💰 **Price:** ₹{data['price']}\n\n"
+        f"💰 Price: ₹{data['price']}\n\n"
         f"{sub_text}"
     )
-    bot.send_message(CHANNEL_ID, text, reply_markup=markup, parse_mode="Markdown")
+    bot.send_message(CHANNEL_ID, text, reply_markup=markup)
 
 # --- CHANNEL POST COMMAND (Instant) ---
 @bot.message_handler(commands=['post'])
@@ -186,7 +186,6 @@ def handle_buy(call):
     if pack_id not in packs_db:
         return
         
-    # Record which pack this user is trying to buy
     user_pending_pack[call.from_user.id] = pack_id
     
     data = packs_db[pack_id]
@@ -201,15 +200,15 @@ def handle_buy(call):
     note_text = "1. Payment ke baad screenshot bhejein.\n2. Release hote hi link bhej diya jayega." if is_prebook else "1. Payment ke baad screenshot bhejein.\n2. Turant link mil jayega."
     
     caption = (
-        f"⚡ **PACK {pack_id} — {mode_label}** ⚡\n\n"
-        f"• UPI ID: `{UPI_ID}`\n"
+        f"⚡ PACK {pack_id} — {mode_label} ⚡\n\n"
+        f"• UPI ID: {UPI_ID}\n"
         f"• Amount: ₹{price}\n"
         f"• Episodes: {episodes}\n\n"
         f"{note_text}"
     )
     
     try:
-        bot.send_photo(call.message.chat.id, qr_url, caption=caption, parse_mode="Markdown")
+        bot.send_photo(call.message.chat.id, qr_url, caption=caption)
     except Exception as e:
         bot.send_message(call.message.chat.id, f"{caption}\n\n⚠️ QR Code error: {e}")
 
@@ -219,29 +218,30 @@ def handle_screenshot(message):
     user = message.from_user
     bot.reply_to(message, "✅ Aapka screenshot mil gaya hai! Verification ke liye admin ke paas bhej diya gaya hai.")
     
-    # Get the pack ID this user selected, default to "2" if unknown
     pack_id = user_pending_pack.get(user.id, "2")
     data = packs_db.get(pack_id, {})
     episodes = data.get("episodes", "N/A")
     price = data.get("price", "N/A")
     
+    username_text = f"@{user.username}" if user.username else "N/A"
+    
     caption = (
-        "🚨 **NEW PAYMENT SCREENSHOT RECEIVED!** 🚨\n\n"
+        "🚨 NEW PAYMENT SCREENSHOT RECEIVED! 🚨\n\n"
         f"• Name: {user.first_name}\n"
-        f"• User ID: `{user.id}`\n"
-        f"• Username: @{user.username if user.username else 'N/A'}\n"
-        f"• Selected Pack: **Pack {pack_id}** (Ep: {episodes} - ₹{price})\n\n"
-        "👇 *Approve karne ke liye click karein:*"
+        f"• User ID: {user.id}\n"
+        f"• Username: {username_text}\n"
+        f"• Selected Pack: Pack {pack_id} (Ep: {episodes} - ₹{price})\n\n"
+        "👇 Approve karne ke liye click karein:"
     )
     
     markup = types.InlineKeyboardMarkup()
-    # Sirf usi specific pack ka approve button aayega
     markup.add(types.InlineKeyboardButton(f"⚡️ Approve Pack {pack_id}", callback_data=f"approve_{pack_id}_{user.id}"))
     markup.add(types.InlineKeyboardButton("❌ Reject Payment", callback_data=f"reject_{user.id}"))
     
     try:
         photo_id = message.photo[-1].file_id
-        bot.send_photo(ADMIN_ID, photo_id, caption=caption, reply_markup=markup, parse_mode="Markdown")
+        # Parse mode hata diya gaya hai taaki koi formatting error na aaye
+        bot.send_photo(ADMIN_ID, photo_id, caption=caption, reply_markup=markup)
     except Exception as e:
         bot.send_message(ADMIN_ID, f"⚠️ Error forwarding photo: {e}")
 

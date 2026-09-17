@@ -91,7 +91,7 @@ def toggle_pack(message):
     except Exception as e:
         bot.reply_to(message, "⚠️ Format: `/toggle 2`", parse_mode="Markdown")
 
-# --- START COMMAND (Button par direct episodes dikhege) ---
+# --- START COMMAND ---
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     markup = types.InlineKeyboardMarkup()
@@ -101,9 +101,9 @@ def send_welcome(message):
         if data["active"]:
             active_packs_found = True
             if data["is_prebook"]:
-                btn_text = f"⏳ EP- {data['episodes']} - ₹{data['price']}"
+                btn_text = f"⏳ Pre-Book | EP- {data['episodes']} - ₹{data['price']}"
             else:
-                btn_text = f"🎧 EP- {data['episodes']} - ₹{data['price']}"
+                btn_text = f"⚡ Instant | EP- {data['episodes']} - ₹{data['price']}"
             
             btn = types.InlineKeyboardButton(btn_text, callback_data=f"buy_{pack_id}")
             markup.add(btn)

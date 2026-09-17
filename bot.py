@@ -42,7 +42,6 @@ UPI_ID = "badmashromeo0007@okaxis"
 user_pending_pack = {}
 
 # List to store user IDs who successfully purchased/pre-booked specific packs
-# Format: { "pack_id": [user_id_1, user_id_2, ...] }
 purchased_users = {
     "1": [],
     "2": []
@@ -167,8 +166,8 @@ def send_qr_to_user(chat_id, pack_id):
     except Exception as e:
         bot.send_message(chat_id, f"{caption}\n\n⚠️ QR Code error: {e}")
 
-# --- HELPER FUNCTION: Channel Post & Notify Buyers ---
-def send_post_to_channel(pack_id):
+# --- HELPER FUNCTION: Channel Post & Notify Buyers with Custom Link ---
+def send_post_to_channel_with_link(pack_id, link):
     if pack_id not in packs_db:
         return
     data = packs_db[pack_id]
@@ -190,9 +189,8 @@ def send_post_to_channel(pack_id):
     # 1. Channel par post bhejein
     bot.send_message(CHANNEL_ID, text, reply_markup=markup)
     
-    # 2. Jin logo ne yeh pack kharida/pre-book kiya hai, unhe link ya update bhejein
+    # 2. Jin logo ne yeh pack kharida/pre-book kiya hai, unhe naya link bhejein
     if pack_id in purchased_users:
-        link = data.get("link", "https://t.me/")
         for user_id in purchased_users[pack_id]:
             try:
                 if data["is_prebook"]:
@@ -202,20 +200,25 @@ def send_post_to_channel(pack_id):
             except Exception as ex:
                 print(f"Could not message user {user_id}: {ex}")
 
-# --- CHANNEL POST COMMAND ---
+# --- CHANNEL POST COMMAND WITH CUSTOM LINK ---
 @bot.message_handler(commands=['post'])
 def post_pack(message):
     if message.from_user.id != ADMIN_ID:
         return
     try:
-        pack_id = message.text.split(maxsplit=1)[1].strip()
+        parts = message.text.split(maxsplit=2)
+        pack_id = parts[1].strip()
+        custom_link = parts[2].strip()
+        
         if pack_id not in packs_db:
             bot.reply_to(message, "⚠️ Invalid Pack ID!")
             return
-        send_post_to_channel(pack_id)
-        bot.reply_to(message, f"✅ Post channel par bhej di gayi hai aur sabhi buyers ko notification/link notify kar diya gaya hai!")
+            
+        packs_db[pack_id]["link"] = custom_link
+        send_post_to_channel_with_link(pack_id, custom_link)
+        bot.reply_to(message, f"✅ Post channel par bhej di gayi hai aur sabhi buyers ko naya link notify kar diya gaya hai!")
     except Exception as e:
-        bot.reply_to(message, f"⚠️ Error: Format use karein `/post 1`", parse_mode="Markdown")
+        bot.reply_to(message, f"⚠️ Galat format! Use karein:\n`/post 2 https://t.me/+your_link`", parse_mode="Markdown")
 
 # --- SCHEDULE COMMAND ---
 @bot.message_handler(commands=['schedule'])
@@ -223,20 +226,22 @@ def schedule_post(message):
     if message.from_user.id != ADMIN_ID:
         return
     try:
-        parts = message.text.split(maxsplit=1)[1].split()
-        pack_id = parts[0].strip()
-        minutes = int(parts[1].strip())
+        parts = message.text.split(maxsplit=3)
+        pack_id = parts[1].strip()
+        minutes = int(parts[2].strip())
+        custom_link = parts[3].strip()
         
         if pack_id not in packs_db:
             bot.reply_to(message, "⚠️ Invalid Pack ID!")
             return
             
+        packs_db[pack_id]["link"] = custom_link
         run_time = datetime.now() + timedelta(minutes=minutes)
-        scheduler.add_job(send_post_to_channel, 'date', run_date=run_time, args=[pack_id])
+        scheduler.add_job(send_post_to_channel_with_link, 'date', run_date=run_time, args=[pack_id, custom_link])
         
         bot.reply_to(message, f"⏰ Post scheduled successfully!\nPack {pack_id} aane wale {minutes} minutes baad channel par post ho jayegi aur buyers ko link chala jayega.")
     except Exception as e:
-        bot.reply_to(message, "⚠️ Galat format! Use karein:\n`/schedule [Pack ID] [Minutes]`\nJaise: `/schedule 1 30`", parse_mode="Markdown")
+        bot.reply_to(message, "⚠️ Galat format! Use karein:\n`/schedule [Pack ID] [Minutes] [Link]`\nJaise: `/schedule 2 30 https://t.me/+link`", parse_mode="Markdown")
 
 # --- CALLBACK FOR BUY ---
 @bot.callback_query_handler(func=lambda call: call.data.startswith("buy_"))
@@ -291,7 +296,6 @@ def handle_admin_action(call):
         pack_id = data_parts[1]
         target_user_id = int(data_parts[2])
         
-        # User ko successfully purchased list mein save kar lo taaki baad mein post karne par link mil sake
         if pack_id in packs_db:
             if target_user_id not in purchased_users[pack_id]:
                 purchased_users[pack_id].append(target_user_id)
@@ -332,4 +336,3 @@ if __name__ == '__main__':
     polling_thread.start()
     
     app.run(host='0.0.0.0', port=port)
-        

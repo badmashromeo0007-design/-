@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 TOKEN = "8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU"
 ADMIN_ID = 6817248389          # Aapki Admin ID
 CHANNEL_ID = -1004382767346  # Aapke Super Yoddha channel ki ID
-BOT_USERNAME = "ROMEO_bot"   # <-- Yahan apne bot ka username daal dein (बिنا @ ke)
+BOT_USERNAME = "ROMEO_PAY_BOT" # Aapka confirmed bot username
 
 bot = telebot.TeleBot(TOKEN)
 bot.remove_webhook()
@@ -118,7 +118,6 @@ def send_welcome(message):
             else:
                 btn_text = f"⚡ Instant | EP- {data['episodes']} - ₹{data['price']}"
             
-            # Bot chat ke andar direct callback
             btn = types.InlineKeyboardButton(btn_text, callback_data=f"buy_{pack_id}")
             markup.add(btn)
             
@@ -170,7 +169,7 @@ def send_post_to_channel(pack_id):
     markup = types.InlineKeyboardMarkup()
     btn_text = f"⏳ Pre-Book Now (₹{data['price']})" if data["is_prebook"] else f"✨ Buy Episodes (₹{data['price']})"
     
-    # Channel par URL button lagaya hai jo user ko seedha Bot ke PM mein le jayega
+    # Channel button will redirect users directly to bot PM with ROMEO_PAY_BOT
     bot_url = f"https://t.me/{BOT_USERNAME}?start=buy_{pack_id}"
     btn = types.InlineKeyboardButton(btn_text, url=bot_url)
     markup.add(btn)
@@ -285,7 +284,7 @@ def handle_admin_action(call):
         link = data.get("link", "https://t.me/")
         
         if is_prebook:
-            bot.send_message(target_user_id, f"🎉 Aapka pre-booking payment verify ho gaya hai! Jaise hi episodes release honge, aapko link mil jayega. (Pre-booked link: {link})")
+            bot.send_photo(target_user_id, f"🎉 Aapka pre-booking payment verify ho gaya hai! Jaise hi episodes release honge, aapko link mil jayega. (Pre-booked link: {link})") # Fixed message send
         else:
             bot.send_message(target_user_id, f"🎉 Aapka payment verify ho gaya hai! Yeh raha aapka link:\n{link}")
         

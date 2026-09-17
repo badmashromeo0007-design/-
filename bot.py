@@ -28,7 +28,7 @@ packs_db = {
     },
     "2": {
         "title": "SUPER YODDHA — PRE-BOOKING",
-        "episodes": "3561 To 3566 (Upcoming)",
+        "episodes": "3555 - 3560",
         "total": "6 Episodes",
         "price": "80",
         "link": "https://t.me/+PreBookSecretLinkHere",
@@ -73,7 +73,7 @@ def add_pack(message):
         mode_text = "Pre-Booking Pack" if is_prebook else "Instant Delivery Pack"
         bot.reply_to(message, f"✅ {mode_text} {pack_id} successfully added/updated!\nEpisodes: {episodes}\nPrice: ₹{price}")
     except Exception as e:
-        bot.reply_to(message, "⚠️ Galat format!\nInstant ke liye: `/addpack 2 | 3555-3560 | 80 | link`\nPre-book ke liye: `/addpack 2 | 3555-3560 | 80 | link | pre`", parse_mode="Markdown")
+        bot.reply_to(message, "⚠️ Galat format!\nInstant ke liye: `/addpack 2 | 3555 - 3560 | 80 | link`\nPre-book ke liye: `/addpack 2 | 3555 - 3560 | 80 | link | pre`", parse_mode="Markdown")
 
 # --- ADMIN COMMAND: Pack ko Hide/Unhide karne ke liye ---
 @bot.message_handler(commands=['toggle'])
@@ -91,7 +91,7 @@ def toggle_pack(message):
     except Exception as e:
         bot.reply_to(message, "⚠️ Format: `/toggle 2`", parse_mode="Markdown")
 
-# --- START COMMAND ---
+# --- START COMMAND (Button par direct episodes dikhege) ---
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     markup = types.InlineKeyboardMarkup()
@@ -100,8 +100,12 @@ def send_welcome(message):
     for pack_id, data in packs_db.items():
         if data["active"]:
             active_packs_found = True
-            prefix = "⏳ [PRE-BOOK]" if data["is_prebook"] else "🎧 [INSTANT]"
-            btn = types.InlineKeyboardButton(f"{prefix} Pack {pack_id} (Ep: {data['episodes']} - ₹{data['price']})", callback_data=f"buy_{pack_id}")
+            if data["is_prebook"]:
+                btn_text = f"⏳ EP- {data['episodes']} - ₹{data['price']}"
+            else:
+                btn_text = f"🎧 EP- {data['episodes']} - ₹{data['price']}"
+            
+            btn = types.InlineKeyboardButton(btn_text, callback_data=f"buy_{pack_id}")
             markup.add(btn)
             
     if not active_packs_found:
@@ -127,9 +131,8 @@ def send_post_to_channel(pack_id):
     sub_text = "⚡️ **Episodes Release hote hi mil jayenge!**" if data["is_prebook"] else "⚡️ **Turant Saare Episodes Mil Jayenge!**"
     
     text = (
-        f"🔥 **{data['title']}** 🔥\n\n"
-        f"🎧 **Episode:** {data['episodes']}\n\n"
-        f"📦 **Total:** {data['total']}\n\n"
+        f"⚡ 𝐒𝐔𝐏𝐄𝐑 𝐘𝐎𝐃𝐃𝐇𝐀 ⚡\n\n"
+        f"EPISODE {data['episodes']}\n\n"
         f"💰 **Price:** ₹{data['price']}\n\n"
         f"{sub_text}"
     )
@@ -151,8 +154,6 @@ def post_pack(message):
         bot.reply_to(message, f"⚠️ Error: Format use karein `/post 1`", parse_mode="Markdown")
 
 # --- SCHEDULE / TIMER POST COMMAND ---
-# Format: /schedule [Pack ID] [Minutes baad]
-# Example: /schedule 1 60 (Matlab 60 minute / 1 ghante baad post jayegi)
 @bot.message_handler(commands=['schedule'])
 def schedule_post(message):
     if message.from_user.id != ADMIN_ID:
@@ -171,7 +172,7 @@ def schedule_post(message):
         
         bot.reply_to(message, f"⏰ Post scheduled successfully!\nPack {pack_id} aane wale {minutes} minutes baad channel par post ho jayegi.")
     except Exception as e:
-        bot.reply_to(message, "⚠️ Galat format! Use karein:\n`/schedule [Pack ID] [Minutes]`\nJaise: `/schedule 1 30` (30 minute baad)", parse_mode="Markdown")
+        bot.reply_to(message, "⚠️ Galat format! Use karein:\n`/schedule [Pack ID] [Minutes]`\nJaise: `/schedule 1 30`", parse_mode="Markdown")
 
 # --- CALLBACK FOR BUY BUTTONS ---
 @bot.callback_query_handler(func=lambda call: call.data.startswith("buy_"))

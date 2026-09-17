@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 TOKEN = "8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU"
 ADMIN_ID = 6817248389          # Aapki Admin ID
 CHANNEL_ID = -1004382767346  # Aapke Super Yoddha channel ki ID
+BOT_USERNAME = "ROMEO_bot"   # <-- Yahan apne bot ka username daal dein (बिنا @ ke)
 
 bot = telebot.TeleBot(TOKEN)
 bot.remove_webhook()
@@ -94,11 +95,20 @@ def toggle_pack(message):
     except Exception as e:
         bot.reply_to(message, "⚠️ Format: `/toggle 2`", parse_mode="Markdown")
 
-# --- START COMMAND ---
+# --- START COMMAND (Supports Deep Linking for Channel Purchases) ---
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    markup = types.InlineKeyboardMarkup()
+    text_args = message.text.split()
     
+    # Agar user channel ke button se aaya hai (jaise /start buy_2)
+    if len(text_args) > 1 and text_args[1].startswith("buy_"):
+        pack_id = text_args[1].split("_")[1]
+        if pack_id in packs_db:
+            send_qr_to_user(message.chat.id, pack_id)
+            return
+
+    # Normal /start command ke liye menu
+    markup = types.InlineKeyboardMarkup()
     active_packs_found = False
     for pack_id, data in packs_db.items():
         if data["active"]:
@@ -108,6 +118,7 @@ def send_welcome(message):
             else:
                 btn_text = f"⚡ Instant | EP- {data['episodes']} - ₹{data['price']}"
             
+            # Bot chat ke andar direct callback
             btn = types.InlineKeyboardButton(btn_text, callback_data=f"buy_{pack_id}")
             markup.add(btn)
             
@@ -121,14 +132,47 @@ def send_welcome(message):
     )
     bot.reply_to(message, welcome_text, reply_markup=markup)
 
-# --- HELPER FUNCTION: Channel par post bhejane ke liye ---
+# --- HELPER FUNCTION: QR Code bhejne ke liye ---
+def send_qr_to_user(chat_id, pack_id):
+    if pack_id not in packs_db:
+        return
+        
+    user_pending_pack[chat_id] = pack_id
+    data = packs_db[pack_id]
+    price = data["price"]
+    episodes = data["episodes"]
+    is_prebook = data["is_prebook"]
+    
+    upi_string = f"upi://pay?pa={UPI_ID}&pn=Romeo&am={price}&cu=INR"
+    qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={upi_string}"
+    
+    mode_label = "PRE-BOOKING QR CODE" if is_prebook else "PAYMENT QR CODE"
+    note_text = "1. Payment ke baad screenshot bhejein.\n2. Release hote hi link bhej diya jayega." if is_prebook else "1. Payment ke baad screenshot bhejein.\n2. Turant link mil jayega."
+    
+    caption = (
+        f"⚡ PACK {pack_id} — {mode_label} ⚡\n\n"
+        f"• UPI ID: {UPI_ID}\n"
+        f"• Amount: ₹{price}\n"
+        f"• Episodes: {episodes}\n\n"
+        f"{note_text}"
+    )
+    
+    try:
+        bot.send_photo(chat_id, qr_url, caption=caption)
+    except Exception as e:
+        bot.send_message(chat_id, f"{caption}\n\n⚠️ QR Code error: {e}")
+
+# --- HELPER FUNCTION: Channel par post bhejane ke liye (URL Button ke sath) ---
 def send_post_to_channel(pack_id):
     if pack_id not in packs_db:
         return
     data = packs_db[pack_id]
     markup = types.InlineKeyboardMarkup()
     btn_text = f"⏳ Pre-Book Now (₹{data['price']})" if data["is_prebook"] else f"✨ Buy Episodes (₹{data['price']})"
-    btn = types.InlineKeyboardButton(btn_text, callback_data=f"buy_{pack_id}")
+    
+    # Channel par URL button lagaya hai jo user ko seedha Bot ke PM mein le jayega
+    bot_url = f"https://t.me/{BOT_USERNAME}?start=buy_{pack_id}"
+    btn = types.InlineKeyboardButton(btn_text, url=bot_url)
     markup.add(btn)
     
     sub_text = "⚡️ Episodes Release hote hi mil jayenge!" if data["is_prebook"] else "⚡️ Turant Saare Episodes Mil Jayenge!"
@@ -177,40 +221,12 @@ def schedule_post(message):
     except Exception as e:
         bot.reply_to(message, "⚠️ Galat format! Use karein:\n`/schedule [Pack ID] [Minutes]`\nJaise: `/schedule 1 30`", parse_mode="Markdown")
 
-# --- CALLBACK FOR BUY BUTTONS ---
+# --- CALLBACK FOR BOT MENU BUY BUTTONS ---
 @bot.callback_query_handler(func=lambda call: call.data.startswith("buy_"))
 def handle_buy(call):
     bot.answer_callback_query(call.id)
     pack_id = call.data.split("_")[1]
-    
-    if pack_id not in packs_db:
-        return
-        
-    user_pending_pack[call.from_user.id] = pack_id
-    
-    data = packs_db[pack_id]
-    price = data["price"]
-    episodes = data["episodes"]
-    is_prebook = data["is_prebook"]
-    
-    upi_string = f"upi://pay?pa={UPI_ID}&pn=Romeo&am={price}&cu=INR"
-    qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={upi_string}"
-    
-    mode_label = "PRE-BOOKING QR CODE" if is_prebook else "PAYMENT QR CODE"
-    note_text = "1. Payment ke baad screenshot bhejein.\n2. Release hote hi link bhej diya jayega." if is_prebook else "1. Payment ke baad screenshot bhejein.\n2. Turant link mil jayega."
-    
-    caption = (
-        f"⚡ PACK {pack_id} — {mode_label} ⚡\n\n"
-        f"• UPI ID: {UPI_ID}\n"
-        f"• Amount: ₹{price}\n"
-        f"• Episodes: {episodes}\n\n"
-        f"{note_text}"
-    )
-    
-    try:
-        bot.send_photo(call.message.chat.id, qr_url, caption=caption)
-    except Exception as e:
-        bot.send_message(call.message.chat.id, f"{caption}\n\n⚠️ QR Code error: {e}")
+    send_qr_to_user(call.message.chat.id, pack_id)
 
 # --- SCREENSHOT HANDLER ---
 @bot.message_handler(content_types=['photo'])
@@ -240,7 +256,6 @@ def handle_screenshot(message):
     
     try:
         photo_id = message.photo[-1].file_id
-        # Parse mode hata diya gaya hai taaki koi formatting error na aaye
         bot.send_photo(ADMIN_ID, photo_id, caption=caption, reply_markup=markup)
     except Exception as e:
         bot.send_message(ADMIN_ID, f"⚠️ Error forwarding photo: {e}")
@@ -281,7 +296,7 @@ def handle_admin_action(call):
             bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.id, caption=call.message.caption + "\n\nSTATUS: ❌ REJECTED")
         except:
             pass
-        bot.send_message(target_user_id, "❌ Aapka payment screenshot reject kar diya gaya hai.")
+        bot.send_message(target_user_id, f"❌ Aapka payment screenshot reject kar diya gaya hai.")
 
 # --- APSCHEDULER SETUP ---
 scheduler = BackgroundScheduler()

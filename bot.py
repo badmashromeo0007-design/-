@@ -9,18 +9,18 @@ TOKEN = "8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU"
 ADMIN_ID = 6817248389  # Aapki Admin ID
 
 bot = telebot.TeleBot(TOKEN)
-bot.remove_webhook()  # Conflict error hatane ke liye purane webhook/connections clear karta hai
+bot.remove_webhook()
 
 app = Flask(__name__)
 
 # --- DYNAMIC SETTINGS FOR MULTIPLE PACKS ---
 bot_settings = {
-    "price1": "120",
-    "episodes1": "3538 - 3543",
+    "price1": "50",
+    "episodes1": "3549 To 3554",
     "link1": "https://t.me/+ebSSIzOxKfRmNWU9",
     
     "price2": "150",
-    "episodes2": "3544 - 3550",
+    "episodes2": "3555 - 3560",
     "link2": "https://t.me/+AnotherUniqueLinkHere",
     
     "upi_id": "badmashromeo0007@okaxis"
@@ -40,7 +40,7 @@ def set_price1(message):
         bot_settings["price1"] = parts[1]
         bot.reply_to(message, f"✅ Pack 1 Price Updated: ₹{bot_settings['price1']}")
     else:
-        bot.reply_to(message, "⚠️ Format: /setprice 120")
+        bot.reply_to(message, "⚠️ Format: /setprice 50")
 
 @bot.message_handler(commands=['setep', 'setep1'])
 def set_ep1(message):
@@ -51,7 +51,7 @@ def set_ep1(message):
         bot_settings["episodes1"] = parts[1]
         bot.reply_to(message, f"✅ Pack 1 Episodes Updated: {bot_settings['episodes1']}")
     else:
-        bot.reply_to(message, "⚠️ Format: /setep 3538 - 3543")
+        bot.reply_to(message, "⚠️ Format: /setep 3549 To 3554")
 
 @bot.message_handler(commands=['setlink', 'setlink1'])
 def set_link1(message):
@@ -86,7 +86,7 @@ def set_ep2(message):
         bot_settings["episodes2"] = parts[1]
         bot.reply_to(message, f"✅ Pack 2 Episodes Updated: {bot_settings['episodes2']}")
     else:
-        bot.reply_to(message, "⚠️ Format: /setep2 3544 - 3550")
+        bot.reply_to(message, "⚠️ Format: /setep2 3555 - 3560")
 
 @bot.message_handler(commands=['setlink2'])
 def set_link2(message):
@@ -100,7 +100,7 @@ def set_link2(message):
         bot.reply_to(message, "⚠️ Format: /setlink2 https://t.me/...")
 
 
-# --- POST COMMANDS FOR CHANNEL ---
+# --- POST COMMANDS FOR CHANNEL (Aapke naye format ke sath) ---
 @bot.message_handler(commands=['post1'])
 def post_pack1(message):
     if message.from_user.id != ADMIN_ID:
@@ -110,10 +110,11 @@ def post_pack1(message):
     markup.add(btn)
     
     text = (
-        f"🔥 **EPISODES – {bot_settings['episodes1']}** 🔥\n\n"
-        f"✔️ **PRICE – ₹{bot_settings['price1']}** 💰\n\n"
-        f"⚡ **INSTANT GET – ALL EPISODES** 💥\n\n"
-        "👇 Niche diye gaye button par click karke payment karein."
+        f"🔥 **SUPER YODDHA — EPISODE SALE** 🔥\n\n"
+        f"🎧 **Episode:** {bot_settings['episodes1']}\n\n"
+        f"📦 **Total:** 6 Episodes\n\n"
+        f"💰 **Price:** ₹{bot_settings['price1']}\n\n"
+        f"⚡️ **Turant Saare Episodes Mil Jayenge!**"
     )
     bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode="Markdown")
 
@@ -126,10 +127,11 @@ def post_pack2(message):
     markup.add(btn)
     
     text = (
-        f"🔥 **EPISODES – {bot_settings['episodes2']}** 🔥\n\n"
-        f"✔️ **PRICE – ₹{bot_settings['price2']}** 💰\n\n"
-        f"⚡ **INSTANT GET – ALL EPISODES** 💥\n\n"
-        "👇 Niche diye gaye button par click karke payment karein."
+        f"🔥 **SUPER YODDHA — EPISODE SALE** 🔥\n\n"
+        f"🎧 **Episode:** {bot_settings['episodes2']}\n\n"
+        f"📦 **Total:** Pack 2 Episodes\n\n"
+        f"💰 **Price:** ₹{bot_settings['price2']}\n\n"
+        f"⚡️ **Turant Saare Episodes Mil Jayenge!**"
     )
     bot.send_message(message.chat.id, text, reply_markup=markup, parse_mode="Markdown")
 
@@ -139,8 +141,11 @@ def post_pack2(message):
 def send_welcome(message):
     markup = types.InlineKeyboardMarkup()
     btn1 = types.InlineKeyboardButton(f"🎧 Pack 1 (₹{bot_settings['price1']})", callback_data="buy_pack1")
+    
+    # Agar Pack 2 ko temporarily chupana ho, toh is line ke aage '#' laga sakte hain:
     btn2 = types.InlineKeyboardButton(f"🎧 Pack 2 (₹{bot_settings['price2']})", callback_data="buy_pack2")
-    markup.add(btn1, btn2)
+    
+    markup.add(btn1, btn2)  
     
     welcome_text = (
         "👋 **Welcome to Episode Bot!**\n\n"
@@ -241,7 +246,7 @@ def handle_admin_action(call):
             bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.id, caption=call.message.caption + "\n\nSTATUS: ❌ REJECTED")
         except:
             pass
-        bot.send_message(target_user_id, "❌ Aapka payment screenshot reject kar diya gaya hai.")
+        bot.send_message(target_user_id, f"❌ Aapka payment screenshot reject kar diya gaya hai.")
 
 
 # --- APSCHEDULER SETUP ---

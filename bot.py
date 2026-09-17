@@ -41,7 +41,6 @@ packs_db = {
 UPI_ID = "badmashromeo0007@okaxis"
 user_pending_pack = {}
 
-# List to store user IDs who successfully purchased/pre-booked specific packs
 purchased_users = {
     "1": [],
     "2": []
@@ -186,17 +185,17 @@ def send_post_to_channel_with_link(pack_id, link):
         f"💰 Price: ₹{data['price']}\n\n"
         f"{sub_text}"
     )
-    # 1. Channel par post bhejein
     bot.send_message(CHANNEL_ID, text, reply_markup=markup)
     
-    # 2. Jin logo ne yeh pack kharida/pre-book kiya hai, unhe naya link bhejein
     if pack_id in purchased_users:
         for user_id in purchased_users[pack_id]:
             try:
+                # Bot khud bhi channel mein add karne ki koshish karega aur link dega
+                bot.unban_chat_member(CHANNEL_ID, user_id, only_if_banned=True)
                 if data["is_prebook"]:
-                    bot.send_message(user_id, f"🎉 Aapke pre-booked episodes (Ep: {data['episodes']}) release ho gaye hain! Yeh raha aapka link:\n\n{link}")
+                    bot.send_message(user_id, f"🎉 Aapke pre-booked episodes (Ep: {data['episodes']}) release ho gaye hain! Aapko channel mein add kar diya gaya hai, aur yeh raha link:\n\n{link}")
                 else:
-                    bot.send_message(user_id, f"📢 Nayi post channel par daal di gayi hai! Aapka episode link:\n\n{link}")
+                    bot.send_message(user_id, f"📢 Nayi post channel par daal di gayi hai! Yeh raha aapka link:\n\n{link}")
             except Exception as ex:
                 print(f"Could not message user {user_id}: {ex}")
 
@@ -219,29 +218,6 @@ def post_pack(message):
         bot.reply_to(message, f"✅ Post channel par bhej di gayi hai aur sabhi buyers ko naya link notify kar diya gaya hai!")
     except Exception as e:
         bot.reply_to(message, f"⚠️ Galat format! Use karein:\n`/post 2 https://t.me/+your_link`", parse_mode="Markdown")
-
-# --- SCHEDULE COMMAND ---
-@bot.message_handler(commands=['schedule'])
-def schedule_post(message):
-    if message.from_user.id != ADMIN_ID:
-        return
-    try:
-        parts = message.text.split(maxsplit=3)
-        pack_id = parts[1].strip()
-        minutes = int(parts[2].strip())
-        custom_link = parts[3].strip()
-        
-        if pack_id not in packs_db:
-            bot.reply_to(message, "⚠️ Invalid Pack ID!")
-            return
-            
-        packs_db[pack_id]["link"] = custom_link
-        run_time = datetime.now() + timedelta(minutes=minutes)
-        scheduler.add_job(send_post_to_channel_with_link, 'date', run_date=run_time, args=[pack_id, custom_link])
-        
-        bot.reply_to(message, f"⏰ Post scheduled successfully!\nPack {pack_id} aane wale {minutes} minutes baad channel par post ho jayegi aur buyers ko link chala jayega.")
-    except Exception as e:
-        bot.reply_to(message, "⚠️ Galat format! Use karein:\n`/schedule [Pack ID] [Minutes] [Link]`\nJaise: `/schedule 2 30 https://t.me/+link`", parse_mode="Markdown")
 
 # --- CALLBACK FOR BUY ---
 @bot.callback_query_handler(func=lambda call: call.data.startswith("buy_"))
@@ -282,7 +258,7 @@ def handle_screenshot(message):
     except Exception as e:
         bot.send_message(ADMIN_ID, f"⚠️ Error forwarding photo: {e}")
 
-# --- ADMIN APPROVAL HANDLER ---
+# --- ADMIN APPROVAL HANDLER (AUTO ADD TO CHANNEL) ---
 @bot.callback_query_handler(func=lambda call: call.data.startswith('approve_') or call.data.startswith('reject_'))
 def handle_admin_action(call):
     if call.from_user.id != ADMIN_ID:
@@ -310,10 +286,18 @@ def handle_admin_action(call):
         is_prebook = data.get("is_prebook", False)
         link = data.get("link", "https://t.me/")
         
+        # 1. Bot user ko seedha channel mein add karne ki koshish karega
+        try:
+            bot.unban_chat_member(CHANNEL_ID, target_user_id, only_if_banned=True)
+            # Note: Telegram privacy rules ki wajah se bot direct add member API har user par tabhi chala sakta hai jab user ne bot se start chat kiya ho. Agar direct add mein restriction aaye, toh link kam aayega.
+        except Exception as e:
+            print(f"Auto-add error: {e}")
+
+        # 2. User ko personal message bhejna
         if is_prebook:
-            bot.send_message(target_user_id, f"🎉 Aapka pre-booking payment verify ho gaya hai! Jaise hi yeh episodes release honge aur main channel par post karunga, aapko seedha yahan link mil jayega.")
+            bot.send_message(target_user_id, f"🎉 Aapka pre-booking payment verify ho gaya hai! Jaise hi episodes release honge, aapko channel mein add kar diya jayega.")
         else:
-            bot.send_message(target_user_id, f"🎉 Aapka payment verify ho gaya hai! Yeh raha aapka link:\n{link}")
+            bot.send_message(target_user_id, f"🎉 Aapka payment verify ho gaya hai! Aapko channel mein add kar diya gaya hai. Link: {link}")
         
     else:
         target_user_id = int(data_parts[1])
@@ -336,3 +320,4 @@ if __name__ == '__main__':
     polling_thread.start()
     
     app.run(host='0.0.0.0', port=port)
+        

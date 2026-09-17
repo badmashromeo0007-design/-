@@ -1,4 +1,5 @@
 import os
+import re
 import telebot
 from telebot import types
 from flask import Flask
@@ -10,6 +11,7 @@ TOKEN = "8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU"
 ADMIN_ID = 6817248389          # Aapki Admin ID
 CHANNEL_ID = -1004382767346  # Aapke Super Yoddha channel ki ID
 BOT_USERNAME = "ROMEO_PAY_BOT" # Aapka confirmed bot username
+ADMIN_USERNAME = "Romeo_kerketta" # Aapka Telegram username help ke liye
 
 bot = telebot.TeleBot(TOKEN)
 bot.remove_webhook()
@@ -50,7 +52,22 @@ purchased_users = {
 def home():
     return "Bot is running live 24/7!"
 
-# --- ADMIN COMMAND: Add Pack ---
+# --- HELPER FUNCTION: Calculate Total Episodes Automatically ---
+def calculate_total_episodes(episodes_str):
+    try:
+        # Sabhi numbers ko string mein se dhoondho
+        numbers = re.findall(r'\d+', episodes_str)
+        if len(numbers) >= 2:
+            start_ep = int(numbers[0])
+            end_ep = int(numbers[1])
+            total = (end_ep - start_ep) + 1
+            if total > 0:
+                return f"{total} Episodes"
+    except Exception as e:
+        print(f"Calculation error: {e}")
+    return "6 Episodes" # Default fallback agar calculation mein kuch na mile
+
+# --- ADMIN COMMAND: Add Pack with Automatic Episode Counting ---
 @bot.message_handler(commands=['addpack'])
 def add_pack(message):
     if message.from_user.id != ADMIN_ID:
@@ -66,12 +83,15 @@ def add_pack(message):
         if len(parts) > 4 and parts[4].strip().lower() == 'pre':
             is_prebook = True
             
+        # Automatic total episodes calculate karna
+        calculated_total = calculate_total_episodes(episodes)
+        
         title = "SUPER YODDHA — PRE-BOOKING" if is_prebook else "SUPER YODDHA — EPISODE SALE"
         
         packs_db[pack_id] = {
             "title": title,
             "episodes": episodes,
-            "total": "6 Episodes",
+            "total": calculated_total,
             "price": price,
             "link": link,
             "is_prebook": is_prebook,
@@ -81,7 +101,7 @@ def add_pack(message):
             purchased_users[pack_id] = []
             
         mode_text = "Pre-Booking Pack" if is_prebook else "Instant Delivery Pack"
-        bot.reply_to(message, f"✅ {mode_text} {pack_id} successfully added/updated!\nEpisodes: {episodes}\nPrice: ₹{price}")
+        bot.reply_to(message, f"✅ {mode_text} {pack_id} successfully added/updated!\nEpisodes: {episodes}\nTotal: {calculated_total}\nPrice: ₹{price}")
     except Exception as e:
         bot.reply_to(message, "⚠️ Galat format!\nInstant ke liye: `/addpack 2 | 3555 - 3560 | 80 | link`\nPre-book ke liye: `/addpack 2 | 3555 - 3560 | 80 | link | pre`", parse_mode="Markdown")
 
@@ -131,9 +151,22 @@ def send_welcome(message):
 
     welcome_text = (
         "🔥 SUPER YODDHA — EPISODE SALE & PRE-BOOKING 🔥\n\n"
-        "Niche diye gaye packs mein se select karein:"
+        "Niche diye gaye packs mein se select karein:\n\n"
+        "*(Agar koi madad chahiye ho toh 'help' likh kar bhejein)*"
     )
-    bot.reply_to(message, welcome_text, reply_markup=markup)
+    bot.reply_to(message, welcome_text, reply_markup=markup, parse_mode="Markdown")
+
+# --- HELP HANDLER ---
+@bot.message_handler(func=lambda message: message.text and message.text.lower() in ["help", "/help"])
+def help_command(message):
+    help_text = (
+        "🛠️ *PAYMENT & SUPPORT HELP*\n\n"
+        "Agar aapko payment verify hone mein koi samasya aa rahi hai, ya link nahi mila hai, toh aap seedha admin se sampark kar sakte hain:\n\n"
+        f"👉 Admin Contact: @{ADMIN_USERNAME}"
+    )
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("💬 Admin Se Baat Karein", url=f"https://t.me/{ADMIN_USERNAME}"))
+    bot.reply_to(message, help_text, parse_mode="Markdown", reply_markup=markup)
 
 # --- HELPER FUNCTION: QR Code ---
 def send_qr_to_user(chat_id, pack_id):
@@ -144,6 +177,7 @@ def send_qr_to_user(chat_id, pack_id):
     data = packs_db[pack_id]
     price = data["price"]
     episodes = data["episodes"]
+    total = data["total"]
     is_prebook = data["is_prebook"]
     
     upi_string = f"upi://pay?pa={UPI_ID}&pn=Romeo&am={price}&cu=INR"
@@ -156,16 +190,17 @@ def send_qr_to_user(chat_id, pack_id):
         f"⚡ PACK {pack_id} — {mode_label} ⚡\n\n"
         f"• UPI ID: {UPI_ID}\n"
         f"• Amount: ₹{price}\n"
-        f"• Episodes: {episodes}\n\n"
-        f"{note_text}"
+        f"• Episodes: {episodes} ({total})\n\n"
+        f"{note_text}\n\n"
+        f"*(Madad ke liye 'help' likh kar bhej sakte hain)*"
     )
     
     try:
-        bot.send_photo(chat_id, qr_url, caption=caption)
+        bot.send_photo(chat_id, qr_url, caption=caption, parse_mode="Markdown")
     except Exception as e:
-        bot.send_message(chat_id, f"{caption}\n\n⚠️ QR Code error: {e}")
+        bot.send_message(chat_id, f"{caption}\n\n⚠️ QR Code error: {e}", parse_mode="Markdown")
 
-# --- HELPER FUNCTION: Channel Post & Notify Buyers with Custom Link ---
+# --- HELPER FUNCTION: Channel Post ---
 def send_post_to_channel_with_link(pack_id, link):
     if pack_id not in packs_db:
         return
@@ -181,7 +216,7 @@ def send_post_to_channel_with_link(pack_id, link):
     
     text = (
         f"⚡ 𝐒𝐔𝐏𝐄𝐑 𝐘𝐎𝐃𝐃𝐇𝐀 ⚡\n\n"
-        f"EPISODE {data['episodes']}\n\n"
+        f"EPISODE {data['episodes']} ({data['total']})\n\n"
         f"💰 Price: ₹{data['price']}\n\n"
         f"{sub_text}"
     )
@@ -190,7 +225,6 @@ def send_post_to_channel_with_link(pack_id, link):
     if pack_id in purchased_users:
         for user_id in purchased_users[pack_id]:
             try:
-                # Bot khud bhi channel mein add karne ki koshish karega aur link dega
                 bot.unban_chat_member(CHANNEL_ID, user_id, only_if_banned=True)
                 if data["is_prebook"]:
                     bot.send_message(user_id, f"🎉 Aapke pre-booked episodes (Ep: {data['episodes']}) release ho gaye hain! Aapko channel mein add kar diya gaya hai, aur yeh raha link:\n\n{link}")
@@ -199,7 +233,7 @@ def send_post_to_channel_with_link(pack_id, link):
             except Exception as ex:
                 print(f"Could not message user {user_id}: {ex}")
 
-# --- CHANNEL POST COMMAND WITH CUSTOM LINK ---
+# --- CHANNEL POST COMMAND ---
 @bot.message_handler(commands=['post'])
 def post_pack(message):
     if message.from_user.id != ADMIN_ID:
@@ -230,11 +264,12 @@ def handle_buy(call):
 @bot.message_handler(content_types=['photo'])
 def handle_screenshot(message):
     user = message.from_user
-    bot.reply_to(message, "✅ Aapka screenshot mil gaya hai! Verification ke liye admin ke paas bhej diya gaya hai.")
+    bot.reply_to(message, "✅ Aapka screenshot mil gaya hai! Verification ke liye admin ke paas bhej diya gaya hai. *(Agar koi samasya ho toh 'help' likhein)*", parse_mode="Markdown")
     
     pack_id = user_pending_pack.get(user.id, "2")
     data = packs_db.get(pack_id, {})
     episodes = data.get("episodes", "N/A")
+    total = data.get("total", "N/A")
     price = data.get("price", "N/A")
     
     username_text = f"@{user.username}" if user.username else "N/A"
@@ -244,7 +279,7 @@ def handle_screenshot(message):
         f"• Name: {user.first_name}\n"
         f"• User ID: {user.id}\n"
         f"• Username: {username_text}\n"
-        f"• Selected Pack: Pack {pack_id} (Ep: {episodes} - ₹{price})\n\n"
+        f"• Selected Pack: Pack {pack_id} (Ep: {episodes} [{total}] - ₹{price})\n\n"
         "👇 Approve karne ke liye click karein:"
     )
     
@@ -258,7 +293,7 @@ def handle_screenshot(message):
     except Exception as e:
         bot.send_message(ADMIN_ID, f"⚠️ Error forwarding photo: {e}")
 
-# --- ADMIN APPROVAL HANDLER (AUTO ADD TO CHANNEL) ---
+# --- ADMIN APPROVAL HANDLER ---
 @bot.callback_query_handler(func=lambda call: call.data.startswith('approve_') or call.data.startswith('reject_'))
 def handle_admin_action(call):
     if call.from_user.id != ADMIN_ID:
@@ -286,14 +321,11 @@ def handle_admin_action(call):
         is_prebook = data.get("is_prebook", False)
         link = data.get("link", "https://t.me/")
         
-        # 1. Bot user ko seedha channel mein add karne ki koshish karega
         try:
             bot.unban_chat_member(CHANNEL_ID, target_user_id, only_if_banned=True)
-            # Note: Telegram privacy rules ki wajah se bot direct add member API har user par tabhi chala sakta hai jab user ne bot se start chat kiya ho. Agar direct add mein restriction aaye, toh link kam aayega.
         except Exception as e:
             print(f"Auto-add error: {e}")
 
-        # 2. User ko personal message bhejna
         if is_prebook:
             bot.send_message(target_user_id, f"🎉 Aapka pre-booking payment verify ho gaya hai! Jaise hi episodes release honge, aapko channel mein add kar diya jayega.")
         else:
@@ -306,7 +338,8 @@ def handle_admin_action(call):
             bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.id, caption=call.message.caption + "\n\nSTATUS: ❌ REJECTED")
         except:
             pass
-        bot.send_message(target_user_id, f"❌ Aapka payment screenshot reject kar diya gaya hai.")
+            
+        bot.send_message(target_user_id, f"❌ Aapka payment screenshot reject kar diya gaya hai. Kripya sahi screenshot bhejein (Madad ke liye 'help' likhein).")
 
 # --- APSCHEDULER SETUP ---
 scheduler = BackgroundScheduler()
@@ -320,4 +353,4 @@ if __name__ == '__main__':
     polling_thread.start()
     
     app.run(host='0.0.0.0', port=port)
-        
+    

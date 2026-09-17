@@ -16,7 +16,7 @@ bot.remove_webhook()
 
 app = Flask(__name__)
 
-# --- MULTI-PACK DYNAMIC DATABASE (Instant & Pre-booking Support) ---
+# --- MULTI-PACK DYNAMIC DATABASE ---
 packs_db = {
     "1": {
         "title": "SUPER YODDHA — EPISODE SALE",
@@ -39,15 +39,20 @@ packs_db = {
 }
 
 UPI_ID = "badmashromeo0007@okaxis"
-
-# Temporary memory to track which user requested which pack QR
 user_pending_pack = {}
+
+# List to store user IDs who successfully purchased/pre-booked specific packs
+# Format: { "pack_id": [user_id_1, user_id_2, ...] }
+purchased_users = {
+    "1": [],
+    "2": []
+}
 
 @app.route('/')
 def home():
     return "Bot is running live 24/7!"
 
-# --- ADMIN COMMAND: Naya Pack / Pre-book Add karne ke liye ---
+# --- ADMIN COMMAND: Add Pack ---
 @bot.message_handler(commands=['addpack'])
 def add_pack(message):
     if message.from_user.id != ADMIN_ID:
@@ -74,12 +79,15 @@ def add_pack(message):
             "is_prebook": is_prebook,
             "active": True
         }
+        if pack_id not in purchased_users:
+            purchased_users[pack_id] = []
+            
         mode_text = "Pre-Booking Pack" if is_prebook else "Instant Delivery Pack"
         bot.reply_to(message, f"✅ {mode_text} {pack_id} successfully added/updated!\nEpisodes: {episodes}\nPrice: ₹{price}")
     except Exception as e:
         bot.reply_to(message, "⚠️ Galat format!\nInstant ke liye: `/addpack 2 | 3555 - 3560 | 80 | link`\nPre-book ke liye: `/addpack 2 | 3555 - 3560 | 80 | link | pre`", parse_mode="Markdown")
 
-# --- ADMIN COMMAND: Pack ko Hide/Unhide karne ke liye ---
+# --- ADMIN COMMAND: Toggle Pack ---
 @bot.message_handler(commands=['toggle'])
 def toggle_pack(message):
     if message.from_user.id != ADMIN_ID:
@@ -95,19 +103,17 @@ def toggle_pack(message):
     except Exception as e:
         bot.reply_to(message, "⚠️ Format: `/toggle 2`", parse_mode="Markdown")
 
-# --- START COMMAND (Supports Deep Linking for Channel Purchases) ---
+# --- START COMMAND ---
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     text_args = message.text.split()
     
-    # Agar user channel ke button se aaya hai (jaise /start buy_2)
     if len(text_args) > 1 and text_args[1].startswith("buy_"):
         pack_id = text_args[1].split("_")[1]
         if pack_id in packs_db:
             send_qr_to_user(message.chat.id, pack_id)
             return
 
-    # Normal /start command ke liye menu
     markup = types.InlineKeyboardMarkup()
     active_packs_found = False
     for pack_id, data in packs_db.items():
@@ -131,7 +137,7 @@ def send_welcome(message):
     )
     bot.reply_to(message, welcome_text, reply_markup=markup)
 
-# --- HELPER FUNCTION: QR Code bhejne ke liye ---
+# --- HELPER FUNCTION: QR Code ---
 def send_qr_to_user(chat_id, pack_id):
     if pack_id not in packs_db:
         return
@@ -161,7 +167,7 @@ def send_qr_to_user(chat_id, pack_id):
     except Exception as e:
         bot.send_message(chat_id, f"{caption}\n\n⚠️ QR Code error: {e}")
 
-# --- HELPER FUNCTION: Channel par post bhejane ke liye (URL Button ke sath) ---
+# --- HELPER FUNCTION: Channel Post & Notify Buyers ---
 def send_post_to_channel(pack_id):
     if pack_id not in packs_db:
         return
@@ -169,7 +175,6 @@ def send_post_to_channel(pack_id):
     markup = types.InlineKeyboardMarkup()
     btn_text = f"⏳ Pre-Book Now (₹{data['price']})" if data["is_prebook"] else f"✨ Buy Episodes (₹{data['price']})"
     
-    # Channel button will redirect users directly to bot PM with ROMEO_PAY_BOT
     bot_url = f"https://t.me/{BOT_USERNAME}?start=buy_{pack_id}"
     btn = types.InlineKeyboardButton(btn_text, url=bot_url)
     markup.add(btn)
@@ -182,9 +187,22 @@ def send_post_to_channel(pack_id):
         f"💰 Price: ₹{data['price']}\n\n"
         f"{sub_text}"
     )
+    # 1. Channel par post bhejein
     bot.send_message(CHANNEL_ID, text, reply_markup=markup)
+    
+    # 2. Jin logo ne yeh pack kharida/pre-book kiya hai, unhe link ya update bhejein
+    if pack_id in purchased_users:
+        link = data.get("link", "https://t.me/")
+        for user_id in purchased_users[pack_id]:
+            try:
+                if data["is_prebook"]:
+                    bot.send_message(user_id, f"🎉 Aapke pre-booked episodes (Ep: {data['episodes']}) release ho gaye hain! Yeh raha aapka link:\n\n{link}")
+                else:
+                    bot.send_message(user_id, f"📢 Nayi post channel par daal di gayi hai! Aapka episode link:\n\n{link}")
+            except Exception as ex:
+                print(f"Could not message user {user_id}: {ex}")
 
-# --- CHANNEL POST COMMAND (Instant) ---
+# --- CHANNEL POST COMMAND ---
 @bot.message_handler(commands=['post'])
 def post_pack(message):
     if message.from_user.id != ADMIN_ID:
@@ -195,11 +213,11 @@ def post_pack(message):
             bot.reply_to(message, "⚠️ Invalid Pack ID!")
             return
         send_post_to_channel(pack_id)
-        bot.reply_to(message, f"✅ Post successfully channel par bhej di gayi hai!")
+        bot.reply_to(message, f"✅ Post channel par bhej di gayi hai aur sabhi buyers ko notification/link notify kar diya gaya hai!")
     except Exception as e:
         bot.reply_to(message, f"⚠️ Error: Format use karein `/post 1`", parse_mode="Markdown")
 
-# --- SCHEDULE / TIMER POST COMMAND ---
+# --- SCHEDULE COMMAND ---
 @bot.message_handler(commands=['schedule'])
 def schedule_post(message):
     if message.from_user.id != ADMIN_ID:
@@ -216,11 +234,11 @@ def schedule_post(message):
         run_time = datetime.now() + timedelta(minutes=minutes)
         scheduler.add_job(send_post_to_channel, 'date', run_date=run_time, args=[pack_id])
         
-        bot.reply_to(message, f"⏰ Post scheduled successfully!\nPack {pack_id} aane wale {minutes} minutes baad channel par post ho jayegi.")
+        bot.reply_to(message, f"⏰ Post scheduled successfully!\nPack {pack_id} aane wale {minutes} minutes baad channel par post ho jayegi aur buyers ko link chala jayega.")
     except Exception as e:
         bot.reply_to(message, "⚠️ Galat format! Use karein:\n`/schedule [Pack ID] [Minutes]`\nJaise: `/schedule 1 30`", parse_mode="Markdown")
 
-# --- CALLBACK FOR BOT MENU BUY BUTTONS ---
+# --- CALLBACK FOR BUY ---
 @bot.callback_query_handler(func=lambda call: call.data.startswith("buy_"))
 def handle_buy(call):
     bot.answer_callback_query(call.id)
@@ -273,6 +291,11 @@ def handle_admin_action(call):
         pack_id = data_parts[1]
         target_user_id = int(data_parts[2])
         
+        # User ko successfully purchased list mein save kar lo taaki baad mein post karne par link mil sake
+        if pack_id in packs_db:
+            if target_user_id not in purchased_users[pack_id]:
+                purchased_users[pack_id].append(target_user_id)
+        
         bot.answer_callback_query(call.id, f"Pack {pack_id} Approved!", show_alert=True)
         try:
             bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.id, caption=call.message.caption + f"\n\nSTATUS: ✅ APPROVED (PACK {pack_id})")
@@ -284,7 +307,7 @@ def handle_admin_action(call):
         link = data.get("link", "https://t.me/")
         
         if is_prebook:
-            bot.send_photo(target_user_id, f"🎉 Aapka pre-booking payment verify ho gaya hai! Jaise hi episodes release honge, aapko link mil jayega. (Pre-booked link: {link})") # Fixed message send
+            bot.send_message(target_user_id, f"🎉 Aapka pre-booking payment verify ho gaya hai! Jaise hi yeh episodes release honge aur main channel par post karunga, aapko seedha yahan link mil jayega.")
         else:
             bot.send_message(target_user_id, f"🎉 Aapka payment verify ho gaya hai! Yeh raha aapka link:\n{link}")
         
@@ -309,4 +332,4 @@ if __name__ == '__main__':
     polling_thread.start()
     
     app.run(host='0.0.0.0', port=port)
-    
+        

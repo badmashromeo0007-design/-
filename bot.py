@@ -55,7 +55,6 @@ def home():
 # --- HELPER FUNCTION: Calculate Total Episodes Automatically ---
 def calculate_total_episodes(episodes_str):
     try:
-        # Sabhi numbers ko string mein se dhoondho
         numbers = re.findall(r'\d+', episodes_str)
         if len(numbers) >= 2:
             start_ep = int(numbers[0])
@@ -65,7 +64,7 @@ def calculate_total_episodes(episodes_str):
                 return f"{total} Episodes"
     except Exception as e:
         print(f"Calculation error: {e}")
-    return "6 Episodes" # Default fallback agar calculation mein kuch na mile
+    return "6 Episodes"
 
 # --- ADMIN COMMAND: Add Pack with Automatic Episode Counting ---
 @bot.message_handler(commands=['addpack'])
@@ -83,7 +82,6 @@ def add_pack(message):
         if len(parts) > 4 and parts[4].strip().lower() == 'pre':
             is_prebook = True
             
-        # Automatic total episodes calculate karna
         calculated_total = calculate_total_episodes(episodes)
         
         title = "SUPER YODDHA — PRE-BOOKING" if is_prebook else "SUPER YODDHA — EPISODE SALE"
@@ -105,21 +103,26 @@ def add_pack(message):
     except Exception as e:
         bot.reply_to(message, "⚠️ Galat format!\nInstant ke liye: `/addpack 2 | 3555 - 3560 | 80 | link`\nPre-book ke liye: `/addpack 2 | 3555 - 3560 | 80 | link | pre`", parse_mode="Markdown")
 
-# --- ADMIN COMMAND: Toggle Pack ---
+# --- ADMIN COMMAND: Toggle Pack (Fixed) ---
 @bot.message_handler(commands=['toggle'])
 def toggle_pack(message):
     if message.from_user.id != ADMIN_ID:
         return
     try:
-        pack_id = message.text.split(maxsplit=1)[1].strip()
+        parts = message.text.split(maxsplit=1)
+        if len(parts) < 2:
+            bot.reply_to(message, "⚠️ Kripya Pack ID likhein. Format: `/toggle 1`", parse_mode="Markdown")
+            return
+            
+        pack_id = parts[1].strip()
         if pack_id in packs_db:
             packs_db[pack_id]["active"] = not packs_db[pack_id]["active"]
-            status = "ACTIVE" if packs_db[pack_id]["active"] else "HIDDEN"
-            bot.reply_to(message, f"✅ Pack {pack_id} status changed to: *{status}*", parse_mode="Markdown")
+            status = "ACTIVE (Enable)" if packs_db[pack_id]["active"] else "HIDDEN (Disable)"
+            bot.reply_to(message, f"✅ Pack {pack_id} ka status badal kar ho gaya hai: *{status}*", parse_mode="Markdown")
         else:
-            bot.reply_to(message, "⚠️ Yeh Pack ID nahi mili!")
+            bot.reply_to(message, f"⚠️ Pack ID '{pack_id}' database mein nahi mili!")
     except Exception as e:
-        bot.reply_to(message, "⚠️ Format: `/toggle 2`", parse_mode="Markdown")
+        bot.reply_to(message, f"⚠️ Error aa gaya: {e}")
 
 # --- START COMMAND ---
 @bot.message_handler(commands=['start'])

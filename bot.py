@@ -30,14 +30,17 @@ packs_db = {
         "title": "SUPER YODDHA — PRE-BOOKING",
         "episodes": "3555 - 3560",
         "total": "6 Episodes",
-        "price": "80",
-        "link": "https://t.me/+PreBookSecretLinkHere",
+        "price": "120",
+        "link": "https://t.me/+ej6pACIZ1lw3N2JI",
         "is_prebook": True,
         "active": True
     }
 }
 
 UPI_ID = "badmashromeo0007@okaxis"
+
+# Temporary memory to track which user requested which pack QR
+user_pending_pack = {}
 
 @app.route('/')
 def home():
@@ -183,6 +186,9 @@ def handle_buy(call):
     if pack_id not in packs_db:
         return
         
+    # Record which pack this user is trying to buy
+    user_pending_pack[call.from_user.id] = pack_id
+    
     data = packs_db[pack_id]
     price = data["price"]
     episodes = data["episodes"]
@@ -213,17 +219,24 @@ def handle_screenshot(message):
     user = message.from_user
     bot.reply_to(message, "✅ Aapka screenshot mil gaya hai! Verification ke liye admin ke paas bhej diya gaya hai.")
     
+    # Get the pack ID this user selected, default to "2" if unknown
+    pack_id = user_pending_pack.get(user.id, "2")
+    data = packs_db.get(pack_id, {})
+    episodes = data.get("episodes", "N/A")
+    price = data.get("price", "N/A")
+    
     caption = (
         "🚨 **NEW PAYMENT SCREENSHOT RECEIVED!** 🚨\n\n"
         f"• Name: {user.first_name}\n"
         f"• User ID: `{user.id}`\n"
-        f"• Username: @{user.username if user.username else 'N/A'}\n\n"
-        "👇 *Approve karne ke liye pack select karein:*"
+        f"• Username: @{user.username if user.username else 'N/A'}\n"
+        f"• Selected Pack: **Pack {pack_id}** (Ep: {episodes} - ₹{price})\n\n"
+        "👇 *Approve karne ke liye click karein:*"
     )
     
     markup = types.InlineKeyboardMarkup()
-    for pack_id in packs_db.keys():
-        markup.add(types.InlineKeyboardButton(f"⚡️ Approve Pack {pack_id}", callback_data=f"approve_{pack_id}_{user.id}"))
+    # Sirf usi specific pack ka approve button aayega
+    markup.add(types.InlineKeyboardButton(f"⚡️ Approve Pack {pack_id}", callback_data=f"approve_{pack_id}_{user.id}"))
     markup.add(types.InlineKeyboardButton("❌ Reject Payment", callback_data=f"reject_{user.id}"))
     
     try:

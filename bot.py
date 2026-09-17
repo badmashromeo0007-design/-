@@ -80,7 +80,7 @@ def toggle_pack(message):
     except Exception as e:
         bot.reply_to(message, "⚠️ Format: `/toggle 2`", parse_mode="Markdown")
 
-# --- START COMMAND (Bot ke sath chat mein) ---
+# --- START COMMAND ---
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     markup = types.InlineKeyboardMarkup()
@@ -102,7 +102,7 @@ def send_welcome(message):
     )
     bot.reply_to(message, welcome_text, reply_markup=markup, parse_mode="Markdown")
 
-# --- CHANNEL POST COMMAND (Seedha Channel par jayegi) ---
+# --- CHANNEL POST COMMAND ---
 @bot.message_handler(commands=['post'])
 def post_pack(message):
     if message.from_user.id != ADMIN_ID:
@@ -125,7 +125,6 @@ def post_pack(message):
             f"💰 **Price:** ₹{data['price']}\n\n"
             f"⚡️ **Turant Saare Episodes Mil Jayenge!**"
         )
-        # Yeh seedha aapke channel par post bhej dega
         bot.send_message(CHANNEL_ID, text, reply_markup=markup, parse_mode="Markdown")
         bot.reply_to(message, f"✅ Post successfully channel par bhej di gayi hai!")
     except Exception as e:
@@ -161,27 +160,30 @@ def handle_buy(call):
     except Exception as e:
         bot.send_message(call.message.chat.id, f"{caption}\n\n⚠️ QR Code error: {e}")
 
-# --- SCREENSHOT HANDLER ---
+# --- SCREENSHOT HANDLER (Instant Pop-up Alert ke sath) ---
 @bot.message_handler(content_types=['photo'])
 def handle_screenshot(message):
     user = message.from_user
     bot.reply_to(message, "✅ Aapka screenshot mil gaya hai! Verification ke liye admin ke paas bhej diya gaya hai.")
     
     caption = (
-        "📥 NEW PAYMENT SCREENSHOT\n\n"
+        "🚨 **NEW PAYMENT SCREENSHOT RECEIVED!** 🚨\n\n"
         f"• Name: {user.first_name}\n"
-        f"• User ID: {user.id}\n"
-        f"• Username: @{user.username if user.username else 'N/A'}"
+        f"• User ID: `{user.id}`\n"
+        f"• Username: @{user.username if user.username else 'N/A'}\n\n"
+        "👇 *Niche diye gaye pack ko select karke turant approve karein:*"
     )
     
     markup = types.InlineKeyboardMarkup()
+    # Har active/inactive pack ke liye approval buttons
     for pack_id in packs_db.keys():
-        markup.add(types.InlineKeyboardButton(f"✅ Approve Pack {pack_id}", callback_data=f"approve_{pack_id}_{user.id}"))
-    markup.add(types.InlineKeyboardButton("❌ Reject", callback_data=f"reject_{user.id}"))
+        markup.add(types.InlineKeyboardButton(f"⚡️ Approve Pack {pack_id}", callback_data=f"approve_{pack_id}_{user.id}"))
+    markup.add(types.InlineKeyboardButton("❌ Reject Payment", callback_data=f"reject_{user.id}"))
     
     try:
         photo_id = message.photo[-1].file_id
-        bot.send_photo(ADMIN_ID, photo_id, caption=caption, reply_markup=markup)
+        # Admin ke paas photo + popup/sound notification ke sath message jayega
+        bot.send_photo(ADMIN_ID, photo_id, caption=caption, reply_markup=markup, parse_mode="Markdown")
     except Exception as e:
         bot.send_message(ADMIN_ID, f"⚠️ Error forwarding photo: {e}")
 
@@ -199,7 +201,7 @@ def handle_admin_action(call):
         pack_id = data_parts[1]
         target_user_id = int(data_parts[2])
         
-        bot.answer_callback_query(call.id, f"Pack {pack_id} Approved!")
+        bot.answer_callback_query(call.id, f"Pack {pack_id} Approved Successfully!", show_alert=True)
         try:
             bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.id, caption=call.message.caption + f"\n\nSTATUS: ✅ APPROVED (PACK {pack_id})")
         except:
@@ -210,7 +212,7 @@ def handle_admin_action(call):
         
     else:
         target_user_id = int(data_parts[1])
-        bot.answer_callback_query(call.id, "Rejected!")
+        bot.answer_callback_query(call.id, "Payment Rejected!", show_alert=True)
         try:
             bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.id, caption=call.message.caption + "\n\nSTATUS: ❌ REJECTED")
         except:

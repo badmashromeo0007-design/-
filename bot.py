@@ -11,7 +11,7 @@ TOKEN = "8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU"
 ADMIN_ID = 6817248389          # Aapki Admin ID
 CHANNEL_ID = -1004382767346  # Aapke Super Yoddha channel ki ID
 BOT_USERNAME = "ROMEO_PAY_BOT" # Aapka confirmed bot username
-ADMIN_USERNAME = "Romeo_kerketta" # Aapka Telegram username help ke liye
+ADMIN_USERNAME = "Romeo_kerketta" # Aapka Telegram username help kel liye
 
 bot = telebot.TeleBot(TOKEN)
 bot.remove_webhook()
@@ -153,7 +153,7 @@ def send_welcome(message):
         return
 
     welcome_text = (
-        "🔥 SUPER YODDHA — EPISODE SALE & PRE-BOOKING 🔥\n\n"
+        "🔥 SUPER YODDHA — EPISODES 🔥\n\n"
         "Niche diye gaye packs mein se select karein:\n\n"
         "*(Agar koi madad chahiye ho toh 'help' likh kar bhejein)*"
     )
@@ -171,7 +171,7 @@ def help_command(message):
     markup.add(types.InlineKeyboardButton("💬 Admin Se Baat Karein", url=f"https://t.me/{ADMIN_USERNAME}"))
     bot.reply_to(message, help_text, parse_mode="Markdown", reply_markup=markup)
 
-# --- HELPER FUNCTION: QR Code (Strict Mode Label Fix) ---
+# --- HELPER FUNCTION: QR Code ---
 def send_qr_to_user(chat_id, pack_id):
     if pack_id not in packs_db:
         return
@@ -186,7 +186,6 @@ def send_qr_to_user(chat_id, pack_id):
     upi_string = f"upi://pay?pa={UPI_ID}&pn=Romeo&am={price}&cu=INR"
     qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={upi_string}"
     
-    # Strictly set labels based on is_prebook flag
     if is_prebook:
         mode_label = "PRE-BOOKING QR CODE"
         note_text = "1. Payment ke baad screenshot bhejein.\n2. Release hote hi link bhej diya jayega."

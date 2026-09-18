@@ -11,7 +11,7 @@ TOKEN = "8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU"
 ADMIN_ID = 6817248389          # Aapki Admin ID
 CHANNEL_ID = -1004382767346  # Aapke Super Yoddha channel ki ID
 BOT_USERNAME = "ROMEO_PAY_BOT" # Aapka confirmed bot username
-ADMIN_USERNAME = "Romeo_kerketta" # Aapka Telegram username help kel liye
+ADMIN_USERNAME = "Romeo_kerketta" # Aapka Telegram username help ke liye
 
 bot = telebot.TeleBot(TOKEN)
 bot.remove_webhook()
@@ -40,7 +40,7 @@ packs_db = {
     }
 }
 
-UPI_ID = "badmashromeo0007@okaxis"
+UPI_ID = "Badmashromeo8880@okaxis"
 user_pending_pack = {}
 
 purchased_users = {
@@ -360,4 +360,3 @@ if __name__ == '__main__':
     polling_thread.start()
     
     app.run(host='0.0.0.0', port=port)
-    

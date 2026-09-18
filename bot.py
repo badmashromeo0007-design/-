@@ -22,10 +22,10 @@ app = Flask(__name__)
 packs_db = {
     "1": {
         "title": "SUPER YODDHA — EPISODE SALE",
-        "episodes": "3549 To 3554",
+        "episodes": "3555 - 3560",
         "total": "6 Episodes",
-        "price": "50",
-        "link": "https://t.me/+ebSSIzOxKfRmNWU9",
+        "price": "120",
+        "link": "https://t.me/+LwK7k4XrANI3NjU1",
         "is_prebook": False,
         "active": True
     },
@@ -103,7 +103,7 @@ def add_pack(message):
     except Exception as e:
         bot.reply_to(message, "⚠️ Galat format!\nInstant ke liye: `/addpack 2 | 3555 - 3560 | 80 | link`\nPre-book ke liye: `/addpack 2 | 3555 - 3560 | 80 | link | pre`", parse_mode="Markdown")
 
-# --- ADMIN COMMAND: Toggle Pack (Fixed) ---
+# --- ADMIN COMMAND: Toggle Pack ---
 @bot.message_handler(commands=['toggle'])
 def toggle_pack(message):
     if message.from_user.id != ADMIN_ID:
@@ -171,7 +171,7 @@ def help_command(message):
     markup.add(types.InlineKeyboardButton("💬 Admin Se Baat Karein", url=f"https://t.me/{ADMIN_USERNAME}"))
     bot.reply_to(message, help_text, parse_mode="Markdown", reply_markup=markup)
 
-# --- HELPER FUNCTION: QR Code ---
+# --- HELPER FUNCTION: QR Code (Strict Mode Label Fix) ---
 def send_qr_to_user(chat_id, pack_id):
     if pack_id not in packs_db:
         return
@@ -186,8 +186,13 @@ def send_qr_to_user(chat_id, pack_id):
     upi_string = f"upi://pay?pa={UPI_ID}&pn=Romeo&am={price}&cu=INR"
     qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={upi_string}"
     
-    mode_label = "PRE-BOOKING QR CODE" if is_prebook else "PAYMENT QR CODE"
-    note_text = "1. Payment ke baad screenshot bhejein.\n2. Release hote hi link bhej diya jayega." if is_prebook else "1. Payment ke baad screenshot bhejein.\n2. Turant link mil jayega."
+    # Strictly set labels based on is_prebook flag
+    if is_prebook:
+        mode_label = "PRE-BOOKING QR CODE"
+        note_text = "1. Payment ke baad screenshot bhejein.\n2. Release hote hi link bhej diya jayega."
+    else:
+        mode_label = "INSTANT PAYMENT QR CODE"
+        note_text = "1. Payment ke baad screenshot bhejein.\n2. Turant link mil jayega."
     
     caption = (
         f"⚡ PACK {pack_id} — {mode_label} ⚡\n\n"
@@ -269,7 +274,7 @@ def handle_screenshot(message):
     user = message.from_user
     bot.reply_to(message, "✅ Aapka screenshot mil gaya hai! Verification ke liye admin ke paas bhej diya gaya hai. *(Agar koi samasya ho toh 'help' likhein)*", parse_mode="Markdown")
     
-    pack_id = user_pending_pack.get(user.id, "2")
+    pack_id = user_pending_pack.get(user.id, "1")
     data = packs_db.get(pack_id, {})
     episodes = data.get("episodes", "N/A")
     total = data.get("total", "N/A")

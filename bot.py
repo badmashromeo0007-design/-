@@ -31,10 +31,10 @@ packs_db = {
     },
     "2": {
         "title": "SUPER YODDHA — PRE-BOOKING",
-        "episodes": "3561 - 3569",
-        "total": "9 Episodes",
+        "episodes": "3570 - 3575",
+        "total": "6 Episodes",
         "price": "150",
-        "link": "https://t.me/+ej6pACIZ1lw3N2JI",
+        "link": "https://t.me/+zaFMdS92m5FhOGI9",
         "is_prebook": True,
         "active": True
     }
@@ -83,7 +83,6 @@ def add_pack(message):
             is_prebook = True
             
         calculated_total = calculate_total_episodes(episodes)
-        
         title = "SUPER YODDHA — PRE-BOOKING" if is_prebook else "SUPER YODDHA — EPISODE SALE"
         
         packs_db[pack_id] = {
@@ -101,7 +100,7 @@ def add_pack(message):
         mode_text = "Pre-Booking Pack" if is_prebook else "Instant Delivery Pack"
         bot.reply_to(message, f"✅ {mode_text} {pack_id} successfully added/updated!\nEpisodes: {episodes}\nTotal: {calculated_total}\nPrice: ₹{price}")
     except Exception as e:
-        bot.reply_to(message, "⚠️ Galat format!\nInstant ke liye: `/addpack 1 | 3561 - 3569 | 150 | link`\nPre-book ke liye: `/addpack 2 | 3561 - 3569 | 150 | link | pre`", parse_mode="Markdown")
+        bot.reply_to(message, "⚠️ Galat format!\nInstant ke liye: `/addpack 1 | 3561 - 3569 | 150 | link`\nPre-book ke liye: `/addpack 2 | 3570 - 3575 | 150 | link | pre`", parse_mode="Markdown")
 
 # --- ADMIN COMMAND: Edit Existing Pack Anytime ---
 @bot.message_handler(commands=['editpack'])
@@ -162,8 +161,8 @@ def toggle_pack(message):
     except Exception as e:
         bot.reply_to(message, f"⚠️ Error aa gaya: {e}")
 
-# --- START COMMAND ---
-@bot.message_handler(commands=['start'])
+# --- START & MENU COMMAND ---
+@bot.message_handler(commands=['start', 'menu'])
 def send_welcome(message):
     text_args = message.text.split()
     
@@ -251,7 +250,6 @@ def post_pack_media(message):
     if message.from_user.id != ADMIN_ID:
         return
     
-    # Agar user ne direct command text bheji hai bina media ke
     if message.content_type == 'text':
         try:
             parts = message.text.split(maxsplit=2)
@@ -277,10 +275,9 @@ def post_pack_media(message):
             notify_buyers(pack_id, custom_link)
             bot.reply_to(message, "✅ Text post channel par bhej di gayi hai!")
         except Exception as e:
-            bot.reply_to(message, f"⚠️ Galat format! Use karein:\n`/post 1 https://t.me/+your_link` (ya media ke sath caption mein likhein)", parse_mode="Markdown")
+            bot.reply_to(message, f"⚠️ Galat format! Use karein:\n`/post 1 https://t.me/+your_link`", parse_mode="Markdown")
             
     else:
-        # Agar user ne Photo ya Audio ke sath caption mein pack_id aur link diya hai
         try:
             caption_text = message.caption or ""
             parts = caption_text.split()
@@ -318,7 +315,6 @@ def post_pack_media(message):
         except Exception as e:
             bot.reply_to(message, f"⚠️ Error: {e}")
 
-# Helper to notify buyers
 def notify_buyers(pack_id, link):
     data = packs_db[pack_id]
     if pack_id in purchased_users:
@@ -342,8 +338,6 @@ def handle_buy(call):
 # --- SCREENSHOT HANDLER ---
 @bot.message_handler(content_types=['photo'])
 def handle_screenshot(message):
-    # Agar admin ne channel post ke liye photo bheji hai toh upar wala handler sambhal lega, 
-    # yahan sirf tab aayega jab koi user bot ko payment screenshot bhejega.
     if message.chat.id == ADMIN_ID:
         return
         

@@ -244,6 +244,34 @@ def send_qr_to_user(chat_id, pack_id):
     except Exception as e:
         bot.send_message(chat_id, f"{caption}\n\n⚠️ QR Code error: {e}", parse_mode="Markdown")
 
+# --- ADMIN COMMAND: Send All Active Packs to Channel ---
+@bot.message_handler(commands=['allpost'])
+def send_all_packs_to_channel(message):
+    if message.from_user.id != ADMIN_ID:
+        return
+    
+    active_count = 0
+    for pack_id, data in packs_db.items():
+        if data["active"]:
+            try:
+                markup = types.InlineKeyboardMarkup()
+                btn_text = "⏳ Pre-Book Now" if data["is_prebook"] else "✨ Buy Episodes"
+                bot_url = f"https://t.me/{BOT_USERNAME}?start=buy_{pack_id}"
+                markup.add(types.InlineKeyboardButton(btn_text, url=bot_url))
+                
+                delivery_text = "⏳ PRE-BOOKING" if data["is_prebook"] else "⚡ INSTANT DELIVERY"
+                text = f"✅ EPISODES {data['episodes']} 🦋\n\n🎧 TOTAL — {data['total']} 🦋\n\n{delivery_text} 🦋"
+                
+                bot.send_message(CHANNEL_ID, text, reply_markup=markup)
+                active_count += 1
+            except Exception as e:
+                print(f"Error sending pack {pack_id}: {e}")
+                
+    if active_count > 0:
+        bot.reply_to(message, f"✅ Total {active_count} active packs ki post main channel par bhej di gayi hai!")
+    else:
+        bot.reply_to(message, "⚠️ Koi bhi active pack nahi mila!")
+
 # --- CHANNEL POST COMMAND (Supports Photo or Audio with caption) ---
 @bot.message_handler(content_types=['photo', 'audio'], commands=['post'])
 def post_pack_media(message):

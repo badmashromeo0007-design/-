@@ -4,7 +4,6 @@ import telebot
 from telebot import types
 from flask import Flask
 from apscheduler.schedulers.background import BackgroundScheduler
-from datetime import datetime, timedelta
 
 # --- CONFIGURATION ---
 TOKEN = "8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU"
@@ -22,20 +21,11 @@ app = Flask(__name__)
 packs_db = {
     "1": {
         "title": "SUPER YODDHA — EPISODE SALE",
-        "episodes": "3561 - 3569",
-        "total": "9 Episodes",
-        "price": "150",
-        "link": "https://t.me/+LwK7k4XrANI3NjU1",
-        "is_prebook": False,
-        "active": True
-    },
-    "2": {
-        "title": "SUPER YODDHA — PRE-BOOKING",
-        "episodes": "3570 - 3575",
-        "total": "6 Episodes",
-        "price": "150",
+        "episodes": "3591 - 3595",
+        "total": "5 Episodes",
+        "price": "100",
         "link": "https://t.me/+zaFMdS92m5FhOGI9",
-        "is_prebook": True,
+        "is_prebook": False,
         "active": True
     }
 }
@@ -44,8 +34,7 @@ UPI_ID = "Badmashromeo8880@okaxis"
 user_pending_pack = {}
 
 purchased_users = {
-    "1": [],
-    "2": []
+    "1": []
 }
 
 @app.route('/')
@@ -64,7 +53,7 @@ def calculate_total_episodes(episodes_str):
                 return f"{total} Episodes"
     except Exception as e:
         print(f"Calculation error: {e}")
-    return "9 Episodes"
+    return "5 Episodes"
 
 # --- ADMIN COMMAND: Add Pack with Automatic Episode Counting ---
 @bot.message_handler(commands=['addpack'])
@@ -356,12 +345,61 @@ def notify_buyers(pack_id, link):
             except Exception as ex:
                 print(f"Could not message user {user_id}: {ex}")
 
-# --- CALLBACK FOR BUY ---
-@bot.callback_query_handler(func=lambda call: call.data.startswith("buy_"))
-def handle_buy(call):
-    bot.answer_callback_query(call.id)
-    pack_id = call.data.split("_")[1]
-    send_qr_to_user(call.message.chat.id, pack_id)
+# --- UNIVERSAL CALLBACK HANDLER FOR BUTTONS ---
+@bot.callback_query_handler(func=lambda call: True)
+def handle_all_callbacks(call):
+    if call.data.startswith("buy_"):
+        bot.answer_callback_query(call.id)
+        pack_id = call.data.split("_")[1]
+        send_qr_to_user(call.message.chat.id, pack_id)
+    elif call.data.startswith("approve_") or call.data.startswith("reject_"):
+        handle_admin_action_direct(call)
+
+def handle_admin_action_direct(call):
+    if call.from_user.id != ADMIN_ID:
+        bot.answer_callback_query(call.id, "Aap admin nahi hain!", show_alert=True)
+        return
+        
+    data_parts = call.data.split('_')
+    action = data_parts[0]
+    
+    if action == 'approve':
+        pack_id = data_parts[1]
+        target_user_id = int(data_parts[2])
+        
+        if pack_id in packs_db:
+            if target_user_id not in purchased_users[pack_id]:
+                purchased_users[pack_id].append(target_user_id)
+        
+        bot.answer_callback_query(call.id, f"Pack {pack_id} Approved!", show_alert=True)
+        try:
+            bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.id, caption=call.message.caption + f"\n\nSTATUS: ✅ APPROVED (PACK {pack_id})")
+        except:
+            pass
+            
+        data = packs_db.get(pack_id, {})
+        is_prebook = data.get("is_prebook", False)
+        link = data.get("link", "https://t.me/")
+        
+        try:
+            bot.unban_chat_member(CHANNEL_ID, target_user_id, only_if_banned=True)
+        except Exception as e:
+            print(f"Auto-add error: {e}")
+
+        if is_prebook:
+            bot.send_message(target_user_id, "🎉 Aapka pre-booking payment verify ho gaya hai! Jaise hi episodes release honge, aapko channel mein add kar diya jayega.")
+        else:
+            bot.send_message(target_user_id, f"🎉 Aapka payment verify ho gaya hai! Aapko channel mein add kar diya gaya hai. Link: {link}")
+        
+    else:
+        target_user_id = int(data_parts[1])
+        bot.answer_callback_query(call.id, "Payment Rejected!", show_alert=True)
+        try:
+            bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.id, caption=call.message.caption + "\n\nSTATUS: ❌ REJECTED")
+        except:
+            pass
+            
+        bot.send_message(target_user_id, "❌ Aapka payment screenshot reject kar diya gaya hai. Kripya sahi screenshot bhejein (Madad ke liye 'help' likhein).")
 
 # --- SCREENSHOT HANDLER ---
 @bot.message_handler(content_types=['photo'])
@@ -398,54 +436,6 @@ def handle_screenshot(message):
         bot.send_photo(ADMIN_ID, photo_id, caption=caption, reply_markup=markup)
     except Exception as e:
         bot.send_message(ADMIN_ID, f"⚠️ Error forwarding photo: {e}")
-
-# --- ADMIN APPROVAL HANDLER ---
-@bot.callback_query_handler(func=lambda call: call.data.startswith('approve_') or call.data.startswith('reject_'))
-def handle_admin_action(call):
-    if call.from_user.id != ADMIN_ID:
-        bot.answer_callback_query(call.id, "Aap admin nahi hain!", show_alert=True)
-        return
-        
-    data_parts = call.data.split('_')
-    action = data_parts[0]
-    
-    if action == 'approve':
-        pack_id = data_parts[1]
-        target_user_id = int(data_parts[2])
-        
-        if pack_id in packs_db:
-            if target_user_id not in purchased_users[pack_id]:
-                purchased_users[pack_id].append(target_user_id)
-        
-        bot.answer_callback_query(call.id, f"Pack {pack_id} Approved!", show_alert=True)
-        try:
-            bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.id, caption=call.message.caption + f"\n\nSTATUS: ✅ APPROVED (PACK {pack_id})")
-        except:
-            pass
-            
-        data = packs_db.get(pack_id, {})
-        is_prebook = data.get("is_prebook", False)
-        link = data.get("link", "https://t.me/")
-        
-        try:
-            bot.unban_chat_member(CHANNEL_ID, target_user_id, only_if_banned=True)
-        except Exception as e:
-            print(f"Auto-add error: {e}")
-
-        if is_prebook:
-            bot.send_message(target_user_id, f"🎉 Aapka pre-booking payment verify ho gaya hai! Jaise hi episodes release honge, aapko channel mein add kar diya jayega.")
-        else:
-            bot.send_message(target_user_id, f"🎉 Aapka payment verify ho gaya hai! Aapko channel mein add kar diya gaya hai. Link: {link}")
-        
-    else:
-        target_user_id = int(data_parts[1])
-        bot.answer_callback_query(call.id, "Payment Rejected!", show_alert=True)
-        try:
-            bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.id, caption=call.message.caption + "\n\nSTATUS: ❌ REJECTED")
-        except:
-            pass
-            
-        bot.send_message(target_user_id, f"❌ Aapka payment screenshot reject kar diya gaya hai. Kripya sahi screenshot bhejein (Madad ke liye 'help' likhein).")
 
 # --- APSCHEDULER SETUP ---
 scheduler = BackgroundScheduler()

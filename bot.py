@@ -1,8 +1,9 @@
 import os
 import re
+import time
+import threading
 import telebot
 from telebot import types
-from flask import Flask, request
 
 # --- CONFIGURATION ---
 TOKEN = "8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU"
@@ -12,7 +13,6 @@ BOT_USERNAME = "ROMEO_PAY_BOT" # Aapka confirmed bot username
 ADMIN_USERNAME = "Romeo_kerketta" # Aapka Telegram username help ke liye
 
 bot = telebot.TeleBot(TOKEN)
-app = Flask(__name__)
 
 # --- MULTI-PACK DYNAMIC DATABASE ---
 packs_db = {
@@ -33,21 +33,6 @@ user_pending_pack = {}
 purchased_users = {
     "1": []
 }
-
-@app.route('/')
-def home():
-    return "Bot is running live 24/7!"
-
-# Webhook route
-@app.route(f'/{TOKEN}', methods=['POST'])
-def webhook():
-    if request.headers.get('content-type') == 'application/json':
-        json_string = request.get_data().decode('utf-8')
-        update = telebot.types.Update.de_json(json_string)
-        bot.process_new_updates([update])
-        return "!", 200
-    else:
-        return "Forbidden", 403
 
 # --- HELPER FUNCTION: Calculate Total Episodes Automatically ---
 def calculate_total_episodes(episodes_str):
@@ -399,15 +384,31 @@ def handle_screenshot(message):
     except Exception as e:
         bot.send_message(ADMIN_ID, f"⚠️ Error: {e}")
 
-# --- MAIN APP RUNNER ---
+# --- POLLING RUNNER (No Webhook Conflicts) ---
+def run_polling():
+    while True:
+        try:
+            print("Starting bot polling...")
+            bot.remove_webhook()
+            bot.infinity_polling(timeout=60, long_polling_timeout=60)
+        except Exception as e:
+            print(f"Polling error: {e}")
+            time.sleep(5)
+
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    render_url = os.environ.get("RENDER_EXTERNAL_URL")
+    # Webhook ko completely clear karke direct polling thread start karte hain
+    bot.remove_webhook()
+    t = threading.Thread(target=run_polling)
+    t.start()
     
-    if render_url:
-        bot.remove_webhook()
-        bot.set_webhook(url=f"{render_url}/{TOKEN}")
-        print(f"Webhook set to: {render_url}/{TOKEN}")
+    # Render web service ko zinda rakhne ke liye chota sa dummy server (agar zarurat ho)
+    from flask import Flask
+    app = Flask(__name__)
+    
+    @app.route('/')
+    def home():
+        return "Bot is running via Polling mode 24/7!"
         
+    port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
     

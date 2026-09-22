@@ -38,13 +38,16 @@ purchased_users = {
 def home():
     return "Bot is running live 24/7!"
 
-# Webhook route taaki Render conflict na aaye
+# Webhook route
 @app.route(f'/{TOKEN}', methods=['POST'])
 def webhook():
-    json_string = request.get_data().decode('utf-8')
-    update = telebot.types.Update.de_json(json_string)
-    bot.process_new_updates([update])
-    return "!", 200
+    if request.headers.get('content-type') == 'application/json':
+        json_string = request.get_data().decode('utf-8')
+        update = telebot.types.Update.de_json(json_string)
+        bot.process_new_updates([update])
+        return "!", 200
+    else:
+        return "Forbidden", 403
 
 # --- HELPER FUNCTION: Calculate Total Episodes Automatically ---
 def calculate_total_episodes(episodes_str):
@@ -308,54 +311,64 @@ def notify_buyers(pack_id, link):
             except Exception as ex:
                 print(f"Error: {ex}")
 
-# --- CALLBACK HANDLER ---
+# --- ROBUST CALLBACK HANDLER ---
 @bot.callback_query_handler(func=lambda call: True)
 def handle_all_callbacks(call):
-    if call.data.startswith("buy_"):
-        bot.answer_callback_query(call.id)
-        pack_id = call.data.split("_")[1]
-        send_qr_to_user(call.message.chat.id, pack_id)
-    elif call.data.startswith("approve_") or call.data.startswith("reject_"):
-        handle_admin_action_direct(call)
-
-def handle_admin_action_direct(call):
-    if call.from_user.id != ADMIN_ID:
-        bot.answer_callback_query(call.id, "Aap admin nahi hain!", show_alert=True)
-        return
-        
-    data_parts = call.data.split('_')
-    action = data_parts[0]
-    
-    if action == 'approve':
-        pack_id = data_parts[1]
-        target_user_id = int(data_parts[2])
-        
-        if pack_id in packs_db and target_user_id not in purchased_users[pack_id]:
-            purchased_users[pack_id].append(target_user_id)
-        
-        bot.answer_callback_query(call.id, f"Pack {pack_id} Approved!", show_alert=True)
-        try:
-            bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.id, caption=call.message.caption + f"\n\nSTATUS: ✅ APPROVED")
-        except:
-            pass
+    try:
+        if call.data.startswith("buy_"):
+            bot.answer_callback_query(call.id)
+            pack_id = call.data.split("_")[1]
+            send_qr_to_user(call.message.chat.id, pack_id)
             
-        data = packs_db.get(pack_id, {})
-        link = data.get("link", "https://t.me/")
-        
-        try:
-            bot.unban_chat_member(CHANNEL_ID, target_user_id, only_if_banned=True)
-        except Exception as e:
-            print(f"Unban error: {e}")
+        elif call.data.startswith("approve_"):
+            parts = call.data.split("_")
+            pack_id = parts[1]
+            target_user_id = int(parts[2])
+            
+            if call.from_user.id != ADMIN_ID:
+                bot.answer_callback_query(call.id, "Aap admin nahi hain!", show_alert=True)
+                return
+                
+            if pack_id in packs_db and target_user_id not in purchased_users[pack_id]:
+                purchased_users[pack_id].append(target_user_id)
+            
+            bot.answer_callback_query(call.id, f"Pack {pack_id} Approved!", show_alert=True)
+            try:
+                bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.message_id, caption=call.message.caption + f"\n\nSTATUS: ✅ APPROVED (PACK {pack_id})")
+            except Exception as e:
+                print(f"Caption edit error: {e}")
+                
+            data = packs_db.get(pack_id, {})
+            link = data.get("link", "https://t.me/")
+            is_prebook = data.get("is_prebook", False)
+            
+            try:
+                bot.unban_chat_member(CHANNEL_ID, target_user_id, only_if_banned=True)
+            except Exception as e:
+                print(f"Unban error: {e}")
 
-        bot.send_message(target_user_id, f"🎉 Payment verify ho gaya hai! Link: {link}")
-    else:
-        target_user_id = int(data_parts[1])
-        bot.answer_callback_query(call.id, "Payment Rejected!", show_alert=True)
-        try:
-            bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.id, caption=call.message.caption + "\n\nSTATUS: ❌ REJECTED")
-        except:
-            pass
-        bot.send_message(target_user_id, "❌ Screenshot reject ho gaya. Sahi screenshot bhejein (Madad ke liye 'help' likhein).")
+            if is_prebook:
+                bot.send_message(target_user_id, "🎉 Aapka pre-booking payment verify ho gaya hai! Jaise hi episodes release honge, aapko channel mein add kar diya jayega.")
+            else:
+                bot.send_message(target_user_id, f"🎉 Aapka payment verify ho gaya hai! Aapko channel mein add kar diya gaya hai. Link: {link}")
+                
+        elif call.data.startswith("reject_"):
+            parts = call.data.split("_")
+            target_user_id = int(parts[1])
+            
+            if call.from_user.id != ADMIN_ID:
+                bot.answer_callback_query(call.id, "Aap admin nahi hain!", show_alert=True)
+                return
+                
+            bot.answer_callback_query(call.id, "Payment Rejected!", show_alert=True)
+            try:
+                bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.message_id, caption=call.message.caption + "\n\nSTATUS: ❌ REJECTED")
+            except Exception as e:
+                print(f"Caption edit error: {e}")
+                
+            bot.send_message(target_user_id, "❌ Aapka payment screenshot reject kar diya gaya hai. Kripya sahi screenshot bhejein (Madad ke liye 'help' likhein).")
+    except Exception as e:
+        print(f"Callback error: {e}")
 
 # --- SCREENSHOT HANDLER ---
 @bot.message_handler(content_types=['photo'])
@@ -386,15 +399,15 @@ def handle_screenshot(message):
     except Exception as e:
         bot.send_message(ADMIN_ID, f"⚠️ Error: {e}")
 
-# --- MAIN APP RUNNER (Webhook Configured for Render) ---
+# --- MAIN APP RUNNER ---
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
-    render_url = os.environ.get("RENDER_EXTERNAL_URL") # Render khud link de deta hai
+    render_url = os.environ.get("RENDER_EXTERNAL_URL")
     
     if render_url:
         bot.remove_webhook()
         bot.set_webhook(url=f"{render_url}/{TOKEN}")
-        print("Webhook set successfully!")
+        print(f"Webhook set to: {render_url}/{TOKEN}")
         
     app.run(host='0.0.0.0', port=port)
     

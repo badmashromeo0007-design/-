@@ -2,8 +2,7 @@ import os
 import re
 import telebot
 from telebot import types
-from flask import Flask
-from apscheduler.schedulers.background import BackgroundScheduler
+from flask import Flask, request
 
 # --- CONFIGURATION ---
 TOKEN = "8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU"
@@ -13,8 +12,6 @@ BOT_USERNAME = "ROMEO_PAY_BOT" # Aapka confirmed bot username
 ADMIN_USERNAME = "Romeo_kerketta" # Aapka Telegram username help ke liye
 
 bot = telebot.TeleBot(TOKEN)
-bot.remove_webhook()
-
 app = Flask(__name__)
 
 # --- MULTI-PACK DYNAMIC DATABASE ---
@@ -41,6 +38,14 @@ purchased_users = {
 def home():
     return "Bot is running live 24/7!"
 
+# Webhook route taaki Render conflict na aaye
+@app.route(f'/{TOKEN}', methods=['POST'])
+def webhook():
+    json_string = request.get_data().decode('utf-8')
+    update = telebot.types.Update.de_json(json_string)
+    bot.process_new_updates([update])
+    return "!", 200
+
 # --- HELPER FUNCTION: Calculate Total Episodes Automatically ---
 def calculate_total_episodes(episodes_str):
     try:
@@ -55,7 +60,7 @@ def calculate_total_episodes(episodes_str):
         print(f"Calculation error: {e}")
     return "5 Episodes"
 
-# --- ADMIN COMMAND: Add Pack with Automatic Episode Counting ---
+# --- ADMIN COMMAND: Add Pack ---
 @bot.message_handler(commands=['addpack'])
 def add_pack(message):
     if message.from_user.id != ADMIN_ID:
@@ -91,7 +96,7 @@ def add_pack(message):
     except Exception as e:
         bot.reply_to(message, "⚠️ Galat format!\nInstant ke liye: `/addpack 1 | 3561 - 3569 | 150 | link`\nPre-book ke liye: `/addpack 2 | 3570 - 3575 | 150 | link | pre`", parse_mode="Markdown")
 
-# --- ADMIN COMMAND: Edit Existing Pack Anytime ---
+# --- ADMIN COMMAND: Edit Existing Pack ---
 @bot.message_handler(commands=['editpack'])
 def edit_pack(message):
     if message.from_user.id != ADMIN_ID:
@@ -104,7 +109,7 @@ def edit_pack(message):
         link = parts[3].strip()
         
         if pack_id not in packs_db:
-            bot.reply_to(message, f"⚠️ Pack ID '{pack_id}' database mein nahi mili! Pehle /addpack use karein.")
+            bot.reply_to(message, f"⚠️ Pack ID '{pack_id}' database mein nahi mili!")
             return
             
         is_prebook = packs_db[pack_id]["is_prebook"]
@@ -127,7 +132,7 @@ def edit_pack(message):
         
         bot.reply_to(message, f"✅ Pack {pack_id} successfully updated!\nEpisodes: {episodes}\nTotal: {calculated_total}\nPrice: ₹{price}")
     except Exception as e:
-        bot.reply_to(message, "⚠️ Galat format!\nUse karein: `/editpack 1 | 3561 - 3575 | 200 | https://t.me/+link`", parse_mode="Markdown")
+        bot.reply_to(message, "⚠️ Galat format! Use karein: `/editpack 1 | 3561 - 3575 | 200 | https://t.me/+link`", parse_mode="Markdown")
 
 # --- ADMIN COMMAND: Toggle Pack ---
 @bot.message_handler(commands=['toggle'])
@@ -137,18 +142,18 @@ def toggle_pack(message):
     try:
         parts = message.text.split(maxsplit=1)
         if len(parts) < 2:
-            bot.reply_to(message, "⚠️ Kripya Pack ID likhein. Format: `/toggle 1`", parse_mode="Markdown")
+            bot.reply_to(message, "⚠️ Format: `/toggle 1`", parse_mode="Markdown")
             return
             
         pack_id = parts[1].strip()
         if pack_id in packs_db:
             packs_db[pack_id]["active"] = not packs_db[pack_id]["active"]
-            status = "ACTIVE (Enable)" if packs_db[pack_id]["active"] else "HIDDEN (Disable)"
-            bot.reply_to(message, f"✅ Pack {pack_id} ka status badal kar ho gaya hai: *{status}*", parse_mode="Markdown")
+            status = "ACTIVE" if packs_db[pack_id]["active"] else "HIDDEN"
+            bot.reply_to(message, f"✅ Pack {pack_id} status: *{status}*", parse_mode="Markdown")
         else:
-            bot.reply_to(message, f"⚠️ Pack ID '{pack_id}' database mein nahi mili!")
+            bot.reply_to(message, f"⚠️ Pack ID '{pack_id}' nahi mili!")
     except Exception as e:
-        bot.reply_to(message, f"⚠️ Error aa gaya: {e}")
+        bot.reply_to(message, f"⚠️ Error: {e}")
 
 # --- START & MENU COMMAND ---
 @bot.message_handler(commands=['start', 'menu'])
@@ -166,13 +171,8 @@ def send_welcome(message):
     for pack_id, data in packs_db.items():
         if data["active"]:
             active_packs_found = True
-            if data["is_prebook"]:
-                btn_text = f"⏳ Pre-Book Now | EP- {data['episodes']}"
-            else:
-                btn_text = f"✨ Buy Episodes | EP- {data['episodes']}"
-            
-            btn = types.InlineKeyboardButton(btn_text, callback_data=f"buy_{pack_id}")
-            markup.add(btn)
+            btn_text = f"⏳ Pre-Book Now | EP- {data['episodes']}" if data["is_prebook"] else f"✨ Buy Episodes | EP- {data['episodes']}"
+            markup.add(types.InlineKeyboardButton(btn_text, callback_data=f"buy_{pack_id}"))
             
     if not active_packs_found:
         bot.reply_to(message, "⚠️ Filhal koi bhi pack active nahi hai.")
@@ -181,7 +181,7 @@ def send_welcome(message):
     welcome_text = (
         "🔥 SUPER YODDHA — EPISODES 🔥\n\n"
         "Niche diye gaye packs mein se select karein:\n\n"
-        "*(Agar koi madad chahiye ho toh 'help' likh kar bhejein)*"
+        "*(Madad ke liye 'help' likh kar bhejein)*"
     )
     bot.reply_to(message, welcome_text, reply_markup=markup, parse_mode="Markdown")
 
@@ -190,8 +190,7 @@ def send_welcome(message):
 def help_command(message):
     help_text = (
         "🛠️ *PAYMENT & SUPPORT HELP*\n\n"
-        "Agar aapko payment verify hone mein koi samasya aa rahi hai, ya link nahi mila hai, toh aap seedha admin se sampark kar sakte hain:\n\n"
-        f"👉 Admin Contact: @{ADMIN_USERNAME}"
+        f"Agar koi samasya ho toh admin se sampark karein:\n👉 Admin: @{ADMIN_USERNAME}"
     )
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton("💬 Admin Se Baat Karein", url=f"https://t.me/{ADMIN_USERNAME}"))
@@ -212,26 +211,21 @@ def send_qr_to_user(chat_id, pack_id):
     upi_string = f"upi://pay?pa={UPI_ID}&pn=Romeo&am={price}&cu=INR"
     qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={upi_string}"
     
-    if is_prebook:
-        mode_label = "PRE-BOOKING QR CODE"
-        note_text = "1. Payment ke baad screenshot bhejein.\n2. Release hote hi link bhej diya jayega."
-    else:
-        mode_label = "INSTANT PAYMENT QR CODE"
-        note_text = "1. Payment ke baad screenshot bhejein.\n2. Turant link mil jayega."
+    note_text = "1. Payment ke baad screenshot bhejein.\n2. Release hote hi link bhej diya jayega." if is_prebook else "1. Payment ke baad screenshot bhejein.\n2. Turant link mil jayega."
+    mode_label = "PRE-BOOKING QR CODE" if is_prebook else "INSTANT PAYMENT QR CODE"
     
     caption = (
         f"⚡ PACK {pack_id} — {mode_label} ⚡\n\n"
         f"• UPI ID: {UPI_ID}\n"
         f"• Amount: ₹{price}\n"
         f"• Episodes: {episodes} ({total})\n\n"
-        f"{note_text}\n\n"
-        f"*(Madad ke liye 'help' likh kar bhej sakte hain)*"
+        f"{note_text}"
     )
     
     try:
         bot.send_photo(chat_id, qr_url, caption=caption, parse_mode="Markdown")
     except Exception as e:
-        bot.send_message(chat_id, f"{caption}\n\n⚠️ QR Code error: {e}", parse_mode="Markdown")
+        bot.send_message(chat_id, f"{caption}\n\n⚠️ QR Error: {e}", parse_mode="Markdown")
 
 # --- ADMIN COMMAND: Send All Active Packs to Channel ---
 @bot.message_handler(commands=['allpost'])
@@ -254,83 +248,54 @@ def send_all_packs_to_channel(message):
                 bot.send_message(CHANNEL_ID, text, reply_markup=markup)
                 active_count += 1
             except Exception as e:
-                print(f"Error sending pack {pack_id}: {e}")
+                print(f"Error: {e}")
                 
     if active_count > 0:
-        bot.reply_to(message, f"✅ Total {active_count} active packs ki post main channel par bhej di gayi hai!")
+        bot.reply_to(message, f"✅ Total {active_count} active packs channel par bhej diye gaye hain!")
     else:
-        bot.reply_to(message, "⚠️ Koi bhi active pack nahi mila!")
+        bot.reply_to(message, "⚠️ Koi active pack nahi mila!")
 
-# --- CHANNEL POST COMMAND (Supports Photo or Audio with caption) ---
+# --- CHANNEL POST COMMAND ---
 @bot.message_handler(content_types=['photo', 'audio'], commands=['post'])
 def post_pack_media(message):
     if message.from_user.id != ADMIN_ID:
         return
     
-    if message.content_type == 'text':
-        try:
-            parts = message.text.split(maxsplit=2)
-            pack_id = parts[1].strip()
-            custom_link = parts[2].strip()
+    try:
+        caption_text = message.caption or ""
+        parts = caption_text.split()
+        if len(parts) < 2:
+            bot.reply_to(message, "⚠️ Format: Caption mein `1 https://t.me/+link` likhein.")
+            return
             
-            if pack_id not in packs_db:
-                bot.reply_to(message, "⚠️ Invalid Pack ID!")
-                return
-                
-            packs_db[pack_id]["link"] = custom_link
-            data = packs_db[pack_id]
+        pack_id = parts[0].strip()
+        custom_link = parts[1].strip()
+        
+        if pack_id not in packs_db:
+            bot.reply_to(message, "⚠️ Invalid Pack ID!")
+            return
             
-            markup = types.InlineKeyboardMarkup()
-            btn_text = "⏳ Pre-Book Now" if data["is_prebook"] else "✨ Buy Episodes"
-            bot_url = f"https://t.me/{BOT_USERNAME}?start=buy_{pack_id}"
-            markup.add(types.InlineKeyboardButton(btn_text, url=bot_url))
+        packs_db[pack_id]["link"] = custom_link
+        data = packs_db[pack_id]
+        
+        markup = types.InlineKeyboardMarkup()
+        btn_text = "⏳ Pre-Book Now" if data["is_prebook"] else "✨ Buy Episodes"
+        bot_url = f"https://t.me/{BOT_USERNAME}?start=buy_{pack_id}"
+        markup.add(types.InlineKeyboardButton(btn_text, url=bot_url))
+        
+        delivery_text = "⏳ PRE-BOOKING" if data["is_prebook"] else "⚡ INSTANT DELIVERY"
+        text = f"✅ EPISODES {data['episodes']} 🦋\n\n🎧 TOTAL — {data['total']} 🦋\n\n{delivery_text} 🦋"
+        
+        file_id = message.photo[-1].file_id if message.photo else message.audio.file_id
+        if message.photo:
+            bot.send_photo(CHANNEL_ID, file_id, caption=text, reply_markup=markup)
+        elif message.audio:
+            bot.send_audio(CHANNEL_ID, file_id, caption=text, reply_markup=markup)
             
-            delivery_text = "⏳ PRE-BOOKING" if data["is_prebook"] else "⚡ INSTANT DELIVERY"
-            text = f"✅ EPISODES {data['episodes']} 🦋\n\n🎧 TOTAL — {data['total']} 🦋\n\n{delivery_text} 🦋"
-            
-            bot.send_message(CHANNEL_ID, text, reply_markup=markup)
-            notify_buyers(pack_id, custom_link)
-            bot.reply_to(message, "✅ Text post channel par bhej di gayi hai!")
-        except Exception as e:
-            bot.reply_to(message, f"⚠️ Galat format! Use karein:\n`/post 1 https://t.me/+your_link`", parse_mode="Markdown")
-            
-    else:
-        try:
-            caption_text = message.caption or ""
-            parts = caption_text.split()
-            if len(parts) < 2:
-                bot.reply_to(message, "⚠️ Kripya media ke caption mein Pack ID aur Link likhein. Jaise: `1 https://t.me/+link`")
-                return
-                
-            pack_id = parts[0].strip()
-            custom_link = parts[1].strip()
-            
-            if pack_id not in packs_db:
-                bot.reply_to(message, "⚠️ Invalid Pack ID!")
-                return
-                
-            packs_db[pack_id]["link"] = custom_link
-            data = packs_db[pack_id]
-            
-            markup = types.InlineKeyboardMarkup()
-            btn_text = "⏳ Pre-Book Now" if data["is_prebook"] else "✨ Buy Episodes"
-            bot_url = f"https://t.me/{BOT_USERNAME}?start=buy_{pack_id}"
-            markup.add(types.InlineKeyboardButton(btn_text, url=bot_url))
-            
-            delivery_text = "⏳ PRE-BOOKING" if data["is_prebook"] else "⚡ INSTANT DELIVERY"
-            text = f"✅ EPISODES {data['episodes']} 🦋\n\n🎧 TOTAL — {data['total']} 🦋\n\n{delivery_text} 🦋"
-            
-            file_id = message.photo[-1].file_id if message.photo else message.audio.file_id
-            
-            if message.photo:
-                bot.send_photo(CHANNEL_ID, file_id, caption=text, reply_markup=markup)
-            elif message.audio:
-                bot.send_audio(CHANNEL_ID, file_id, caption=text, reply_markup=markup)
-                
-            notify_buyers(pack_id, custom_link)
-            bot.reply_to(message, "✅ Media post channel par bhej di gayi hai!")
-        except Exception as e:
-            bot.reply_to(message, f"⚠️ Error: {e}")
+        notify_buyers(pack_id, custom_link)
+        bot.reply_to(message, "✅ Media post bhej di gayi hai!")
+    except Exception as e:
+        bot.reply_to(message, f"⚠️ Error: {e}")
 
 def notify_buyers(pack_id, link):
     data = packs_db[pack_id]
@@ -338,14 +303,12 @@ def notify_buyers(pack_id, link):
         for user_id in purchased_users[pack_id]:
             try:
                 bot.unban_chat_member(CHANNEL_ID, user_id, only_if_banned=True)
-                if data["is_prebook"]:
-                    bot.send_message(user_id, f"🎉 Aapke pre-booked episodes (Ep: {data['episodes']}) release ho gaye hain! Yeh raha link:\n\n{link}")
-                else:
-                    bot.send_message(user_id, f"📢 Nayi post channel par daal di gayi hai! Yeh raha aapka link:\n\n{link}")
+                msg = f"🎉 Pre-booked episodes release ho gaye hain! Link:\n\n{link}" if data["is_prebook"] else f"📢 Nayi post! Link:\n\n{link}"
+                bot.send_message(user_id, msg)
             except Exception as ex:
-                print(f"Could not message user {user_id}: {ex}")
+                print(f"Error: {ex}")
 
-# --- UNIVERSAL CALLBACK HANDLER FOR BUTTONS ---
+# --- CALLBACK HANDLER ---
 @bot.callback_query_handler(func=lambda call: True)
 def handle_all_callbacks(call):
     if call.data.startswith("buy_"):
@@ -367,30 +330,24 @@ def handle_admin_action_direct(call):
         pack_id = data_parts[1]
         target_user_id = int(data_parts[2])
         
-        if pack_id in packs_db:
-            if target_user_id not in purchased_users[pack_id]:
-                purchased_users[pack_id].append(target_user_id)
+        if pack_id in packs_db and target_user_id not in purchased_users[pack_id]:
+            purchased_users[pack_id].append(target_user_id)
         
         bot.answer_callback_query(call.id, f"Pack {pack_id} Approved!", show_alert=True)
         try:
-            bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.id, caption=call.message.caption + f"\n\nSTATUS: ✅ APPROVED (PACK {pack_id})")
+            bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.id, caption=call.message.caption + f"\n\nSTATUS: ✅ APPROVED")
         except:
             pass
             
         data = packs_db.get(pack_id, {})
-        is_prebook = data.get("is_prebook", False)
         link = data.get("link", "https://t.me/")
         
         try:
             bot.unban_chat_member(CHANNEL_ID, target_user_id, only_if_banned=True)
         except Exception as e:
-            print(f"Auto-add error: {e}")
+            print(f"Unban error: {e}")
 
-        if is_prebook:
-            bot.send_message(target_user_id, "🎉 Aapka pre-booking payment verify ho gaya hai! Jaise hi episodes release honge, aapko channel mein add kar diya jayega.")
-        else:
-            bot.send_message(target_user_id, f"🎉 Aapka payment verify ho gaya hai! Aapko channel mein add kar diya gaya hai. Link: {link}")
-        
+        bot.send_message(target_user_id, f"🎉 Payment verify ho gaya hai! Link: {link}")
     else:
         target_user_id = int(data_parts[1])
         bot.answer_callback_query(call.id, "Payment Rejected!", show_alert=True)
@@ -398,8 +355,7 @@ def handle_admin_action_direct(call):
             bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.id, caption=call.message.caption + "\n\nSTATUS: ❌ REJECTED")
         except:
             pass
-            
-        bot.send_message(target_user_id, "❌ Aapka payment screenshot reject kar diya gaya hai. Kripya sahi screenshot bhejein (Madad ke liye 'help' likhein).")
+        bot.send_message(target_user_id, "❌ Screenshot reject ho gaya. Sahi screenshot bhejein (Madad ke liye 'help' likhein).")
 
 # --- SCREENSHOT HANDLER ---
 @bot.message_handler(content_types=['photo'])
@@ -408,45 +364,37 @@ def handle_screenshot(message):
         return
         
     user = message.from_user
-    bot.reply_to(message, "✅ Aapka screenshot mil gaya hai! Verification ke liye admin ke paas bhej diya gaya hai. *(Agar koi samasya ho toh 'help' likhein)*", parse_mode="Markdown")
+    bot.reply_to(message, "✅ Screenshot mil gaya hai! Verification ke liye admin ke paas bhej diya gaya hai.", parse_mode="Markdown")
     
     pack_id = user_pending_pack.get(user.id, "1")
     data = packs_db.get(pack_id, {})
-    episodes = data.get("episodes", "N/A")
-    total = data.get("total", "N/A")
-    price = data.get("price", "N/A")
-    
-    username_text = f"@{user.username}" if user.username else "N/A"
     
     caption = (
-        "🚨 NEW PAYMENT SCREENSHOT RECEIVED! 🚨\n\n"
+        "🚨 NEW PAYMENT SCREENSHOT 🚨\n\n"
         f"• Name: {user.first_name}\n"
         f"• User ID: {user.id}\n"
-        f"• Username: {username_text}\n"
-        f"• Selected Pack: Pack {pack_id} (Ep: {episodes} [{total}] - ₹{price})\n\n"
-        "👇 Approve karne ke liye click karein:"
+        f"• Pack: Pack {pack_id} (₹{data.get('price', '100')})\n\n"
+        "👇 Action lein:"
     )
     
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton(f"⚡️ Approve Pack {pack_id}", callback_data=f"approve_{pack_id}_{user.id}"))
-    markup.add(types.InlineKeyboardButton("❌ Reject Payment", callback_data=f"reject_{user.id}"))
+    markup.add(types.InlineKeyboardButton("❌ Reject", callback_data=f"reject_{user.id}"))
     
     try:
-        photo_id = message.photo[-1].file_id
-        bot.send_photo(ADMIN_ID, photo_id, caption=caption, reply_markup=markup)
+        bot.send_photo(ADMIN_ID, message.photo[-1].file_id, caption=caption, reply_markup=markup)
     except Exception as e:
-        bot.send_message(ADMIN_ID, f"⚠️ Error forwarding photo: {e}")
+        bot.send_message(ADMIN_ID, f"⚠️ Error: {e}")
 
-# --- APSCHEDULER SETUP ---
-scheduler = BackgroundScheduler()
-scheduler.start()
-
+# --- MAIN APP RUNNER (Webhook Configured for Render) ---
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
+    render_url = os.environ.get("RENDER_EXTERNAL_URL") # Render khud link de deta hai
     
-    import threading
-    polling_thread = threading.Thread(target=bot.infinity_polling, daemon=True)
-    polling_thread.start()
-    
+    if render_url:
+        bot.remove_webhook()
+        bot.set_webhook(url=f"{render_url}/{TOKEN}")
+        print("Webhook set successfully!")
+        
     app.run(host='0.0.0.0', port=port)
     

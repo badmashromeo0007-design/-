@@ -1,8 +1,9 @@
 import os
 import re
+import threading
 import telebot
 from telebot import types
-from flask import Flask, request
+from flask import Flask
 
 # --- CONFIGURATION ---
 TOKEN = "8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU"
@@ -27,7 +28,7 @@ packs_db = {
     }
 }
 
-UPI_ID = "Badmashromeo8880@okaxis"
+UPI_ID = "Badmashromeo0007@okaxis"
 user_pending_pack = {}
 
 purchased_users = {
@@ -36,18 +37,7 @@ purchased_users = {
 
 @app.route('/')
 def home():
-    return "Bot is running live via Webhook 24/7!"
-
-# Webhook route jo Telegram se updates receive karega
-@app.route(f'/{TOKEN}', methods=['POST'])
-def webhook():
-    if request.headers.get('content-type') == 'application/json':
-        json_string = request.get_data().decode('utf-8')
-        update = telebot.types.Update.de_json(json_string)
-        bot.process_new_updates([update])
-        return "!", 200
-    else:
-        return "Forbidden", 403
+    return "Bot is running live via Polling Thread 24/7!"
 
 # --- HELPER FUNCTION: Calculate Total Episodes Automatically ---
 def calculate_total_episodes(episodes_str):
@@ -314,7 +304,6 @@ def notify_buyers(pack_id, link):
 # --- SUPER ROBUST CALLBACK HANDLER ---
 @bot.callback_query_handler(func=lambda call: True)
 def handle_all_callbacks(call):
-    # Sabse pehle Telegram ko acknowledgment bhejo taaki button par loading band ho jaye
     try:
         bot.answer_callback_query(call.id)
     except Exception as e:
@@ -402,15 +391,18 @@ def handle_screenshot(message):
     except Exception as e:
         bot.send_message(ADMIN_ID, f"⚠️ Error: {e}")
 
-# --- MAIN APP SETUP (WEBHOOK ON RENDER) ---
+# --- BACKGROUND POLLING RUNNER ---
+def run_bot():
+    bot.remove_webhook()
+    print("Bot polling started in background thread...")
+    bot.infinity_polling(timeout=60, long_polling_timeout=60)
+
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    render_url = os.environ.get("RENDER_EXTERNAL_URL")
+    bot.remove_webhook()
+    polling_thread = threading.Thread(target=run_bot)
+    polling_thread.daemon = True
+    polling_thread.start()
     
-    if render_url:
-        bot.remove_webhook()
-        bot.set_webhook(url=f"{render_url}/{TOKEN}")
-        print(f"Webhook successfully set to: {render_url}/{TOKEN}")
-        
+    port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
     

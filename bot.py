@@ -1,9 +1,8 @@
 import os
 import re
-import time
-import threading
 import telebot
 from telebot import types
+from flask import Flask, request
 
 # --- CONFIGURATION ---
 TOKEN = "8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU"
@@ -13,6 +12,7 @@ BOT_USERNAME = "ROMEO_PAY_BOT" # Aapka confirmed bot username
 ADMIN_USERNAME = "Romeo_kerketta" # Aapka Telegram username help ke liye
 
 bot = telebot.TeleBot(TOKEN)
+app = Flask(__name__)
 
 # --- MULTI-PACK DYNAMIC DATABASE ---
 packs_db = {
@@ -33,6 +33,21 @@ user_pending_pack = {}
 purchased_users = {
     "1": []
 }
+
+@app.route('/')
+def home():
+    return "Bot is running live via Webhook 24/7!"
+
+# Webhook route jo Telegram se updates receive karega
+@app.route(f'/{TOKEN}', methods=['POST'])
+def webhook():
+    if request.headers.get('content-type') == 'application/json':
+        json_string = request.get_data().decode('utf-8')
+        update = telebot.types.Update.de_json(json_string)
+        bot.process_new_updates([update])
+        return "!", 200
+    else:
+        return "Forbidden", 403
 
 # --- HELPER FUNCTION: Calculate Total Episodes Automatically ---
 def calculate_total_episodes(episodes_str):
@@ -296,12 +311,17 @@ def notify_buyers(pack_id, link):
             except Exception as ex:
                 print(f"Error: {ex}")
 
-# --- ROBUST CALLBACK HANDLER ---
+# --- SUPER ROBUST CALLBACK HANDLER ---
 @bot.callback_query_handler(func=lambda call: True)
 def handle_all_callbacks(call):
+    # Sabse pehle Telegram ko acknowledgment bhejo taaki button par loading band ho jaye
+    try:
+        bot.answer_callback_query(call.id)
+    except Exception as e:
+        print(f"Answer callback error: {e}")
+
     try:
         if call.data.startswith("buy_"):
-            bot.answer_callback_query(call.id)
             pack_id = call.data.split("_")[1]
             send_qr_to_user(call.message.chat.id, pack_id)
             
@@ -317,7 +337,6 @@ def handle_all_callbacks(call):
             if pack_id in packs_db and target_user_id not in purchased_users[pack_id]:
                 purchased_users[pack_id].append(target_user_id)
             
-            bot.answer_callback_query(call.id, f"Pack {pack_id} Approved!", show_alert=True)
             try:
                 bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.message_id, caption=call.message.caption + f"\n\nSTATUS: ✅ APPROVED (PACK {pack_id})")
             except Exception as e:
@@ -345,7 +364,6 @@ def handle_all_callbacks(call):
                 bot.answer_callback_query(call.id, "Aap admin nahi hain!", show_alert=True)
                 return
                 
-            bot.answer_callback_query(call.id, "Payment Rejected!", show_alert=True)
             try:
                 bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.message_id, caption=call.message.caption + "\n\nSTATUS: ❌ REJECTED")
             except Exception as e:
@@ -353,7 +371,7 @@ def handle_all_callbacks(call):
                 
             bot.send_message(target_user_id, "❌ Aapka payment screenshot reject kar diya gaya hai. Kripya sahi screenshot bhejein (Madad ke liye 'help' likhein).")
     except Exception as e:
-        print(f"Callback error: {e}")
+        print(f"Callback execution error: {e}")
 
 # --- SCREENSHOT HANDLER ---
 @bot.message_handler(content_types=['photo'])
@@ -384,31 +402,15 @@ def handle_screenshot(message):
     except Exception as e:
         bot.send_message(ADMIN_ID, f"⚠️ Error: {e}")
 
-# --- POLLING RUNNER (No Webhook Conflicts) ---
-def run_polling():
-    while True:
-        try:
-            print("Starting bot polling...")
-            bot.remove_webhook()
-            bot.infinity_polling(timeout=60, long_polling_timeout=60)
-        except Exception as e:
-            print(f"Polling error: {e}")
-            time.sleep(5)
-
+# --- MAIN APP SETUP (WEBHOOK ON RENDER) ---
 if __name__ == '__main__':
-    # Webhook ko completely clear karke direct polling thread start karte hain
-    bot.remove_webhook()
-    t = threading.Thread(target=run_polling)
-    t.start()
-    
-    # Render web service ko zinda rakhne ke liye chota sa dummy server (agar zarurat ho)
-    from flask import Flask
-    app = Flask(__name__)
-    
-    @app.route('/')
-    def home():
-        return "Bot is running via Polling mode 24/7!"
-        
     port = int(os.environ.get("PORT", 5000))
+    render_url = os.environ.get("RENDER_EXTERNAL_URL")
+    
+    if render_url:
+        bot.remove_webhook()
+        bot.set_webhook(url=f"{render_url}/{TOKEN}")
+        print(f"Webhook successfully set to: {render_url}/{TOKEN}")
+        
     app.run(host='0.0.0.0', port=port)
     

@@ -9,7 +9,10 @@ TOKEN = "8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU"
 ADMIN_ID = 6817248389          # Aapki Admin ID
 CHANNEL_ID = -1004382767346  # Aapke Super Yoddha channel ki ID
 BOT_USERNAME = "ROMEO_PAY_BOT" # Aapka confirmed bot username
-ADMIN_USERNAME = "Romeo_kerketta" # Aapka Telegram username help keliye
+ADMIN_USERNAME = "Romeo_kerketta" # Aapka Telegram username help ke liye
+
+# ⚠️ APNE RENDER APP KA NAAM YAHAN DALO (Jaise: "romeo-pay-bot")
+RENDER_APP_NAME = "Aapka-Render-App-Name" 
 
 bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
@@ -277,11 +280,12 @@ def handle_all_callbacks(call):
 # --- WEBHOOK SETUP & RUN ---
 if __name__ == '__main__':
     bot.remove_webhook()
-    external_url = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
-    if external_url:
-        webhook_url = f"https://{external_url}/{TOKEN}"
+    if RENDER_APP_NAME != "Aapka-Render-App-Name":
+        webhook_url = f"https://{RENDER_APP_NAME}.onrender.com/{TOKEN}"
         bot.set_webhook(url=webhook_url)
-        print(f"Webhook set to: {webhook_url}")
+        print(f"Webhook explicitly set to: {webhook_url}")
+    else:
+        print("⚠️ Warning: RENDER_APP_NAME update nahi kiya hai!")
     
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)

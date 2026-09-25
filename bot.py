@@ -1,18 +1,17 @@
 import os
 import re
-import threading
 import telebot
 from telebot import types
-from flask import Flask
+from flask import Flask, request
 
 # --- CONFIGURATION ---
 TOKEN = "8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU"
 ADMIN_ID = 6817248389          # Aapki Admin ID
 CHANNEL_ID = -1004382767346  # Aapke Super Yoddha channel ki ID
 BOT_USERNAME = "ROMEO_PAY_BOT" # Aapka confirmed bot username
-ADMIN_USERNAME = "Romeo_kerketta" # Aapka Telegram username help ke liye
+ADMIN_USERNAME = "Romeo_kerketta" # Aapka Telegram username help keliye
 
-bot = telebot.TeleBot(TOKEN)
+bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
 
 # --- MULTI-PACK DYNAMIC DATABASE ---
@@ -34,7 +33,17 @@ purchased_users = {"1": []}
 
 @app.route('/')
 def home():
-    return "Bot is running live via Polling Thread 24/7!"
+    return "Bot webhook is active and live!"
+
+# --- WEBHOOK ROUTE FOR RENDER ---
+@app.route(f'/{TOKEN}', methods=['POST'])
+def receive_update():
+    if request.headers.get('content-type') == 'application/json':
+        json_string = request.get_data().decode('utf-8')
+        update = telebot.types.Update.de_json(json_string)
+        bot.process_new_updates([update])
+        return "ok", 200
+    return "Invalid request", 403
 
 # --- HELPER: Calculate Total Episodes ---
 def calculate_total_episodes(episodes_str):
@@ -81,7 +90,7 @@ def add_pack(message):
         if pack_id not in purchased_users:
             purchased_users[pack_id] = []
             
-        bot.reply_to(message, f"✅ Pack {pack_id} successfully added/updated!\nEpisodes: {episodes}\nTotal: {calculated_total}\nPrice: ₹{price}\nLink: {link}")
+        bot.reply_to(message, f"✅ Pack {pack_id} successfully added/updated!\nEpisodes: {episodes}\nPrice: ₹{price}")
     except Exception as e:
         bot.reply_to(message, "⚠️ Galat format! Use karein:\n`/addpack 1 | 3608 - 3612 | 120 | https://t.me/+link`", parse_mode="Markdown")
 
@@ -107,18 +116,18 @@ def send_welcome(message):
         bot.reply_to(message, "⚠️ Filhal koi bhi pack active nahi hai.")
         return
 
-    welcome_text = "🔥 SUPER YODDHA — EPISODES 🔥\n\nNiche diye gaye packs mein se select karein:\n\n*(Madad ke liye 'help' likh kar bhejein)*"
-    bot.reply_to(message, welcome_text, reply_markup=markup, parse_mode="Markdown")
+    welcome_text = "🔥 SUPER YODDHA — EPISODES 🔥\n\nNiche diye gaye packs mein se select karein:"
+    bot.reply_to(message, welcome_text, reply_markup=markup)
 
 # --- HELP HANDLER ---
 @bot.message_handler(func=lambda message: message.text and message.text.lower() in ["help", "/help"])
 def help_command(message):
-    help_text = f"🛠️ *PAYMENT & SUPPORT HELP*\n\nAdmin se sampark karein:\n👉 Admin: @{ADMIN_USERNAME}"
+    help_text = f"🛠️ *PAYMENT & SUPPORT HELP*\n\nAdmin se sampark karein:\n👉 @{ADMIN_USERNAME}"
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton("💬 Admin Se Baat Karein", url=f"https://t.me/{ADMIN_USERNAME}"))
     bot.reply_to(message, help_text, parse_mode="Markdown", reply_markup=markup)
 
-# --- HELPER FUNCTION: QR Code ---
+# --- QR CODE SENDER ---
 def send_qr_to_user(chat_id, pack_id):
     if pack_id not in packs_db:
         return
@@ -145,11 +154,11 @@ def send_qr_to_user(chat_id, pack_id):
     )
     
     try:
-        bot.send_photo(chat_id, qr_url, caption=caption, parse_mode="Markdown")
+        bot.send_photo(chat_id, qr_url, caption=caption)
     except Exception as e:
-        bot.send_message(chat_id, f"{caption}\n\n⚠️ QR Error: {e}", parse_mode="Markdown")
+        bot.send_message(chat_id, f"{caption}\n\n⚠️ QR Error: {e}")
 
-# --- CHANNEL POST COMMAND (Audio / Photo / Document) ---
+# --- CHANNEL POST HANDLER ---
 @bot.message_handler(content_types=['photo', 'audio', 'document'])
 def handle_media_post(message):
     if message.chat.id == ADMIN_ID and message.caption and message.caption.startswith("/post"):
@@ -164,7 +173,7 @@ def handle_media_post(message):
             data = packs_db[pack_id]
             
             markup = types.InlineKeyboardMarkup()
-            btn_text = "⏳ Pre-Book Now" if data["is_prebook"] else "✨ Buy Episodes"
+            btn_text = f"⏳ Pre-Book Now | EP- {data['episodes']}" if data["is_prebook"] else f"✨ Buy Episodes | EP- {data['episodes']}"
             bot_url = f"https://t.me/{BOT_USERNAME}?start=buy_{pack_id}"
             markup.add(types.InlineKeyboardButton(btn_text, url=bot_url))
             
@@ -183,10 +192,10 @@ def handle_media_post(message):
             bot.reply_to(message, f"⚠️ Post error: {e}")
         return
 
-    # User screenshot handler for non-admin users
+    # User Screenshot Handler
     if message.chat.id != ADMIN_ID and message.photo:
         user = message.from_user
-        bot.reply_to(message, "✅ Screenshot mil gaya hai! Verification ke liye admin ke paas bhej diya gaya hai.", parse_mode="Markdown")
+        bot.reply_to(message, "✅ Screenshot mil gaya hai! Verification ke liye admin ke paas bhej diya gaya hai.")
         
         pack_id = user_pending_pack.get(user.id, "1")
         data = packs_db.get(pack_id, {})
@@ -208,7 +217,7 @@ def handle_media_post(message):
         except Exception as e:
             bot.send_message(ADMIN_ID, f"⚠️ Error: {e}")
 
-# --- CALLBACK HANDLER (Buttons) ---
+# --- CALLBACK HANDLER ---
 @bot.callback_query_handler(func=lambda call: True)
 def handle_all_callbacks(call):
     try:
@@ -257,25 +266,22 @@ def handle_all_callbacks(call):
                 return
                 
             try:
-                bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.message_id, caption=call.message.caption + "\n\nSTATUS: ❌ REJECTED")
+                bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.message_id, caption=call.message.caption + f"\n\nSTATUS: ❌ REJECTED")
             except Exception as e:
                 print(f"Caption edit error: {e}")
                 
-            bot.send_message(target_user_id, "❌ Aapka payment screenshot reject kar diya gaya hai. Kripya sahi screenshot bhejein.")
+            bot.send_message(target_user_id, f"❌ Aapka payment screenshot reject kar diya gaya hai. Kripya sahi screenshot bhejein.")
     except Exception as e:
         print(f"Callback execution error: {e}")
 
-# --- BACKGROUND POLLING RUNNER ---
-def run_bot():
-    bot.remove_webhook()
-    print("Bot polling started in background thread...")
-    bot.infinity_polling(timeout=60, long_polling_timeout=60)
-
+# --- WEBHOOK SETUP & RUN ---
 if __name__ == '__main__':
     bot.remove_webhook()
-    polling_thread = threading.Thread(target=run_bot)
-    polling_thread.daemon = True
-    polling_thread.start()
+    external_url = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+    if external_url:
+        webhook_url = f"https://{external_url}/{TOKEN}"
+        bot.set_webhook(url=webhook_url)
+        print(f"Webhook set to: {webhook_url}")
     
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)

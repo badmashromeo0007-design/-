@@ -17,6 +17,11 @@ TOTAL_EPISODES = "3623 - 3630"
 PACK_PRICE = 160
 CHANNEL_LINK = "https://t.me/+2Bq6yb6hSeBhOTJI"
 
+# --- ROOT ROUTE (Fixes 404 on main URL) ---
+@app.route("/", methods=["GET"])
+def home():
+    return "Bot is active and running successfully!", 200
+
 # --- 1. FLASK WEBHOOK SETUP ---
 @app.route(f"/{TOKEN}", methods=["POST"])
 def webhook():

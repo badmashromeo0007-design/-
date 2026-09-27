@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request
+from Flask import Flask, request
 import requests
 
 app = Flask(__name__)
@@ -13,9 +13,9 @@ RENDER_URL = os.getenv("RENDER_URL", "https://badmash-4k97.onrender.com")
 TELEGRAM_API = f"https://api.telegram.org/bot{TOKEN}"
 
 # Default Database variables
-TOTAL_EPISODES = 8
+TOTAL_EPISODES = "3623 - 3630"
 PACK_PRICE = 160
-CHANNEL_LINK = "https://t.me/+gy8gewj0snllZThl"
+CHANNEL_LINK = "https://t.me/+2Bq6yb6hSeBhOTJI"
 
 # --- 1. FLASK WEBHOOK SETUP ---
 @app.route(f"/{TOKEN}", methods=["POST"])
@@ -42,7 +42,7 @@ def handle_update(update):
             
             caption = (
                 f"🛍 **Payment Details**\n\n"
-                f"📦 Episodes Pack: **{TOTAL_EPISODES} Episodes**\n"
+                f"📦 Episodes Pack: **{TOTAL_EPISODES}**\n"
                 f"💰 Total Amount: **₹{amount}**\n\n"
                 f"📱 Scan the QR code above using any UPI app (GPay, PhonePe, Paytm).\n"
                 f"⚠️ *Payment ke baad screenshot ishi bot ko bhej dein verification ke liye!*"
@@ -51,7 +51,6 @@ def handle_update(update):
             
         elif data.startswith("approve_"):
             user_id = data.split("_")[1]
-            # Yeh user ko uske DM mein channel link bhej dega
             send_message(user_id, f"🎉 Aapka payment verify ho gaya hai! Yeh raha channel ka link:\n\n{CHANNEL_LINK}")
             edit_message_text(chat_id, message_id, "✅ **Payment Approved Successfully by Admin.**")
             
@@ -73,29 +72,33 @@ def handle_update(update):
         user_id = message["from"]["id"]
         text = message.get("text", "")
         
-        # --- EK SAH SAB KUCH UPDATE KARNE KI COMMAND (/setpack) ---
-        if text.startswith("/setpack") and user_id == ADMIN_ID:
+        # --- UPDATE PACK, RANGE, PRICE & LINK VIA /addpack OR /setpack ---
+        if (text.startswith("/addpack") or text.startswith("/setpack")) and user_id == ADMIN_ID:
             try:
-                parts = text.split(" ")
-                add_eps = int(parts[1])
-                price = int(parts[2])
-                new_link = parts[3]
-                
-                if new_link.startswith("http"):
-                    TOTAL_EPISODES = add_eps
-                    PACK_PRICE = price
-                    CHANNEL_LINK = new_link
-                    
-                    send_message(chat_id, 
-                        f"✅ **Sab kuch successfully update ho gaya hai!**\n\n"
-                        f"📦 Total Episodes: **{TOTAL_EPISODES}**\n"
-                        f"💰 Price: **₹{PACK_PRICE}**\n"
-                        f"🔗 New Link: {CHANNEL_LINK}"
-                    )
+                if "|" in text:
+                    parts = [p.strip() for p in text.replace("/addpack", "").replace("/setpack", "").split("|")]
+                    pack_no = parts[0]
+                    episode_range = parts[1]
+                    price = int(parts[2])
+                    new_link = parts[3]
                 else:
-                    send_message(chat_id, "⚠️ Kripya valid link dein jo 'http' ya 'https' se shuru ho.")
+                    parts = text.split(" ")
+                    episode_range = parts[1]
+                    price = int(parts[2])
+                    new_link = parts[3]
+                
+                TOTAL_EPISODES = episode_range
+                PACK_PRICE = price
+                CHANNEL_LINK = new_link
+                
+                send_message(chat_id, 
+                    f"✅ **Pack successfully update ho gaya hai!**\n\n"
+                    f"📦 Episodes: **{TOTAL_EPISODES}**\n"
+                    f"💰 Price: **₹{PACK_PRICE}**\n"
+                    f"🔗 Link: {CHANNEL_LINK}"
+                )
             except Exception:
-                send_message(chat_id, "⚠️ Format galat hai! Sahi tarika:\n`/setpack [episodes] [price] [link]`\n(Jaise: `/setpack 10 199 https://t.me/+xxxx`)")
+                send_message(chat_id, "⚠️ Format galat hai! Sahi tarika:\n`/addpack 1 | 3623 - 3630 | 160 | https://t.me/+xxxx`")
             return
 
         # 2. Manual Post Command (/post)
@@ -103,16 +106,16 @@ def handle_update(update):
             post_content = text.replace("/post", "").strip()
             if not post_content:
                 post_content = (
-                    f"𝗘𝗣𝗜𝗦𝗢𝗗𝗘 — Super Yoddha\n\n"
-                    f"📦 𝗧𝗢𝗧𝗔𝗟 — {TOTAL_EPISODES} Episodes\n\n"
+                    f"𝗘𝗣𝗜𝗦𝗢𝗗𝗘 — {TOTAL_EPISODES}\n\n"
+                    f"📦 𝗧𝗢𝗧𝗔𝗟 — {TOTAL_EPISODES}\n\n"
                     f"💰 𝗣𝗥𝗜𝗖𝗘 — ₹{PACK_PRICE} ✅\n\n"
-                    f"⚡️ पेमेंट करके स्क्रीनशॉट DM करें।\n"
-                    f"🚀 पेमेंट कन्फर्म होते ही एपिसोड तुरंत मिल जाएगा।"
+                    f"⚡️ पेमेंट करके स्क्रीनशॉट DM करें。\n"
+                    f"🚀 पेमेंट कन्फर्म होते ही एपिसोड तुरंत मिल जाएगा。"
                 )
             
             keyboard = {
                 "inline_keyboard": [
-                    [{"text": f"🟢 Buy Episodes | EP ({TOTAL_EPISODES} Eps - ₹{PACK_PRICE})", "callback_data": "buy_episodes"}]
+                    [{"text": f"🟢 Buy Episodes | EP ({TOTAL_EPISODES} - ₹{PACK_PRICE})", "callback_data": "buy_episodes"}]
                 ]
             }
             send_message_with_keyboard(CHANNEL_ID, post_content, keyboard)
@@ -139,19 +142,19 @@ def handle_update(update):
             
             user_caption = message.get("caption")
             if not user_caption:
-                user_caption = f"SUPER YODDHA — NEW AUDIO EPISODE"
+                user_caption = f"EPISODE — {TOTAL_EPISODES}"
 
             caption = (
                 f"🎧 **{user_caption}**\n\n"
-                f"📦 𝗧𝗢𝗧𝗔𝗟 — {TOTAL_EPISODES} Episodes\n"
+                f"📦 𝗧𝗢𝗧𝗔𝗟 — {TOTAL_EPISODES}\n"
                 f"💰 𝗣𝗥𝗜𝗖𝗘 — ₹{PACK_PRICE} ✅\n\n"
-                f"⚡️ पेमेंट करके स्क्रीनशॉट DM करें।\n"
-                f"🚀 पेमेंट कन्फर्म होते ही एपिसोड तुरंत मिल जाएगा।"
+                f"⚡️ पेमेंट करके स्क्रीनशॉट DM करें。\n"
+                f"🚀 पेमेंट कन्फर्म होते ही एपिसोड तुरंत मिल जाएगा。"
             )
             
             keyboard = {
                 "inline_keyboard": [
-                    [{"text": f"🟢 Buy Episodes | EP ({TOTAL_EPISODES} Eps - ₹{PACK_PRICE})", "callback_data": "buy_episodes"}]
+                    [{"text": f"🟢 Buy Episodes | EP ({TOTAL_EPISODES} - ₹{PACK_PRICE})", "callback_data": "buy_episodes"}]
                 ]
             }
             
@@ -168,15 +171,15 @@ def handle_update(update):
         # Start Command
         if text == "/start":
             welcome_msg = (
-                f"𝗘𝗣𝗜𝗦𝗢𝗗𝗘 — Super Yoddha\n\n"
-                f"📦 𝗧𝗢𝗧𝗔𝗟 — {TOTAL_EPISODES} Episodes\n\n"
+                f"𝗘𝗣𝗜𝗦𝗢𝗗𝗘 — {TOTAL_EPISODES}\n\n"
+                f"📦 𝗧𝗢𝗧𝗔𝗟 — {TOTAL_EPISODES}\n\n"
                 f"💰 𝗣𝗥𝗜𝗖𝗘 — ₹{PACK_PRICE} ✅\n\n"
-                f"⚡️ पेमेंट करके स्क्रीनशॉट DM करें।\n"
+                f"⚡️ पेमेंट करके स्क्रीनशॉट DM करें。\n"
                 f"🚀 पेमेंट कन्फर्म होते ही एपिसोड तुरंत मिल जाएगा。"
             )
             keyboard = {
                 "inline_keyboard": [
-                    [{"text": f"🟢 Buy Episodes | EP ({TOTAL_EPISODES} Eps - ₹{PACK_PRICE})", "callback_data": "buy_episodes"}]
+                    [{"text": f"🟢 Buy Episodes | EP ({TOTAL_EPISODES} - ₹{PACK_PRICE})", "callback_data": "buy_episodes"}]
                 ]
             }
             send_message_with_keyboard(chat_id, welcome_msg, keyboard)

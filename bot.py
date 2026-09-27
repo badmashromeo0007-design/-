@@ -41,27 +41,27 @@ def handle_update(update):
             qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi://pay?pa={upi_id}&pn=Romeo&am={amount}&cu=INR"
             
             caption = (
-                f"🛍 **Payment Details**\n\n"
-                f"📦 Episodes Pack: **{TOTAL_EPISODES}**\n"
-                f"💰 Total Amount: **₹{amount}**\n\n"
+                f"🛍 PAYMENT DETAILS\n\n"
+                f"📦 Episodes Pack: {TOTAL_EPISODES}\n"
+                f"💰 Total Amount: ₹{amount}\n\n"
                 f"📱 Scan the QR code above using any UPI app (GPay, PhonePe, Paytm).\n"
-                f"⚠️ *Payment ke baad screenshot ishi bot ko bhej dein verification ke liye!*"
+                f"⚠️ Payment ke baad screenshot ishi bot ko bhej dein verification ke liye!"
             )
             send_photo(chat_id, qr_url, caption)
             
         elif data.startswith("approve_"):
             user_id = data.split("_")[1]
             send_message(user_id, f"🎉 Aapka payment verify ho gaya hai! Yeh raha channel ka link:\n\n{CHANNEL_LINK}")
-            edit_message_text(chat_id, message_id, "✅ **Payment Approved Successfully by Admin.**")
+            edit_message_text(chat_id, message_id, "✅ Payment Approved Successfully by Admin.")
             
         elif data.startswith("reject_"):
             user_id = data.split("_")[1]
-            send_message(user_id, "❌ **Aapka payment reject kar diya gaya hai.** Kripya sahi screenshot ya valid payment bhejien.")
-            edit_message_text(chat_id, message_id, "❌ **Payment Rejected.**")
+            send_message(user_id, "❌ Aapka payment reject kar diya gaya hai. Kripya sahi screenshot ya valid payment bhejien.")
+            edit_message_text(chat_id, message_id, "❌ Payment Rejected.")
             
         elif data.startswith("reply_user_"):
             target_user = data.split("_")[2]
-            send_message(chat_id, f"✍️ Us user ko jawab dene ke liye yeh command use karein:\n`/reply {target_user} Aapka message...`")
+            send_message(chat_id, f"✍️ Us user ko jawab dene ke liye yeh command use karein:\n/reply {target_user} Aapka message...")
             
         return
 
@@ -92,13 +92,13 @@ def handle_update(update):
                 CHANNEL_LINK = new_link
                 
                 send_message(chat_id, 
-                    f"✅ **Pack successfully update ho gaya hai!**\n\n"
-                    f"📦 Episodes: **{TOTAL_EPISODES}**\n"
-                    f"💰 Price: **₹{PACK_PRICE}**\n"
+                    f"✅ Pack successfully update ho gaya hai!\n\n"
+                    f"📦 Episodes: {TOTAL_EPISODES}\n"
+                    f"💰 Price: ₹{PACK_PRICE}\n"
                     f"🔗 Link: {CHANNEL_LINK}"
                 )
             except Exception:
-                send_message(chat_id, "⚠️ Format galat hai! Sahi tarika:\n`/addpack 1 | 3623 - 3630 | 160 | https://t.me/+xxxx`")
+                send_message(chat_id, "⚠️ Format galat hai! Sahi tarika:\n/addpack 1 | 3623 - 3630 | 160 | https://t.me/+xxxx")
             return
 
         # 2. Manual Post Command (/post)
@@ -110,7 +110,7 @@ def handle_update(update):
                     f"📦 𝗧𝗢𝗧𝗔𝗟 — {TOTAL_EPISODES}\n\n"
                     f"💰 𝗣𝗥𝗜𝗖𝗘 — ₹{PACK_PRICE} ✅\n\n"
                     f"⚡️ पेमेंट करके स्क्रीनशॉट DM करें。\n"
-                    f"🚀 पेमेंट कन्फर्म होते ही एपिसोड तुरंत मिल जाएगा।"
+                    f"🚀 पेमेंट कन्फर्म होते ही एपिसोड तुरंत मिल जाएगा。"
                 )
             
             keyboard = {
@@ -128,13 +128,13 @@ def handle_update(update):
                 parts = text.split(" ", 2)
                 target_user_id = parts[1]
                 reply_text = parts[2]
-                send_message(target_user_id, f"💬 **Admin Message:**\n\n{reply_text}")
+                send_message(target_user_id, f"💬 Admin Message:\n\n{reply_text}")
                 send_message(chat_id, "✅ Message user tak pahunch gaya hai.")
             except Exception:
-                send_message(chat_id, "⚠️ Format: `/reply [user_id] [message]`")
+                send_message(chat_id, "⚠️ Format: /reply [user_id] [message]")
             return
 
-        # 4. Direct MP3/Audio Posting
+        # 4. Direct MP3/Audio Posting with Debugging
         if user_id == ADMIN_ID and ("audio" in message or "document" in message or "voice" in message):
             file_id = message.get("audio", {}).get("file_id") or \
                       message.get("document", {}).get("file_id") or \
@@ -145,9 +145,9 @@ def handle_update(update):
                 user_caption = f"EPISODE — {TOTAL_EPISODES}"
 
             caption = (
-                f"🎧 **{user_caption}**\n\n"
-                f"📦 𝗧𝗢𝗧𝗔𝗟 — {TOTAL_EPISODES}\n"
-                f"💰 𝗣𝗥𝗜𝗖𝗘 — ₹{PACK_PRICE} ✅\n\n"
+                f"🎧 {user_caption}\n\n"
+                f"📦 TOTAL — {TOTAL_EPISODES}\n"
+                f"💰 PRICE — ₹{PACK_PRICE} ✅\n\n"
                 f"⚡️ पेमेंट करके स्क्रीनशॉट DM करें。\n"
                 f"🚀 पेमेंट कन्फर्म होते ही एपिसोड तुरंत मिल जाएगा。"
             )
@@ -158,8 +158,12 @@ def handle_update(update):
                 ]
             }
             
-            send_audio_to_channel(CHANNEL_ID, file_id, caption, keyboard)
-            send_message(chat_id, "✅ Audio file channel par post ho gayi hai!")
+            response = send_audio_to_channel_debug(CHANNEL_ID, file_id, caption, keyboard)
+            if response.get("ok"):
+                send_message(chat_id, "✅ Audio file channel par successfully post ho gayi hai!")
+            else:
+                err_desc = response.get("description", "Unknown error")
+                send_message(chat_id, f"❌ Channel par post nahi ho paya!\nReason: {err_desc}")
             return
 
         # 5. Payment Verification & Approval (User sending screenshot)
@@ -187,22 +191,22 @@ def handle_update(update):
 # --- HELPER FUNCTIONS FOR TELEGRAM API ---
 def send_message(chat_id, text):
     url = f"{TELEGRAM_API}/sendMessage"
-    payload = {"chat_id": chat_id, "text": text, "parse_mode": "Markdown"}
+    payload = {"chat_id": chat_id, "text": text}
     requests.post(url, json=payload)
 
 def send_message_with_keyboard(chat_id, text, keyboard):
     url = f"{TELEGRAM_API}/sendMessage"
-    payload = {"chat_id": chat_id, "text": text, "reply_markup": keyboard, "parse_mode": "Markdown"}
+    payload = {"chat_id": chat_id, "text": text, "reply_markup": keyboard}
     requests.post(url, json=payload)
 
 def send_photo(chat_id, photo_url, caption):
     url = f"{TELEGRAM_API}/sendPhoto"
-    payload = {"chat_id": chat_id, "photo": photo_url, "caption": caption, "parse_mode": "Markdown"}
+    payload = {"chat_id": chat_id, "photo": photo_url, "caption": caption}
     requests.post(url, json=payload)
 
 def edit_message_text(chat_id, message_id, text):
     url = f"{TELEGRAM_API}/editMessageText"
-    payload = {"chat_id": chat_id, "message_id": message_id, "text": text, "parse_mode": "Markdown"}
+    payload = {"chat_id": chat_id, "message_id": message_id, "text": text}
     requests.post(url, json=payload)
 
 def forward_to_admin(message, user_id):
@@ -225,18 +229,18 @@ def forward_to_admin(message, user_id):
             ]
         ]
     }
-    send_message_with_keyboard(ADMIN_ID, f"🔔 New Payment Screenshot received from user ID: `{user_id}`", keyboard)
+    send_message_with_keyboard(ADMIN_ID, f"🔔 New Payment Screenshot received from user ID: {user_id}", keyboard)
 
-def send_audio_to_channel(channel_id, file_id, caption, keyboard):
+def send_audio_to_channel_debug(channel_id, file_id, caption, keyboard):
     url = f"{TELEGRAM_API}/sendAudio"
     payload = {
         "chat_id": channel_id,
         "audio": file_id,
         "caption": caption,
-        "reply_markup": keyboard,
-        "parse_mode": "Markdown"
+        "reply_markup": keyboard
     }
-    requests.post(url, json=payload)
+    res = requests.post(url, json=payload)
+    return res.json()
 
 # --- WEBHOOK SETTER ---
 @app.route("/set_webhook", methods=["GET"])

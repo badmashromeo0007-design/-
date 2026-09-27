@@ -14,7 +14,8 @@ BOT_USERNAME = "ROMEO_PAY_BOT" # Aapka confirmed bot username
 ADMIN_USERNAME = "Romeo_kerketta" # Aapka Telegram username help ke liye
 RENDER_APP_NAME = "badmash-4k97"  # Aapka Render app name
 
-bot = telebot.TeleBot(TOKEN, threaded=False)
+# FIXED: Threaded ko True kiya hai taaki buttons aur callbacks properly kaam karein
+bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
 
 # --- DATABASE ---
@@ -337,5 +338,5 @@ if __name__ == '__main__':
     t.start()
     
     port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
-    
+    # FIXED: Flask app run mein threaded=True add kiya hai
+    app.run(host='0.0.0.0', port=port, threaded=True)

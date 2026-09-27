@@ -12,9 +12,10 @@ RENDER_URL = os.getenv("RENDER_URL", "https://badmash-4k97.onrender.com")
 
 TELEGRAM_API = f"https://api.telegram.org/bot{TOKEN}"
 
-# Database variables
+# Default Database variables
 TOTAL_EPISODES = 8
 PACK_PRICE = 160
+CHANNEL_LINK = "https://t.me/+gy8gewj0snllZThl"
 
 # --- 1. FLASK WEBHOOK SETUP ---
 @app.route(f"/{TOKEN}", methods=["POST"])
@@ -25,7 +26,7 @@ def webhook():
     return "OK", 200
 
 def handle_update(update):
-    global TOTAL_EPISODES, PACK_PRICE
+    global TOTAL_EPISODES, PACK_PRICE, CHANNEL_LINK
     
     # Callback Query (Inline Buttons)
     if "callback_query" in update:
@@ -50,7 +51,8 @@ def handle_update(update):
             
         elif data.startswith("approve_"):
             user_id = data.split("_")[1]
-            send_message(user_id, "✅ **Aapka payment approve ho gaya hai!** Yeh lijiye aapka channel link: https://t.me/+gy8gewj0snllZThl")
+            # Yeh user ko uske DM mein channel link bhej dega
+            send_message(user_id, f"🎉 Aapka payment verify ho gaya hai! Yeh raha channel ka link:\n\n{CHANNEL_LINK}")
             edit_message_text(chat_id, message_id, "✅ **Payment Approved Successfully by Admin.**")
             
         elif data.startswith("reject_"):
@@ -71,24 +73,42 @@ def handle_update(update):
         user_id = message["from"]["id"]
         text = message.get("text", "")
         
-        # 3. Dynamic Episode Calculator (/addpack)
-        if text.startswith("/addpack") and user_id == ADMIN_ID:
+        # --- EK SAH SAB KUCH UPDATE KARNE KI COMMAND (/setpack) ---
+        if text.startswith("/setpack") and user_id == ADMIN_ID:
             try:
                 parts = text.split(" ")
                 add_eps = int(parts[1])
                 price = int(parts[2])
-                TOTAL_EPISODES = add_eps
-                PACK_PRICE = price
-                send_message(chat_id, f"✅ Pack updated!\nTotal Episodes: **{TOTAL_EPISODES}**\nPrice: **₹{PACK_PRICE}**")
+                new_link = parts[3]
+                
+                if new_link.startswith("http"):
+                    TOTAL_EPISODES = add_eps
+                    PACK_PRICE = price
+                    CHANNEL_LINK = new_link
+                    
+                    send_message(chat_id, 
+                        f"✅ **Sab kuch successfully update ho gaya hai!**\n\n"
+                        f"📦 Total Episodes: **{TOTAL_EPISODES}**\n"
+                        f"💰 Price: **₹{PACK_PRICE}**\n"
+                        f"🔗 New Link: {CHANNEL_LINK}"
+                    )
+                else:
+                    send_message(chat_id, "⚠️ Kripya valid link dein jo 'http' ya 'https' se shuru ho.")
             except Exception:
-                send_message(chat_id, "⚠️ Format galat hai! Use karein: `/addpack [episodes] [price]` (jaise `/addpack 8 160`)")
+                send_message(chat_id, "⚠️ Format galat hai! Sahi tarika:\n`/setpack [episodes] [price] [link]`\n(Jaise: `/setpack 10 199 https://t.me/+xxxx`)")
             return
 
         # 2. Manual Post Command (/post)
         if text.startswith("/post") and user_id == ADMIN_ID:
             post_content = text.replace("/post", "").strip()
             if not post_content:
-                post_content = f"𝗘𝗣𝗜𝗦𝗢𝗗𝗘 — Super Yoddha\n\n📦 𝗧𝗢𝗧𝗔𝗟 — {TOTAL_EPISODES} Episodes\n\n💰 𝗣𝗥𝗜𝗖𝗘 — ₹{PACK_PRICE} ✅\n\n⚡️ पेमेंट करके स्क्रीनशॉट DM करें।"
+                post_content = (
+                    f"𝗘𝗣𝗜𝗦𝗢𝗗𝗘 — Super Yoddha\n\n"
+                    f"📦 𝗧𝗢𝗧𝗔𝗟 — {TOTAL_EPISODES} Episodes\n\n"
+                    f"💰 𝗣𝗥𝗜𝗖𝗘 — ₹{PACK_PRICE} ✅\n\n"
+                    f"⚡️ पेमेंट करके स्क्रीनशॉट DM करें।\n"
+                    f"🚀 पेमेंट कन्फर्म होते ही एपिसोड तुरंत मिल जाएगा।"
+                )
             
             keyboard = {
                 "inline_keyboard": [
@@ -99,7 +119,7 @@ def handle_update(update):
             send_message(chat_id, "✅ Post successfully channel par bhej di gayi hai!")
             return
 
-        # 7. Interactive Reply System (/reply command)
+        # 3. Interactive Reply System (/reply command)
         if text.startswith("/reply") and user_id == ADMIN_ID:
             try:
                 parts = text.split(" ", 2)
@@ -111,18 +131,22 @@ def handle_update(update):
                 send_message(chat_id, "⚠️ Format: `/reply [user_id] [message]`")
             return
 
-        # 6. Direct MP3/Audio Posting (NEW & FIXED)
+        # 4. Direct MP3/Audio Posting
         if user_id == ADMIN_ID and ("audio" in message or "document" in message or "voice" in message):
             file_id = message.get("audio", {}).get("file_id") or \
                       message.get("document", {}).get("file_id") or \
                       message.get("voice", {}).get("file_id")
             
-            custom_caption = message.get("caption", f"SUPER YODDHA — NEW AUDIO EPISODE")
+            user_caption = message.get("caption")
+            if not user_caption:
+                user_caption = f"SUPER YODDHA — NEW AUDIO EPISODE"
+
             caption = (
-                f"🎧 **{custom_caption}**\n\n"
+                f"🎧 **{user_caption}**\n\n"
                 f"📦 𝗧𝗢𝗧𝗔𝗟 — {TOTAL_EPISODES} Episodes\n"
                 f"💰 𝗣𝗥𝗜𝗖𝗘 — ₹{PACK_PRICE} ✅\n\n"
-                f"⚡️ पेमेंट करके स्क्रीनशॉट DM करें।"
+                f"⚡️ पेमेंट करके स्क्रीनशॉट DM करें।\n"
+                f"🚀 पेमेंट कन्फर्म होते ही एपिसोड तुरंत मिल जाएगा।"
             )
             
             keyboard = {
@@ -131,9 +155,8 @@ def handle_update(update):
                 ]
             }
             
-            # Channel par audio send karna button ke sath
             send_audio_to_channel(CHANNEL_ID, file_id, caption, keyboard)
-            send_message(chat_id, "✅ Audio file 'Buy Button' ke sath seedha channel par post kar di gayi hai!")
+            send_message(chat_id, "✅ Audio file channel par post ho gayi hai!")
             return
 
         # 5. Payment Verification & Approval (User sending screenshot)
@@ -148,7 +171,8 @@ def handle_update(update):
                 f"𝗘𝗣𝗜𝗦𝗢𝗗𝗘 — Super Yoddha\n\n"
                 f"📦 𝗧𝗢𝗧𝗔𝗟 — {TOTAL_EPISODES} Episodes\n\n"
                 f"💰 𝗣𝗥𝗜𝗖𝗘 — ₹{PACK_PRICE} ✅\n\n"
-                f"⚡️ पेमेंट करके स्क्रीनशॉट DM करें।"
+                f"⚡️ पेमेंट करके स्क्रीनशॉट DM करें।\n"
+                f"🚀 पेमेंट कन्फर्म होते ही एपिसोड तुरंत मिल जाएगा。"
             )
             keyboard = {
                 "inline_keyboard": [

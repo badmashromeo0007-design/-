@@ -241,7 +241,7 @@ def handle_incoming_messages(message):
                 except Exception as e:
                     bot.reply_to(message, f"⚠️ Jawab bhejne mein error: {e}")
             else:
-                bot.reply_to(message, "⚠️ Is message mein User ID nahi mili. Kripya niche diye gaye 'Reply' button ka use karein.")
+                bot.reply_to(message, "⚠️ Is message mein User ID nahi mili. Kripya niche diye gaye 'Reply to User' button ka use karein.")
         return
 
     if message.photo:
@@ -292,7 +292,7 @@ def handle_callbacks(call):
             target_id = call.data.split("_")[1]
             if call.from_user.id != ADMIN_ID:
                 return
-            bot.send_message(ADMIN_ID, f"✍️ Reply karne ke liye yeh command bhejéin:\n\n`/reply {target_id} Aapka message yahan likhein`", parse_mode="Markdown")
+            bot.send_message(ADMIN_ID, f"✍️ Is command ko copy karke apna message likhein:\n\n`/reply {target_id} Apna message yahan likhein`", parse_mode="Markdown")
             
         elif call.data.startswith("approve_"):
             parts = call.data.split("_")
@@ -338,5 +338,4 @@ if __name__ == '__main__':
     
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
-    t)
     

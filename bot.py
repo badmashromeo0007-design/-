@@ -14,8 +14,8 @@ BOT_USERNAME = "ROMEO_PAY_BOT" # Aapka confirmed bot username
 ADMIN_USERNAME = "Romeo_kerketta" # Aapka Telegram username help ke liye
 RENDER_APP_NAME = "badmash-4k97"  # Aapka Render app name
 
-# FIXED: Threaded ko True kiya hai taaki buttons aur callbacks properly kaam karein
-bot = telebot.TeleBot(TOKEN)
+# Bot aur Flask initialize
+bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
 
 # --- DATABASE ---
@@ -38,7 +38,7 @@ last_channel_message_id = None
 def home():
     return "Bot webhook is active and running!"
 
-# --- WEBHOOK ROUTE ---
+# --- WEBHOOK ROUTE (FIXED) ---
 @app.route(f'/{TOKEN}', methods=['POST'])
 def webhook():
     if request.headers.get('content-type') == 'application/json':
@@ -338,5 +338,5 @@ if __name__ == '__main__':
     t.start()
     
     port = int(os.environ.get("PORT", 5000))
-    # FIXED: Flask app run mein threaded=True add kiya hai
-    app.run(host='0.0.0.0', port=port, threaded=True)
+    app.run(host='0.0.0.0', port=port)
+    

@@ -1,342 +1,223 @@
 import os
-import re
-import time
-import threading
-import telebot
-from telebot import types
 from flask import Flask, request
+import requests
 
-# --- CONFIGURATION ---
-TOKEN = "8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU"
-ADMIN_ID = 6817248389          # Aapki Admin ID
-CHANNEL_ID = -1004382767346  # Aapke Super Yoddha channel ki ID
-BOT_USERNAME = "ROMEO_PAY_BOT" # Aapka confirmed bot username
-ADMIN_USERNAME = "Romeo_kerketta" # Aapka Telegram username help ke liye
-RENDER_APP_NAME = "badmash-4k97"  # Aapka Render app name
-
-# Bot aur Flask initialize
-bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
 
-# --- DATABASE ---
-packs_db = {
-    "1": {
-        "title": "SUPER YODDHA — EPISODE SALE",
-        "episodes": "3623 - 3630",
-        "total": "8 Episodes",
-        "price": "160",
-        "link": "https://t.me/+gy8gewj0snllZThl",
-        "active": True
-    }
-}
+# --- CONFIGURATION ---
+TOKEN = os.getenv("BOT_TOKEN", "8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU")
+CHANNEL_ID = os.getenv("CHANNEL_ID", "-1004382767346")
+ADMIN_ID = int(os.getenv("ADMIN_ID", "6817248389"))
+RENDER_URL = os.getenv("RENDER_URL", "https://badmash-4k97.onrender.com")
 
-UPI_ID = "Badmashromeo0007@okaxis"
-user_pending_pack = {}
-last_channel_message_id = None
+TELEGRAM_API = f"https://api.telegram.org/bot{TOKEN}"
 
-@app.route('/')
-def home():
-    return "Bot webhook is active and running!"
+# Database variables
+TOTAL_EPISODES = 8
+PACK_PRICE = 160
 
-# --- WEBHOOK ROUTE (FIXED) ---
-@app.route(f'/{TOKEN}', methods=['POST'])
+# --- 1. FLASK WEBHOOK SETUP ---
+@app.route(f"/{TOKEN}", methods=["POST"])
 def webhook():
-    if request.headers.get('content-type') == 'application/json':
-        json_string = request.get_data().decode('utf-8')
-        update = telebot.types.Update.de_json(json_string)
-        bot.process_new_updates([update])
-        return "ok", 200
-    return "Invalid request", 403
+    update = request.get_json()
+    if update:
+        handle_update(update)
+    return "OK", 200
 
-# --- HELPER: Calculate Episodes ---
-def calculate_total_episodes(episodes_str):
-    try:
-        numbers = re.findall(r'\d+', episodes_str)
-        if len(numbers) >= 2:
-            total = (int(numbers[1]) - int(numbers[0])) + 1
-            if total > 0:
-                return f"{total} Episodes"
-    except Exception:
-        pass
-    return "8 Episodes"
-
-# --- ADMIN COMMAND: Add Pack ---
-@bot.message_handler(commands=['addpack'])
-def add_pack(message):
-    if message.from_user.id != ADMIN_ID:
-        return
-    try:
-        parts = message.text.split(maxsplit=1)[1].split('|')
-        pack_id = parts[0].strip()
-        episodes = parts[1].strip()
-        price = parts[2].strip()
-        link = parts[3].strip()
+def handle_update(update):
+    global TOTAL_EPISODES, PACK_PRICE
+    
+    # Callback Query (Inline Buttons)
+    if "callback_query" in update:
+        cq = update["callback_query"]
+        data = cq["data"]
+        chat_id = cq["message"]["chat"]["id"]
+        message_id = cq["message"]["message_id"]
         
-        calculated_total = calculate_total_episodes(episodes)
-        
-        packs_db[pack_id] = {
-            "title": "SUPER YODDHA — EPISODE SALE",
-            "episodes": episodes,
-            "total": calculated_total,
-            "price": price,
-            "link": link,
-            "active": True
-        }
+        if data == "buy_episodes":
+            upi_id = "Badmashromeo0007@okaxis"
+            amount = PACK_PRICE if PACK_PRICE > 0 else 160
+            qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi://pay?pa={upi_id}&pn=Romeo&am={amount}&cu=INR"
             
-        bot.reply_to(message, f"✅ Pack {pack_id} successfully added!\nEpisodes: {episodes}\nPrice: ₹{price}")
-    except Exception as e:
-        bot.reply_to(message, f"⚠️ Format galat hai!\nUse karein:\n`/addpack 1 | 3623 - 3630 | 160 | https://t.me/+link`", parse_mode="Markdown")
-
-# --- ADMIN COMMAND: Post to Channel ---
-@bot.message_handler(commands=['post'])
-def post_to_channel_command(message):
-    if message.from_user.id != ADMIN_ID:
+            caption = (
+                f"🛍 **Payment Details**\n\n"
+                f"📦 Episodes Pack: **{TOTAL_EPISODES} Episodes**\n"
+                f"💰 Total Amount: **₹{amount}**\n\n"
+                f"📱 Scan the QR code above using any UPI app (GPay, PhonePe, Paytm).\n"
+                f"⚠️ *Payment ke baad screenshot ishi bot ko bhej dein verification ke liye!*"
+            )
+            send_photo(chat_id, qr_url, caption)
+            
+        elif data.startswith("approve_"):
+            user_id = data.split("_")[1]
+            send_message(user_id, "✅ **Aapka payment approve ho gaya hai!** Yeh lijiye aapka channel link: https://t.me/+gy8gewj0snllZThl")
+            edit_message_text(chat_id, message_id, "✅ **Payment Approved Successfully by Admin.**")
+            
+        elif data.startswith("reject_"):
+            user_id = data.split("_")[1]
+            send_message(user_id, "❌ **Aapka payment reject kar diya gaya hai.** Kripya sahi screenshot ya valid payment bhejien.")
+            edit_message_text(chat_id, message_id, "❌ **Payment Rejected.**")
+            
+        elif data.startswith("reply_user_"):
+            target_user = data.split("_")[2]
+            send_message(chat_id, f"✍️ Us user ko jawab dene ke liye yeh command use karein:\n`/reply {target_user} Aapka message...`")
+            
         return
-    try:
-        parts = message.text.split()
-        pack_id = parts[1].strip() if len(parts) > 1 else "1"
-        send_post_to_channel(pack_id)
-        bot.reply_to(message, "✅ Post successfully channel par bhej di gayi hai!")
-    except Exception as e:
-        bot.reply_to(message, f"⚠️ Post error: {e}")
 
-def send_post_to_channel(pack_id="1"):
-    global last_channel_message_id
-    if pack_id not in packs_db:
-        return
+    # Message Handling
+    if "message" in update:
+        message = update["message"]
+        chat_id = message["chat"]["id"]
+        user_id = message["from"]["id"]
+        text = message.get("text", "")
         
-    data = packs_db[pack_id]
-    markup = types.InlineKeyboardMarkup()
-    btn_text = f"🟢 Buy Episodes | EP- {data['episodes']}"
-    markup.add(types.InlineKeyboardButton(btn_text, url=f"https://t.me/{BOT_USERNAME}?start=buy_{pack_id}"))
-    
-    text = (
-        f"𝗘𝗣𝗜𝗦𝗢𝗗𝗘 — {data['episodes']}\n\n"
-        f"📦 𝗧𝗢𝗧𝗔𝗟 — {data['total']}\n\n"
-        f"💰 𝗣𝗥𝗜𝗖𝗘 — ₹ {data['price']} ✅\n\n"
-        f"⚡️ पेमेंट करके स्क्रीनशॉट DM करें।\n"
-        f"🚀 पेमेंट कन्फर्म होते ही एपिसोड तुरंत मिल जाएगा।"
-    )
-    
-    try:
-        if last_channel_message_id:
+        # 3. Dynamic Episode Calculator (/addpack)
+        if text.startswith("/addpack") and user_id == ADMIN_ID:
             try:
-                bot.delete_message(CHANNEL_ID, last_channel_message_id)
+                parts = text.split(" ")
+                add_eps = int(parts[1])
+                price = int(parts[2])
+                TOTAL_EPISODES = add_eps
+                PACK_PRICE = price
+                send_message(chat_id, f"✅ Pack updated!\nTotal Episodes: **{TOTAL_EPISODES}**\nPrice: **₹{PACK_PRICE}**")
             except Exception:
-                pass
-                
-        sent_msg = bot.send_message(CHANNEL_ID, text, reply_markup=markup)
-        last_channel_message_id = sent_msg.message_id
-    except Exception as e:
-        print(f"Auto-post error: {e}")
-
-# --- BACKGROUND THREAD FOR AUTO 10-MINUTE REPOST ---
-def auto_repost_worker():
-    while True:
-        time.sleep(600)  # 10 minutes
-        try:
-            active_pack_id = "1"
-            for pid, pdata in packs_db.items():
-                if pdata["active"]:
-                    active_pack_id = pid
-                    break
-            send_post_to_channel(active_pack_id)
-        except Exception as e:
-            print(f"Background thread error: {e}")
-
-# --- START & MENU COMMAND ---
-@bot.message_handler(commands=['start', 'menu'])
-def send_welcome(message):
-    text_args = message.text.split()
-    if len(text_args) > 1 and text_args[1].startswith("buy_"):
-        pack_id = text_args[1].split("_")[1]
-        if pack_id in packs_db:
-            send_qr_to_user(message.chat.id, pack_id)
+                send_message(chat_id, "⚠️ Format galat hai! Use karein: `/addpack [episodes] [price]` (jaise `/addpack 8 160`)")
             return
 
-    markup = types.InlineKeyboardMarkup()
-    active_packs = False
-    for pack_id, data in packs_db.items():
-        if data["active"]:
-            active_packs = True
-            btn_text = f"🟢 Buy Episodes | EP- {data['episodes']}"
-            markup.add(types.InlineKeyboardButton(btn_text, callback_data=f"buy_{pack_id}"))
+        # 2. Manual Post Command (/post)
+        if text.startswith("/post") and user_id == ADMIN_ID:
+            post_content = text.replace("/post", "").strip()
+            if not post_content:
+                post_content = f"𝗘𝗣𝗜𝗦𝗢𝗗𝗘 — Super Yoddha\n\n📦 𝗧𝗢𝗧𝗔𝗟 — {TOTAL_EPISODES} Episodes\n\n💰 𝗣𝗥𝗜𝗖𝗘 — ₹{PACK_PRICE} ✅\n\n⚡️ पेमेंट करके स्क्रीनशॉट DM करें।"
             
-    if not active_packs:
-        bot.reply_to(message, "⚠️ Filhal koi bhi pack active nahi hai.")
-        return
-
-    welcome_msg = (
-        "𝗘𝗣𝗜𝗦𝗢𝗗𝗘 — 3623 𝗧𝗢 3630\n\n"
-        "📦 𝗧𝗢𝗧𝗔𝗟 — 8 𝗘𝗣𝗜𝗦𝗢𝗗𝗘𝗦\n\n"
-        "💰 𝗣𝗥𝗜𝗖𝗘 — ₹ 160 ✅\n\n"
-        "⚡️ पेमेंट करके स्क्रीनशॉट DM करें।\n"
-        "🚀 पेमेंट कन्फर्म होते ही एपिसोड तुरंत मिल जाएगा।"
-    )
-    bot.reply_to(message, welcome_msg, reply_markup=markup)
-
-# --- HELP HANDLER ---
-@bot.message_handler(func=lambda m: m.text and m.text.lower() in ["help", "/help"])
-def help_command(message):
-    markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("🟢 Admin Se Baat Karein", url=f"https://t.me/{ADMIN_USERNAME}"))
-    bot.reply_to(message, f"🛠️ *PAYMENT & SUPPORT HELP*\n\nAdmin se sampark karein:\n👉 @{ADMIN_USERNAME}", parse_mode="Markdown", reply_markup=markup)
-
-# --- ADMIN COMMAND: /reply ---
-@bot.message_handler(commands=['reply'])
-def admin_reply_command(message):
-    if message.from_user.id != ADMIN_ID:
-        return
-    try:
-        parts = message.text.split(maxsplit=2)
-        if len(parts) < 3:
-            bot.reply_to(message, "⚠️ Format galat hai!\nUse karein:\n`/reply USER_ID Aapka message`", parse_mode="Markdown")
+            keyboard = {
+                "inline_keyboard": [
+                    [{"text": f"🟢 Buy Episodes | EP ({TOTAL_EPISODES} Eps - ₹{PACK_PRICE})", "callback_data": "buy_episodes"}]
+                ]
+            }
+            send_message_with_keyboard(CHANNEL_ID, post_content, keyboard)
+            send_message(chat_id, "✅ Post successfully channel par bhej di gayi hai!")
             return
-            
-        target_user_id = int(parts[1].strip())
-        reply_text = parts[2].strip()
-        
-        bot.send_message(target_user_id, f"💬 **Admin ka Jawab:**\n\n{reply_text}")
-        bot.reply_to(message, "✅ User ko message successfully bhej diya gaya hai!")
-    except Exception as e:
-        bot.reply_to(message, f"⚠️ Error: {e}")
 
-# --- QR CODE SENDER ---
-def send_qr_to_user(chat_id, pack_id):
-    if pack_id not in packs_db:
-        return
-        
-    user_pending_pack[chat_id] = pack_id
-    data = packs_db[pack_id]
-    
-    upi_string = f"upi://pay?pa={UPI_ID}&pn=Romeo&am={data['price']}&cu=INR"
-    qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={upi_string}"
-    
-    caption = f"⚡ PACK {pack_id} — INSTANT PAYMENT QR CODE ⚡\n\n• UPI ID: {UPI_ID}\n• Amount: ₹{data['price']}\n• Episodes: {data['episodes']} ({data['total']})\n\n1. Payment ke baad screenshot bhejein.\n2. Turant link mil jayega."
-    
-    try:
-        bot.send_photo(chat_id, qr_url, caption=caption)
-    except Exception as e:
-        bot.send_message(chat_id, f"{caption}\n\n⚠️ QR Error: {e}")
-
-# --- MESSAGE & SCREENSHOT HANDLER ---
-@bot.message_handler(content_types=['text', 'photo', 'audio', 'document'])
-def handle_incoming_messages(message):
-    if message.chat.id == ADMIN_ID:
-        if message.reply_to_message:
-            original_text = message.reply_to_message.text or message.reply_to_message.caption or ""
-            match = re.search(r'User ID[:\s]*(\d+)', original_text, re.IGNORECASE)
-            if match:
-                target_user_id = int(match.group(1))
-                try:
-                    if message.text:
-                        bot.send_message(target_user_id, f"💬 **Admin ka Jawab:**\n\n{message.text}")
-                    elif message.photo:
-                        bot.send_photo(target_user_id, message.photo[-1].file_id, caption=message.caption or "Admin ka message")
-                    elif message.audio:
-                        bot.send_audio(target_user_id, message.audio.file_id, caption=message.caption or "Admin ka audio")
-                    elif message.document:
-                        bot.send_document(target_user_id, message.document.file_id, caption=message.caption or "Admin ka document")
-                    
-                    bot.reply_to(message, "✅ User ko jawab successfully bhej diya gaya hai!")
-                except Exception as e:
-                    bot.reply_to(message, f"⚠️ Jawab bhejne mein error: {e}")
-            else:
-                bot.reply_to(message, "⚠️ Is message mein User ID nahi mili. Kripya niche diye gaye 'Reply to User' button ka use karein.")
-        return
-
-    if message.photo:
-        user = message.from_user
-        bot.reply_to(message, "✅ Screenshot mil gaya hai! Verification ke liye admin ke paas bhej diya gaya hai.")
-        
-        pack_id = user_pending_pack.get(user.id, "1")
-        data = packs_db.get(pack_id, {})
-        
-        caption = f"🚨 NEW PAYMENT SCREENSHOT 🚨\n\n• Name: {user.first_name}\n• User ID: {user.id}\n• Pack: Pack {pack_id} (₹{data.get('price', '160')})\n\n👇 Action lein:"
-        markup = types.InlineKeyboardMarkup()
-        markup.add(types.InlineKeyboardButton(f"🟢 Approve Pack {pack_id}", callback_data=f"approve_{pack_id}_{user.id}"))
-        markup.add(types.InlineKeyboardButton("🔴 Reject", callback_data=f"reject_{user.id}"))
-        markup.add(types.InlineKeyboardButton("💬 Reply to User", callback_data=f"promptreply_{user.id}"))
-        
-        try:
-            bot.send_photo(ADMIN_ID, message.photo[-1].file_id, caption=caption, reply_markup=markup)
-        except Exception as e:
-            bot.send_message(ADMIN_ID, f"⚠️ Error: {e}")
-            
-    elif message.text:
-        user = message.from_user
-        bot.reply_to(message, "📩 Aapka message admin tak bhej diya gaya hai. Jald hi aapko jawab milega!")
-        
-        text_to_admin = f"💬 **NEW USER MESSAGE**\n\n• Name: {user.first_name}\n• User ID: {user.id}\n• Username: @{user.username if user.username else 'None'}\n\n**Message:** {message.text}"
-        
-        markup = types.InlineKeyboardMarkup()
-        markup.add(types.InlineKeyboardButton("💬 Reply to User", callback_data=f"promptreply_{user.id}"))
-        
-        try:
-            bot.send_message(ADMIN_ID, text_to_admin, reply_markup=markup)
-        except Exception as e:
-            print(f"Error forwarding message to admin: {e}")
-
-# --- CALLBACK HANDLER ---
-@bot.callback_query_handler(func=lambda call: True)
-def handle_callbacks(call):
-    try:
-        bot.answer_callback_query(call.id)
-    except Exception:
-        pass
-
-    try:
-        if call.data.startswith("buy_"):
-            send_qr_to_user(call.message.chat.id, call.data.split("_")[1])
-            
-        elif call.data.startswith("promptreply_"):
-            target_id = call.data.split("_")[1]
-            if call.from_user.id != ADMIN_ID:
-                return
-            bot.send_message(ADMIN_ID, f"✍️ Is command ko copy karke apna message likhein:\n\n`/reply {target_id} Apna message yahan likhein`", parse_mode="Markdown")
-            
-        elif call.data.startswith("approve_"):
-            parts = call.data.split("_")
-            pack_id = parts[1]
-            target_id = int(parts[2])
-            
-            if call.from_user.id != ADMIN_ID:
-                return
-                
+        # 7. Interactive Reply System (/reply command)
+        if text.startswith("/reply") and user_id == ADMIN_ID:
             try:
-                bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.message_id, caption=call.message.caption + f"\n\nSTATUS: ✅ APPROVED")
+                parts = text.split(" ", 2)
+                target_user_id = parts[1]
+                reply_text = parts[2]
+                send_message(target_user_id, f"💬 **Admin Message:**\n\n{reply_text}")
+                send_message(chat_id, "✅ Message user tak pahunch gaya hai.")
             except Exception:
-                pass
-                
-            link = packs_db.get(pack_id, {}).get("link", "https://t.me/")
-            bot.send_message(target_id, f"🎉 Aapka payment verify ho gaya hai! Yeh raha channel ka link:\n\n{link}")
-            
-        elif call.data.startswith("reject_"):
-            parts = call.data.split("_")
-            target_id = int(parts[1])
-            
-            if call.from_user.id != ADMIN_ID:
-                return
-                
-            try:
-                bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.message_id, caption=call.message.caption + f"\n\nSTATUS: ❌ REJECTED")
-            except Exception:
-                pass
-                
-            bot.send_message(target_id, "❌ Aapka payment screenshot reject kar diya gaya hai. Kripya sahi screenshot bhejein.")
-    except Exception as e:
-        print(f"Callback error: {e}")
+                send_message(chat_id, "⚠️ Format: `/reply [user_id] [message]`")
+            return
 
-# --- WEBHOOK SETUP & RUN ---
-if __name__ == '__main__':
-    bot.remove_webhook()
-    webhook_url = f"https://{RENDER_APP_NAME}.onrender.com/{TOKEN}"
-    bot.set_webhook(url=webhook_url)
-    print(f"Webhook explicitly set to: {webhook_url}")
+        # 6. Direct MP3/Audio Posting (NEW & FIXED)
+        if user_id == ADMIN_ID and ("audio" in message or "document" in message or "voice" in message):
+            file_id = message.get("audio", {}).get("file_id") or \
+                      message.get("document", {}).get("file_id") or \
+                      message.get("voice", {}).get("file_id")
+            
+            custom_caption = message.get("caption", f"SUPER YODDHA — NEW AUDIO EPISODE")
+            caption = (
+                f"🎧 **{custom_caption}**\n\n"
+                f"📦 𝗧𝗢𝗧𝗔𝗟 — {TOTAL_EPISODES} Episodes\n"
+                f"💰 𝗣𝗥𝗜𝗖𝗘 — ₹{PACK_PRICE} ✅\n\n"
+                f"⚡️ पेमेंट करके स्क्रीनशॉट DM करें।"
+            )
+            
+            keyboard = {
+                "inline_keyboard": [
+                    [{"text": f"🟢 Buy Episodes | EP ({TOTAL_EPISODES} Eps - ₹{PACK_PRICE})", "callback_data": "buy_episodes"}]
+                ]
+            }
+            
+            # Channel par audio send karna button ke sath
+            send_audio_to_channel(CHANNEL_ID, file_id, caption, keyboard)
+            send_message(chat_id, "✅ Audio file 'Buy Button' ke sath seedha channel par post kar di gayi hai!")
+            return
+
+        # 5. Payment Verification & Approval (User sending screenshot)
+        if user_id != ADMIN_ID and ("photo" in message or "document" in message):
+            forward_to_admin(message, user_id)
+            send_message(chat_id, "⏳ Aapka payment screenshot admin ke paas bhej diya gaya hai. Kripya verification ka wait karein.")
+            return
+
+        # Start Command
+        if text == "/start":
+            welcome_msg = (
+                f"𝗘𝗣𝗜𝗦𝗢𝗗𝗘 — Super Yoddha\n\n"
+                f"📦 𝗧𝗢𝗧𝗔𝗟 — {TOTAL_EPISODES} Episodes\n\n"
+                f"💰 𝗣𝗥𝗜𝗖𝗘 — ₹{PACK_PRICE} ✅\n\n"
+                f"⚡️ पेमेंट करके स्क्रीनशॉट DM करें।"
+            )
+            keyboard = {
+                "inline_keyboard": [
+                    [{"text": f"🟢 Buy Episodes | EP ({TOTAL_EPISODES} Eps - ₹{PACK_PRICE})", "callback_data": "buy_episodes"}]
+                ]
+            }
+            send_message_with_keyboard(chat_id, welcome_msg, keyboard)
+
+# --- HELPER FUNCTIONS FOR TELEGRAM API ---
+def send_message(chat_id, text):
+    url = f"{TELEGRAM_API}/sendMessage"
+    payload = {"chat_id": chat_id, "text": text, "parse_mode": "Markdown"}
+    requests.post(url, json=payload)
+
+def send_message_with_keyboard(chat_id, text, keyboard):
+    url = f"{TELEGRAM_API}/sendMessage"
+    payload = {"chat_id": chat_id, "text": text, "reply_markup": keyboard, "parse_mode": "Markdown"}
+    requests.post(url, json=payload)
+
+def send_photo(chat_id, photo_url, caption):
+    url = f"{TELEGRAM_API}/sendPhoto"
+    payload = {"chat_id": chat_id, "photo": photo_url, "caption": caption, "parse_mode": "Markdown"}
+    requests.post(url, json=payload)
+
+def edit_message_text(chat_id, message_id, text):
+    url = f"{TELEGRAM_API}/editMessageText"
+    payload = {"chat_id": chat_id, "message_id": message_id, "text": text, "parse_mode": "Markdown"}
+    requests.post(url, json=payload)
+
+def forward_to_admin(message, user_id):
+    url = f"{TELEGRAM_API}/forwardMessage"
+    payload = {
+        "chat_id": ADMIN_ID,
+        "from_chat_id": user_id,
+        "message_id": message["message_id"]
+    }
+    requests.post(url, json=payload)
     
-    t = threading.Thread(target=auto_repost_worker, daemon=True)
-    t.start()
-    
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+    keyboard = {
+        "inline_keyboard": [
+            [
+                {"text": "✅ Approve", "callback_data": f"approve_{user_id}"},
+                {"text": "❌ Reject", "callback_data": f"reject_{user_id}"}
+            ],
+            [
+                {"text": "💬 Reply to User", "callback_data": f"reply_user_{user_id}"}
+            ]
+        ]
+    }
+    send_message_with_keyboard(ADMIN_ID, f"🔔 New Payment Screenshot received from user ID: `{user_id}`", keyboard)
+
+def send_audio_to_channel(channel_id, file_id, caption, keyboard):
+    url = f"{TELEGRAM_API}/sendAudio"
+    payload = {
+        "chat_id": channel_id,
+        "audio": file_id,
+        "caption": caption,
+        "reply_markup": keyboard,
+        "parse_mode": "Markdown"
+    }
+    requests.post(url, json=payload)
+
+# --- WEBHOOK SETTER ---
+@app.route("/set_webhook", methods=["GET"])
+def set_webhook():
+    webhook_url = f"{RENDER_URL}/{TOKEN}"
+    response = requests.get(f"{TELEGRAM_API}/setWebhook?url={webhook_url}")
+    return response.json()
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
     

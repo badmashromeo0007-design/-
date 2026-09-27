@@ -1,5 +1,5 @@
 import os
-from Flask import Flask, request
+from flask import Flask, request
 import requests
 
 app = Flask(__name__)
@@ -110,7 +110,7 @@ def handle_update(update):
                     f"📦 𝗧𝗢𝗧𝗔𝗟 — {TOTAL_EPISODES}\n\n"
                     f"💰 𝗣𝗥𝗜𝗖𝗘 — ₹{PACK_PRICE} ✅\n\n"
                     f"⚡️ पेमेंट करके स्क्रीनशॉट DM करें。\n"
-                    f"🚀 पेमेंट कन्फर्म होते ही एपिसोड तुरंत मिल जाएगा。"
+                    f"🚀 पेमेंट कन्फर्म होते ही एपिसोड तुरंत मिल जाएगा।"
                 )
             
             keyboard = {

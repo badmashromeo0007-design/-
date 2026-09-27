@@ -17,12 +17,12 @@ TOTAL_EPISODES = "3623 - 3630"
 PACK_PRICE = 160
 CHANNEL_LINK = "https://t.me/+2Bq6yb6hSeBhOTJI"
 
-# --- ROOT ROUTE (Fixes 404 on main URL) ---
+# --- ROOT ROUTE ---
 @app.route("/", methods=["GET"])
 def home():
     return "Bot is active and running successfully!", 200
 
-# --- 1. FLASK WEBHOOK SETUP ---
+# --- WEBHOOK ROUTE ---
 @app.route(f"/{TOKEN}", methods=["POST"])
 def webhook():
     update = request.get_json()
@@ -33,7 +33,7 @@ def webhook():
 def handle_update(update):
     global TOTAL_EPISODES, PACK_PRICE, CHANNEL_LINK
     
-    # Callback Query (Inline Buttons)
+    # 1. Callback Query (Inline Buttons)
     if "callback_query" in update:
         cq = update["callback_query"]
         data = cq["data"]
@@ -70,19 +70,18 @@ def handle_update(update):
             
         return
 
-    # Message Handling
+    # 2. Message Handling
     if "message" in update:
         message = update["message"]
         chat_id = message["chat"]["id"]
         user_id = message["from"]["id"]
         text = message.get("text", "")
         
-        # --- UPDATE PACK, RANGE, PRICE & LINK VIA /addpack OR /setpack ---
+        # --- UPDATE PACK & PRICE VIA /addpack OR /setpack ---
         if (text.startswith("/addpack") or text.startswith("/setpack")) and user_id == ADMIN_ID:
             try:
                 if "|" in text:
                     parts = [p.strip() for p in text.replace("/addpack", "").replace("/setpack", "").split("|")]
-                    pack_no = parts[0]
                     episode_range = parts[1]
                     price = int(parts[2])
                     new_link = parts[3]
@@ -106,7 +105,7 @@ def handle_update(update):
                 send_message(chat_id, "⚠️ Format galat hai! Sahi tarika:\n/addpack 1 | 3623 - 3630 | 160 | https://t.me/+xxxx")
             return
 
-        # 2. Manual Post Command (/post)
+        # --- MANUAL POST COMMAND (/post) ---
         if text.startswith("/post") and user_id == ADMIN_ID:
             post_content = text.replace("/post", "").strip()
             if not post_content:
@@ -115,7 +114,7 @@ def handle_update(update):
                     f"📦 𝗧𝗢𝗧𝗔𝗟 — {TOTAL_EPISODES}\n\n"
                     f"💰 𝗣𝗥𝗜𝗖𝗘 — ₹{PACK_PRICE} ✅\n\n"
                     f"⚡️ पेमेंट करके स्क्रीनशॉट DM करें。\n"
-                    f"🚀 पेमेंट कन्फर्म होते ही एपिसोड तुरंत मिल जाएगा。"
+                    f"🚀 पेमेंट कन्फर्म होते ही एपिसोड तुरंत मिल जाएगा।"
                 )
             
             keyboard = {
@@ -127,7 +126,7 @@ def handle_update(update):
             send_message(chat_id, "✅ Post successfully channel par bhej di gayi hai!")
             return
 
-        # 3. Interactive Reply System (/reply command)
+        # --- INTERACTIVE REPLY SYSTEM (/reply) ---
         if text.startswith("/reply") and user_id == ADMIN_ID:
             try:
                 parts = text.split(" ", 2)
@@ -139,7 +138,7 @@ def handle_update(update):
                 send_message(chat_id, "⚠️ Format: /reply [user_id] [message]")
             return
 
-        # 4. Direct MP3/Audio Posting with Debugging
+        # --- DIRECT AUDIO / DOCUMENT / VOICE POSTING TO CHANNEL ---
         if user_id == ADMIN_ID and ("audio" in message or "document" in message or "voice" in message):
             file_id = message.get("audio", {}).get("file_id") or \
                       message.get("document", {}).get("file_id") or \
@@ -154,7 +153,7 @@ def handle_update(update):
                 f"📦 TOTAL — {TOTAL_EPISODES}\n"
                 f"💰 PRICE — ₹{PACK_PRICE} ✅\n\n"
                 f"⚡️ पेमेंट करके स्क्रीनशॉट DM करें。\n"
-                f"🚀 पेमेंट कन्फर्म होते ही एपिसोड तुरंत मिल जाएगा。"
+                f"🚀 पेमेंट कन्फर्म होते ही एपिसोड तुरंत मिल जाएगा।"
             )
             
             keyboard = {
@@ -163,22 +162,23 @@ def handle_update(update):
                 ]
             }
             
-            response = send_audio_to_channel_debug(CHANNEL_ID, file_id, caption, keyboard)
-            if response.get("ok"):
-                send_message(chat_id, "✅ Audio file channel par successfully post ho gayi hai!")
+            # Direct send to channel
+            res = send_audio_to_channel(CHANNEL_ID, file_id, caption, keyboard)
+            if res.get("ok"):
+                send_message(chat_id, "✅ Audio file seedha channel par post ho gayi hai!")
             else:
-                err_desc = response.get("description", "Unknown error")
+                err_desc = res.get("description", "Unknown error")
                 send_message(chat_id, f"❌ Channel par post nahi ho paya!\nReason: {err_desc}")
             return
 
-        # 5. Payment Verification & Approval (User sending screenshot)
+        # --- PAYMENT SCREENSHOT FORWARDING (For Users) ---
         if user_id != ADMIN_ID and ("photo" in message or "document" in message):
             forward_to_admin(message, user_id)
             send_message(chat_id, "⏳ Aapka payment screenshot admin ke paas bhej diya gaya hai. Kripya verification ka wait karein.")
             return
 
-        # Start Command
-        if text == "/start":
+        # --- START COMMAND ---
+        if text == "__disabled_start" or text == "/start":
             welcome_msg = (
                 f"𝗘𝗣𝗜𝗦𝗢𝗗𝗘 — {TOTAL_EPISODES}\n\n"
                 f"📦 𝗧𝗢𝗧𝗔𝗟 — {TOTAL_EPISODES}\n\n"
@@ -193,7 +193,7 @@ def handle_update(update):
             }
             send_message_with_keyboard(chat_id, welcome_msg, keyboard)
 
-# --- HELPER FUNCTIONS FOR TELEGRAM API ---
+# --- HELPER FUNCTIONS ---
 def send_message(chat_id, text):
     url = f"{TELEGRAM_API}/sendMessage"
     payload = {"chat_id": chat_id, "text": text}
@@ -236,7 +236,7 @@ def forward_to_admin(message, user_id):
     }
     send_message_with_keyboard(ADMIN_ID, f"🔔 New Payment Screenshot received from user ID: {user_id}", keyboard)
 
-def send_audio_to_channel_debug(channel_id, file_id, caption, keyboard):
+def send_audio_to_channel(channel_id, file_id, caption, keyboard):
     url = f"{TELEGRAM_API}/sendAudio"
     payload = {
         "chat_id": channel_id,

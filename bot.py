@@ -15,15 +15,15 @@ RENDER_APP_NAME = "badmash-4k97"  # Aapka Render app name
 bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
 
-# --- DATABASE (Updated with ₹80 and 7 Episodes) ---
+# --- DATABASE (Updated with Pre-Booking Pack) ---
 packs_db = {
     "1": {
-        "title": "SUPER YODDHA — EPISODE SALE",
-        "episodes": "3608 - 3614",
-        "total": "7 Episodes",
-        "price": "80",
+        "title": "SUPER YODDHA — PRE-BOOKING",
+        "episodes": "3623 - 3630",
+        "total": "8 Episodes",
+        "price": "90",  # Aap yahan exact price dal sakte hain ya /addpack command use kar sakte hain
         "link": "https://t.me/+gy8gewj0snllZThl",
-        "is_prebook": False,
+        "is_prebook": True,
         "active": True
     }
 }
@@ -56,9 +56,9 @@ def calculate_total_episodes(episodes_str):
                 return f"{total} Episodes"
     except Exception:
         pass
-    return "7 Episodes"
+    return "8 Episodes"
 
-# --- ADMIN COMMAND: Add Pack ---
+# --- ADMIN COMMAND: Add Pack (Pre-book format: /addpack 1 | 3623-3630 | 90 | link | pre) ---
 @bot.message_handler(commands=['addpack'])
 def add_pack(message):
     if message.from_user.id != ADMIN_ID:
@@ -86,9 +86,9 @@ def add_pack(message):
         if pack_id not in purchased_users:
             purchased_users[pack_id] = []
             
-        bot.reply_to(message, f"✅ Pack {pack_id} successfully added!\nEpisodes: {episodes}\nPrice: ₹{price}")
+        bot.reply_to(message, f"✅ Pack {pack_id} successfully added!\nEpisodes: {episodes}\nPrice: ₹{price}\nPre-book: {is_prebook}")
     except Exception as e:
-        bot.reply_to(message, f"⚠️ Format galat hai!\nUse karein:\n`/addpack 1 | 3608 - 3614 | 80 | https://t.me/+link`", parse_mode="Markdown")
+        bot.reply_to(message, f"⚠️ Format galat hai!\nUse karein:\n`/addpack 1 | 3623 - 3630 | 90 | https://t.me/+link | pre`", parse_mode="Markdown")
 
 # --- START & MENU COMMAND ---
 @bot.message_handler(commands=['start', 'menu'])
@@ -113,12 +113,12 @@ def send_welcome(message):
         return
 
     welcome_msg = (
-        "𝗘𝗣𝗜𝗦𝗢𝗗𝗘 — 3608 𝗧𝗢 3614\n\n"
-        "📦 𝗧𝗢𝗧𝗔𝗟 — 7 𝗘𝗣𝗜𝗦𝗢𝗗𝗘𝗦\n\n"
-        "💰 𝗣𝗥𝗜𝗖𝗘 —  ₹ 80 ✅\n\n"
-        "⚡️ पेमेंट करके स्क्रीनशॉट DM करें।\n"
-        "🚀 पेमेंट कन्फर्म होते ही एपिसोड तुरंत मिल जाएगा।\n\n"
-        "🔥 𝗢𝗡𝗟𝗬 80 • 𝗗𝗠 𝗡𝗢𝗪 🔥"
+        "EPISODES — 3623-3630\n\n"
+        "📦 TOTAL — 8 EPISODES\n\n"
+        "💰 PRICE — ₹ 90 ✅ (Low Price)\n\n"
+        "⚡️ PRE-BOOKING\n"
+        "पेमेंट करके स्क्रीनशॉट DM करें।\n"
+        "🚀 रिलीज़ होते hi एपिसोड तुरंत मिल जाएगा।"
     )
     bot.reply_to(message, welcome_msg, reply_markup=markup)
 
@@ -168,12 +168,12 @@ def handle_media(message):
             markup.add(types.InlineKeyboardButton(btn_text, url=f"https://t.me/{BOT_USERNAME}?start=buy_{pack_id}"))
             
             text = (
-                f"𝗘𝗣𝗜𝗦𝗢𝗗𝗘 — {data['episodes']}\n\n"
-                f"📦 𝗧𝗢𝗧𝗔𝗟 — {data['total']}\n\n"
-                f"💰 𝗣𝗥𝗜𝗖𝗘 —  ₹ {data['price']} ✅\n\n"
-                f"⚡️ पेमेंट करके स्क्रीनशॉट DM करें।\n"
-                f"🚀 पेमेंट कन्फर्म होते ही एपिसोड तुरंत मिल जाएगा।\n\n"
-                f"🔥 𝗢𝗡𝗟𝗬 {data['price']} • 𝗗𝗠 𝗡𝗢𝗪 🔥"
+                f"EPISODES — {data['episodes']}\n\n"
+                f"📦 TOTAL — {data['total']}\n\n"
+                f"💰 PRICE — ₹ {data['price']} ✅\n\n"
+                f"⚡️ PRE-BOOKING\n"
+                f"पेमेंट करके स्क्रीनशॉट DM करें।\n"
+                f"🚀 रिलीज़ होते hi एपिसोड तुरंत मिल जाएगा।"
             )
             
             if message.photo:
@@ -195,7 +195,7 @@ def handle_media(message):
         pack_id = user_pending_pack.get(user.id, "1")
         data = packs_db.get(pack_id, {})
         
-        caption = f"🚨 NEW PAYMENT SCREENSHOT 🚨\n\n• Name: {user.first_name}\n• User ID: {user.id}\n• Pack: Pack {pack_id} (₹{data.get('price', '80')})\n\n👇 Action lein:"
+        caption = f"🚨 NEW PAYMENT SCREENSHOT 🚨\n\n• Name: {user.first_name}\n• User ID: {user.id}\n• Pack: Pack {pack_id} (₹{data.get('price', '90')})\n\n👇 Action lein:"
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton(f"🟢 Approve Pack {pack_id}", callback_data=f"approve_{pack_id}_{user.id}"))
         markup.add(types.InlineKeyboardButton("🔴 Reject", callback_data=f"reject_{user.id}"))
@@ -231,7 +231,7 @@ def handle_callbacks(call):
                 pass
                 
             link = packs_db.get(pack_id, {}).get("link", "https://t.me/")
-            bot.send_message(target_id, f"🎉 Aapka payment verify ho gaya hai! Yeh raha channel ka link:\n\n{link}")
+            bot.send_message(target_id, f"🎉 Aapka payment verify ho gaya hai! Pre-booked episodes release hote hi channel link mil jayega:\n\n{link}")
             
         elif call.data.startswith("reject_"):
             target_id = int(call.data.split("_")[1])
@@ -256,4 +256,4 @@ if __name__ == '__main__':
     
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
-        
+    

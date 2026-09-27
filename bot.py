@@ -19,9 +19,9 @@ app = Flask(__name__)
 packs_db = {
     "1": {
         "title": "SUPER YODDHA — EPISODE SALE",
-        "episodes": "3615 - 3622",
+        "episodes": "3623 - 3630",
         "total": "8 Episodes",
-        "price": "90",  # Aap ise baad mein change bhi kar sakte hain
+        "price": "160",  # Aapne abhi 160 set kiya hai
         "link": "https://t.me/+gy8gewj0snllZThl",
         "active": True
     }
@@ -84,7 +84,39 @@ def add_pack(message):
             
         bot.reply_to(message, f"✅ Pack {pack_id} successfully added!\nEpisodes: {episodes}\nPrice: ₹{price}")
     except Exception as e:
-        bot.reply_to(message, f"⚠️ Format galat hai!\nUse karein:\n`/addpack 1 | 3615 - 3622 | 90 | https://t.me/+link`", parse_mode="Markdown")
+        bot.reply_to(message, f"⚠️ Format galat hai!\nUse karein:\n`/addpack 1 | 3623 - 3630 | 160 | https://t.me/+link`", parse_mode="Markdown")
+
+# --- ADMIN COMMAND: Post to Channel directly from DM ---
+@bot.message_handler(commands=['post'])
+def post_to_channel(message):
+    if message.from_user.id != ADMIN_ID:
+        return
+    try:
+        parts = message.text.split()
+        pack_id = parts[1].strip() if len(parts) > 1 else "1"
+        
+        if pack_id not in packs_db:
+            bot.reply_to(message, "⚠️ Pack ID database mein nahi hai!")
+            return
+            
+        data = packs_db[pack_id]
+        markup = types.InlineKeyboardMarkup()
+        btn_text = f"🟢 Buy Episodes | EP- {data['episodes']}"
+        markup.add(types.InlineKeyboardButton(btn_text, url=f"https://t.me/{BOT_USERNAME}?start=buy_{pack_id}"))
+        
+        text = (
+            f"𝗘𝗣𝗜𝗦𝗢𝗗𝗘 — {data['episodes']}\n\n"
+            f"📦 𝗧𝗢𝗧𝗔𝗟 — {data['total']}\n\n"
+            f"💰 𝗣𝗥𝗜𝗖𝗘 — ₹ {data['price']} ✅\n\n"
+            f"⚡️ पेमेंट करके स्क्रीनशॉट DM करें।\n"
+            f"🚀 पेमेंट कन्फर्म होते ही एपिसोड तुरंत मिल जाएगा।"
+        )
+        
+        # Bot khud channel par message bhej dega (Bina channel mein command likhe)
+        bot.send_message(CHANNEL_ID, text, reply_markup=markup)
+        bot.reply_to(message, "✅ Post successfully channel par bhej di gayi hai!")
+    except Exception as e:
+        bot.reply_to(message, f"⚠️ Post error: {e}")
 
 # --- START & MENU COMMAND ---
 @bot.message_handler(commands=['start', 'menu'])
@@ -109,9 +141,9 @@ def send_welcome(message):
         return
 
     welcome_msg = (
-        "𝗘𝗣𝗜𝗦𝗢𝗗𝗘 — 3615 𝗧𝗢 3622\n\n"
+        "𝗘𝗣𝗜𝗦𝗢𝗗𝗘 — 3623 𝗧𝗢 3630\n\n"
         "📦 𝗧𝗢𝗧𝗔𝗟 — 8 𝗘𝗣𝗜𝗦𝗢𝗗𝗘𝗦\n\n"
-        "💰 𝗣𝗥𝗜𝗖𝗘 — ₹ 90 ✅\n\n"
+        "💰 𝗣𝗥𝗜𝗖𝗘 — ₹ 160 ✅\n\n"
         "⚡️ पेमेंट करके स्क्रीनशॉट DM करें।\n"
         "🚀 पेमेंट कन्फर्म होते ही एपिसोड तुरंत मिल जाएगा।"
     )
@@ -142,43 +174,9 @@ def send_qr_to_user(chat_id, pack_id):
     except Exception as e:
         bot.send_message(chat_id, f"{caption}\n\n⚠️ QR Error: {e}")
 
-# --- CHANNEL POST & SCREENSHOT HANDLER ---
+# --- SCREENSHOT HANDLER ---
 @bot.message_handler(content_types=['photo', 'audio', 'document'])
 def handle_media(message):
-    if message.chat.id == ADMIN_ID and message.caption and message.caption.startswith("/post"):
-        try:
-            parts = message.caption.split()
-            pack_id = parts[1].strip() if len(parts) > 1 else "1"
-            
-            if pack_id not in packs_db:
-                bot.reply_to(message, "⚠️ Pack ID database mein nahi hai!")
-                return
-                
-            data = packs_db[pack_id]
-            markup = types.InlineKeyboardMarkup()
-            btn_text = f"🟢 Buy Episodes | EP- {data['episodes']}"
-            markup.add(types.InlineKeyboardButton(btn_text, url=f"https://t.me/{BOT_USERNAME}?start=buy_{pack_id}"))
-            
-            text = (
-                f"𝗘𝗣𝗜𝗦𝗢𝗗𝗘 — {data['episodes']}\n\n"
-                f"📦 𝗧𝗢𝗧𝗔𝗟 — {data['total']}\n\n"
-                f"💰 𝗣𝗥𝗜𝗖𝗘 — ₹ {data['price']} ✅\n\n"
-                f"⚡️ पेमेंट करके स्क्रीनशॉट DM करें।\n"
-                f"🚀 पेमेंट कन्फर्म होते ही एपिसोड तुरंत मिल जाएगा।"
-            )
-            
-            if message.photo:
-                bot.send_photo(CHANNEL_ID, message.photo[-1].file_id, caption=text, reply_markup=markup)
-            elif message.audio:
-                bot.send_audio(CHANNEL_ID, message.audio.file_id, caption=text, reply_markup=markup)
-            elif message.document:
-                bot.send_document(CHANNEL_ID, message.document.file_id, caption=text, reply_markup=markup)
-                
-            bot.reply_to(message, "✅ Post successfully channel par bhej di gayi hai!")
-        except Exception as e:
-            bot.reply_to(message, f"⚠️ Post error: {e}")
-        return
-
     if message.chat.id != ADMIN_ID and message.photo:
         user = message.from_user
         bot.reply_to(message, "✅ Screenshot mil gaya hai! Verification ke liye admin ke paas bhej diya gaya hai.")
@@ -186,7 +184,7 @@ def handle_media(message):
         pack_id = user_pending_pack.get(user.id, "1")
         data = packs_db.get(pack_id, {})
         
-        caption = f"🚨 NEW PAYMENT SCREENSHOT 🚨\n\n• Name: {user.first_name}\n• User ID: {user.id}\n• Pack: Pack {pack_id} (₹{data.get('price', '90')})\n\n👇 Action lein:"
+        caption = f"🚨 NEW PAYMENT SCREENSHOT 🚨\n\n• Name: {user.first_name}\n• User ID: {user.id}\n• Pack: Pack {pack_id} (₹{data.get('price', '160')})\n\n👇 Action lein:"
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton(f"🟢 Approve Pack {pack_id}", callback_data=f"approve_{pack_id}_{user.id}"))
         markup.add(types.InlineKeyboardButton("🔴 Reject", callback_data=f"reject_{user.id}"))

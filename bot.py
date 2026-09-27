@@ -31,7 +31,7 @@ packs_db = {
 
 UPI_ID = "Badmashromeo0007@okaxis"
 user_pending_pack = {}
-last_channel_message_id = None  # Yeh track karega ki channel par abhi kaun si post hai
+last_channel_message_id = None
 
 @app.route('/')
 def home():
@@ -86,7 +86,7 @@ def add_pack(message):
     except Exception as e:
         bot.reply_to(message, f"⚠️ Format galat hai!\nUse karein:\n`/addpack 1 | 3623 - 3630 | 160 | https://t.me/+link`", parse_mode="Markdown")
 
-# --- ADMIN COMMAND: Post to Channel directly from DM ---
+# --- ADMIN COMMAND: Post to Channel ---
 @bot.message_handler(commands=['post'])
 def post_to_channel_command(message):
     if message.from_user.id != ADMIN_ID:
@@ -118,14 +118,12 @@ def send_post_to_channel(pack_id="1"):
     )
     
     try:
-        # Pehle purani post delete karein agar ID available hai
         if last_channel_message_id:
             try:
                 bot.delete_message(CHANNEL_ID, last_channel_message_id)
             except Exception:
                 pass
                 
-        # Nayi post bhejein
         sent_msg = bot.send_message(CHANNEL_ID, text, reply_markup=markup)
         last_channel_message_id = sent_msg.message_id
     except Exception as e:
@@ -134,16 +132,14 @@ def send_post_to_channel(pack_id="1"):
 # --- BACKGROUND THREAD FOR AUTO 10-MINUTE REPOST ---
 def auto_repost_worker():
     while True:
-        time.sleep(600)  # 600 seconds = 10 minutes
+        time.sleep(600)  # 10 minutes
         try:
-            # Active pack (default '1') ko har 10 minute mein repost karega
             active_pack_id = "1"
             for pid, pdata in packs_db.items():
                 if pdata["active"]:
                     active_pack_id = pid
                     break
             send_post_to_channel(active_pack_id)
-            print("Auto-reposted to channel successfully.")
         except Exception as e:
             print(f"Background thread error: {e}")
 
@@ -203,13 +199,14 @@ def send_qr_to_user(chat_id, pack_id):
     except Exception as e:
         bot.send_message(chat_id, f"{caption}\n\n⚠️ QR Error: {e}")
 
-# --- MESSAGE & SCREENSHOT HANDLER (WITH ADMIN REPLY SUPPORT) ---
+# --- MESSAGE & SCREENSHOT HANDLER (FIXED REPLY LOGIC) ---
 @bot.message_handler(content_types=['text', 'photo', 'audio', 'document'])
 def handle_incoming_messages(message):
     if message.chat.id == ADMIN_ID:
         if message.reply_to_message:
             original_text = message.reply_to_message.text or message.reply_to_message.caption or ""
-            match = re.search(r'User ID:\s*(\d+)', original_text)
+            # Yeh line ab kisi bhi tarah ki User ID ko asani se dhoond legi
+            match = re.search(r'User ID[:\s]*(\d+)', original_text, re.IGNORECASE)
             if match:
                 target_user_id = int(match.group(1))
                 try:
@@ -217,11 +214,16 @@ def handle_incoming_messages(message):
                         bot.send_message(target_user_id, f"💬 **Admin ka Jawab:**\n\n{message.text}")
                     elif message.photo:
                         bot.send_photo(target_user_id, message.photo[-1].file_id, caption=message.caption or "Admin ka message")
-                    bot.reply_to(message, "✅ User ko jawab bhej diya gaya hai!")
+                    elif message.audio:
+                        bot.send_audio(target_user_id, message.audio.file_id, caption=message.caption or "Admin ka audio")
+                    elif message.document:
+                        bot.send_document(target_user_id, message.document.file_id, caption=message.caption or "Admin ka document")
+                    
+                    bot.reply_to(message, "✅ User ko jawab successfully bhej diya gaya hai!")
                 except Exception as e:
                     bot.reply_to(message, f"⚠️ Jawab bhejne mein error: {e}")
             else:
-                bot.reply_to(message, "⚠️ Is message mein User ID nahi mili.")
+                bot.reply_to(message, "⚠️ Is message mein User ID nahi mili. Kripya us message par reply karein jo bot ne bheja tha.")
         return
 
     if message.photo:
@@ -280,7 +282,9 @@ def handle_callbacks(call):
             bot.send_message(target_id, f"🎉 Aapka payment verify ho gaya hai! Yeh raha channel ka link:\n\n{link}")
             
         elif call.data.startswith("reject_"):
-            target_id = int(call.data.split("_")[1])
+            parts = call.data.split("_")
+            target_id = int(parts[1])
+            
             if call.from_user.id != ADMIN_ID:
                 return
                 
@@ -300,9 +304,9 @@ if __name__ == '__main__':
     bot.set_webhook(url=webhook_url)
     print(f"Webhook explicitly set to: {webhook_url}")
     
-    # Background thread start karein jo har 10 minute mein auto repost karega
     t = threading.Thread(target=auto_repost_worker, daemon=True)
     t.start()
     
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+    

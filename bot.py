@@ -1,5 +1,7 @@
 import os
 import re
+import time
+import threading
 import telebot
 from telebot import types
 from flask import Flask, request
@@ -21,7 +23,7 @@ packs_db = {
         "title": "SUPER YODDHA — EPISODE SALE",
         "episodes": "3623 - 3630",
         "total": "8 Episodes",
-        "price": "160",  # Aapne abhi 160 set kiya hai
+        "price": "160",
         "link": "https://t.me/+gy8gewj0snllZThl",
         "active": True
     }
@@ -29,7 +31,7 @@ packs_db = {
 
 UPI_ID = "Badmashromeo0007@okaxis"
 user_pending_pack = {}
-purchased_users = {"1": []}
+last_channel_message_id = None  # Yeh track karega ki channel par abhi kaun si post hai
 
 @app.route('/')
 def home():
@@ -79,8 +81,6 @@ def add_pack(message):
             "link": link,
             "active": True
         }
-        if pack_id not in purchased_users:
-            purchased_users[pack_id] = []
             
         bot.reply_to(message, f"✅ Pack {pack_id} successfully added!\nEpisodes: {episodes}\nPrice: ₹{price}")
     except Exception as e:
@@ -88,35 +88,64 @@ def add_pack(message):
 
 # --- ADMIN COMMAND: Post to Channel directly from DM ---
 @bot.message_handler(commands=['post'])
-def post_to_channel(message):
+def post_to_channel_command(message):
     if message.from_user.id != ADMIN_ID:
         return
     try:
         parts = message.text.split()
         pack_id = parts[1].strip() if len(parts) > 1 else "1"
-        
-        if pack_id not in packs_db:
-            bot.reply_to(message, "⚠️ Pack ID database mein nahi hai!")
-            return
-            
-        data = packs_db[pack_id]
-        markup = types.InlineKeyboardMarkup()
-        btn_text = f"🟢 Buy Episodes | EP- {data['episodes']}"
-        markup.add(types.InlineKeyboardButton(btn_text, url=f"https://t.me/{BOT_USERNAME}?start=buy_{pack_id}"))
-        
-        text = (
-            f"𝗘𝗣𝗜𝗦𝗢𝗗𝗘 — {data['episodes']}\n\n"
-            f"📦 𝗧𝗢𝗧𝗔𝗟 — {data['total']}\n\n"
-            f"💰 𝗣𝗥𝗜𝗖𝗘 — ₹ {data['price']} ✅\n\n"
-            f"⚡️ पेमेंट करके स्क्रीनशॉट DM करें।\n"
-            f"🚀 पेमेंट कन्फर्म होते ही एपिसोड तुरंत मिल जाएगा।"
-        )
-        
-        # Bot khud channel par message bhej dega (Bina channel mein command likhe)
-        bot.send_message(CHANNEL_ID, text, reply_markup=markup)
+        send_post_to_channel(pack_id)
         bot.reply_to(message, "✅ Post successfully channel par bhej di gayi hai!")
     except Exception as e:
         bot.reply_to(message, f"⚠️ Post error: {e}")
+
+def send_post_to_channel(pack_id="1"):
+    global last_channel_message_id
+    if pack_id not in packs_db:
+        return
+        
+    data = packs_db[pack_id]
+    markup = types.InlineKeyboardMarkup()
+    btn_text = f"🟢 Buy Episodes | EP- {data['episodes']}"
+    markup.add(types.InlineKeyboardButton(btn_text, url=f"https://t.me/{BOT_USERNAME}?start=buy_{pack_id}"))
+    
+    text = (
+        f"𝗘𝗣𝗜𝗦𝗢𝗗𝗘 — {data['episodes']}\n\n"
+        f"📦 𝗧𝗢𝗧𝗔𝗟 — {data['total']}\n\n"
+        f"💰 𝗣𝗥𝗜𝗖𝗘 — ₹ {data['price']} ✅\n\n"
+        f"⚡️ पेमेंट करके स्क्रीनशॉट DM करें।\n"
+        f"🚀 पेमेंट कन्फर्म होते ही एपिसोड तुरंत मिल जाएगा।"
+    )
+    
+    try:
+        # Pehle purani post delete karein agar ID available hai
+        if last_channel_message_id:
+            try:
+                bot.delete_message(CHANNEL_ID, last_channel_message_id)
+            except Exception:
+                pass
+                
+        # Nayi post bhejein
+        sent_msg = bot.send_message(CHANNEL_ID, text, reply_markup=markup)
+        last_channel_message_id = sent_msg.message_id
+    except Exception as e:
+        print(f"Auto-post error: {e}")
+
+# --- BACKGROUND THREAD FOR AUTO 10-MINUTE REPOST ---
+def auto_repost_worker():
+    while True:
+        time.sleep(600)  # 600 seconds = 10 minutes
+        try:
+            # Active pack (default '1') ko har 10 minute mein repost karega
+            active_pack_id = "1"
+            for pid, pdata in packs_db.items():
+                if pdata["active"]:
+                    active_pack_id = pid
+                    break
+            send_post_to_channel(active_pack_id)
+            print("Auto-reposted to channel successfully.")
+        except Exception as e:
+            print(f"Background thread error: {e}")
 
 # --- START & MENU COMMAND ---
 @bot.message_handler(commands=['start', 'menu'])
@@ -174,10 +203,28 @@ def send_qr_to_user(chat_id, pack_id):
     except Exception as e:
         bot.send_message(chat_id, f"{caption}\n\n⚠️ QR Error: {e}")
 
-# --- SCREENSHOT HANDLER ---
-@bot.message_handler(content_types=['photo', 'audio', 'document'])
-def handle_media(message):
-    if message.chat.id != ADMIN_ID and message.photo:
+# --- MESSAGE & SCREENSHOT HANDLER (WITH ADMIN REPLY SUPPORT) ---
+@bot.message_handler(content_types=['text', 'photo', 'audio', 'document'])
+def handle_incoming_messages(message):
+    if message.chat.id == ADMIN_ID:
+        if message.reply_to_message:
+            original_text = message.reply_to_message.text or message.reply_to_message.caption or ""
+            match = re.search(r'User ID:\s*(\d+)', original_text)
+            if match:
+                target_user_id = int(match.group(1))
+                try:
+                    if message.text:
+                        bot.send_message(target_user_id, f"💬 **Admin ka Jawab:**\n\n{message.text}")
+                    elif message.photo:
+                        bot.send_photo(target_user_id, message.photo[-1].file_id, caption=message.caption or "Admin ka message")
+                    bot.reply_to(message, "✅ User ko jawab bhej diya gaya hai!")
+                except Exception as e:
+                    bot.reply_to(message, f"⚠️ Jawab bhejne mein error: {e}")
+            else:
+                bot.reply_to(message, "⚠️ Is message mein User ID nahi mili.")
+        return
+
+    if message.photo:
         user = message.from_user
         bot.reply_to(message, "✅ Screenshot mil gaya hai! Verification ke liye admin ke paas bhej diya gaya hai.")
         
@@ -193,6 +240,16 @@ def handle_media(message):
             bot.send_photo(ADMIN_ID, message.photo[-1].file_id, caption=caption, reply_markup=markup)
         except Exception as e:
             bot.send_message(ADMIN_ID, f"⚠️ Error: {e}")
+            
+    elif message.text:
+        user = message.from_user
+        bot.reply_to(message, "📩 Aapka message admin tak bhej diya gaya hai. Jald hi aapko jawab milega!")
+        
+        text_to_admin = f"💬 **NEW USER MESSAGE**\n\n• Name: {user.first_name}\n• User ID: {user.id}\n• Username: @{user.username if user.username else 'None'}\n\n**Message:** {message.text}"
+        try:
+            bot.send_message(ADMIN_ID, text_to_admin)
+        except Exception as e:
+            print(f"Error forwarding message to admin: {e}")
 
 # --- CALLBACK HANDLER ---
 @bot.callback_query_handler(func=lambda call: True)
@@ -243,6 +300,9 @@ if __name__ == '__main__':
     bot.set_webhook(url=webhook_url)
     print(f"Webhook explicitly set to: {webhook_url}")
     
+    # Background thread start karein jo har 10 minute mein auto repost karega
+    t = threading.Thread(target=auto_repost_worker, daemon=True)
+    t.start()
+    
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
-    

@@ -15,15 +15,14 @@ RENDER_APP_NAME = "badmash-4k97"  # Aapka Render app name
 bot = telebot.TeleBot(TOKEN, threaded=False)
 app = Flask(__name__)
 
-# --- DATABASE (Updated with Pre-Booking Pack) ---
+# --- DATABASE ---
 packs_db = {
     "1": {
-        "title": "SUPER YODDHA — PRE-BOOKING",
-        "episodes": "3623 - 3630",
+        "title": "SUPER YODDHA — EPISODE SALE",
+        "episodes": "3615 - 3622",
         "total": "8 Episodes",
-        "price": "90",  # Aap yahan exact price dal sakte hain ya /addpack command use kar sakte hain
+        "price": "90",  # Aap ise baad mein change bhi kar sakte hain
         "link": "https://t.me/+gy8gewj0snllZThl",
-        "is_prebook": True,
         "active": True
     }
 }
@@ -58,7 +57,7 @@ def calculate_total_episodes(episodes_str):
         pass
     return "8 Episodes"
 
-# --- ADMIN COMMAND: Add Pack (Pre-book format: /addpack 1 | 3623-3630 | 90 | link | pre) ---
+# --- ADMIN COMMAND: Add Pack ---
 @bot.message_handler(commands=['addpack'])
 def add_pack(message):
     if message.from_user.id != ADMIN_ID:
@@ -70,25 +69,22 @@ def add_pack(message):
         price = parts[2].strip()
         link = parts[3].strip()
         
-        is_prebook = len(parts) > 4 and parts[4].strip().lower() == 'pre'
         calculated_total = calculate_total_episodes(episodes)
-        title = "SUPER YODDHA — PRE-BOOKING" if is_prebook else "SUPER YODDHA — EPISODE SALE"
         
         packs_db[pack_id] = {
-            "title": title,
+            "title": "SUPER YODDHA — EPISODE SALE",
             "episodes": episodes,
             "total": calculated_total,
             "price": price,
             "link": link,
-            "is_prebook": is_prebook,
             "active": True
         }
         if pack_id not in purchased_users:
             purchased_users[pack_id] = []
             
-        bot.reply_to(message, f"✅ Pack {pack_id} successfully added!\nEpisodes: {episodes}\nPrice: ₹{price}\nPre-book: {is_prebook}")
+        bot.reply_to(message, f"✅ Pack {pack_id} successfully added!\nEpisodes: {episodes}\nPrice: ₹{price}")
     except Exception as e:
-        bot.reply_to(message, f"⚠️ Format galat hai!\nUse karein:\n`/addpack 1 | 3623 - 3630 | 90 | https://t.me/+link | pre`", parse_mode="Markdown")
+        bot.reply_to(message, f"⚠️ Format galat hai!\nUse karein:\n`/addpack 1 | 3615 - 3622 | 90 | https://t.me/+link`", parse_mode="Markdown")
 
 # --- START & MENU COMMAND ---
 @bot.message_handler(commands=['start', 'menu'])
@@ -105,7 +101,7 @@ def send_welcome(message):
     for pack_id, data in packs_db.items():
         if data["active"]:
             active_packs = True
-            btn_text = f"🟢 Pre-Book Now | EP- {data['episodes']}" if data["is_prebook"] else f"🟢 Buy Episodes | EP- {data['episodes']}"
+            btn_text = f"🟢 Buy Episodes | EP- {data['episodes']}"
             markup.add(types.InlineKeyboardButton(btn_text, callback_data=f"buy_{pack_id}"))
             
     if not active_packs:
@@ -113,12 +109,11 @@ def send_welcome(message):
         return
 
     welcome_msg = (
-        "EPISODES — 3623-3630\n\n"
-        "📦 TOTAL — 8 EPISODES\n\n"
-        "💰 PRICE — ₹ 90 ✅ (Low Price)\n\n"
-        "⚡️ PRE-BOOKING\n"
-        "पेमेंट करके स्क्रीनशॉट DM करें।\n"
-        "🚀 रिलीज़ होते hi एपिसोड तुरंत मिल जाएगा।"
+        "𝗘𝗣𝗜𝗦𝗢𝗗𝗘 — 3615 𝗧𝗢 3622\n\n"
+        "📦 𝗧𝗢𝗧𝗔𝗟 — 8 𝗘𝗣𝗜𝗦𝗢𝗗𝗘𝗦\n\n"
+        "💰 𝗣𝗥𝗜𝗖𝗘 — ₹ 90 ✅\n\n"
+        "⚡️ पेमेंट करके स्क्रीनशॉट DM करें।\n"
+        "🚀 पेमेंट कन्फर्म होते ही एपिसोड तुरंत मिल जाएगा।"
     )
     bot.reply_to(message, welcome_msg, reply_markup=markup)
 
@@ -140,10 +135,7 @@ def send_qr_to_user(chat_id, pack_id):
     upi_string = f"upi://pay?pa={UPI_ID}&pn=Romeo&am={data['price']}&cu=INR"
     qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data={upi_string}"
     
-    note = "1. Payment ke baad screenshot bhejein.\n2. Release hote hi link bhej diya jayega." if data["is_prebook"] else "1. Payment ke baad screenshot bhejein.\n2. Turant link mil jayega."
-    label = "PRE-BOOKING QR CODE" if data["is_prebook"] else "INSTANT PAYMENT QR CODE"
-    
-    caption = f"⚡ PACK {pack_id} — {label} ⚡\n\n• UPI ID: {UPI_ID}\n• Amount: ₹{data['price']}\n• Episodes: {data['episodes']} ({data['total']})\n\n{note}"
+    caption = f"⚡ PACK {pack_id} — INSTANT PAYMENT QR CODE ⚡\n\n• UPI ID: {UPI_ID}\n• Amount: ₹{data['price']}\n• Episodes: {data['episodes']} ({data['total']})\n\n1. Payment ke baad screenshot bhejein.\n2. Turant link mil jayega."
     
     try:
         bot.send_photo(chat_id, qr_url, caption=caption)
@@ -164,16 +156,15 @@ def handle_media(message):
                 
             data = packs_db[pack_id]
             markup = types.InlineKeyboardMarkup()
-            btn_text = f"🟢 Pre-Book Now | EP- {data['episodes']}" if data["is_prebook"] else f"🟢 Buy Episodes | EP- {data['episodes']}"
+            btn_text = f"🟢 Buy Episodes | EP- {data['episodes']}"
             markup.add(types.InlineKeyboardButton(btn_text, url=f"https://t.me/{BOT_USERNAME}?start=buy_{pack_id}"))
             
             text = (
-                f"EPISODES — {data['episodes']}\n\n"
-                f"📦 TOTAL — {data['total']}\n\n"
-                f"💰 PRICE — ₹ {data['price']} ✅\n\n"
-                f"⚡️ PRE-BOOKING\n"
-                f"पेमेंट करके स्क्रीनशॉट DM करें।\n"
-                f"🚀 रिलीज़ होते hi एपिसोड तुरंत मिल जाएगा।"
+                f"𝗘𝗣𝗜𝗦𝗢𝗗𝗘 — {data['episodes']}\n\n"
+                f"📦 𝗧𝗢𝗧𝗔𝗟 — {data['total']}\n\n"
+                f"💰 𝗣𝗥𝗜𝗖𝗘 — ₹ {data['price']} ✅\n\n"
+                f"⚡️ पेमेंट करके स्क्रीनशॉट DM करें।\n"
+                f"🚀 पेमेंट कन्फर्म होते ही एपिसोड तुरंत मिल जाएगा।"
             )
             
             if message.photo:
@@ -231,7 +222,7 @@ def handle_callbacks(call):
                 pass
                 
             link = packs_db.get(pack_id, {}).get("link", "https://t.me/")
-            bot.send_message(target_id, f"🎉 Aapka payment verify ho gaya hai! Pre-booked episodes release hote hi channel link mil jayega:\n\n{link}")
+            bot.send_message(target_id, f"🎉 Aapka payment verify ho gaya hai! Yeh raha channel ka link:\n\n{link}")
             
         elif call.data.startswith("reject_"):
             target_id = int(call.data.split("_")[1])

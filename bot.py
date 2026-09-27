@@ -181,6 +181,25 @@ def help_command(message):
     markup.add(types.InlineKeyboardButton("🟢 Admin Se Baat Karein", url=f"https://t.me/{ADMIN_USERNAME}"))
     bot.reply_to(message, f"🛠️ *PAYMENT & SUPPORT HELP*\n\nAdmin se sampark karein:\n👉 @{ADMIN_USERNAME}", parse_mode="Markdown", reply_markup=markup)
 
+# --- ADMIN COMMAND: /reply ---
+@bot.message_handler(commands=['reply'])
+def admin_reply_command(message):
+    if message.from_user.id != ADMIN_ID:
+        return
+    try:
+        parts = message.text.split(maxsplit=2)
+        if len(parts) < 3:
+            bot.reply_to(message, "⚠️ Format galat hai!\nUse karein:\n`/reply USER_ID Aapka message`", parse_mode="Markdown")
+            return
+            
+        target_user_id = int(parts[1].strip())
+        reply_text = parts[2].strip()
+        
+        bot.send_message(target_user_id, f"💬 **Admin ka Jawab:**\n\n{reply_text}")
+        bot.reply_to(message, "✅ User ko message successfully bhej diya gaya hai!")
+    except Exception as e:
+        bot.reply_to(message, f"⚠️ Error: {e}")
+
 # --- QR CODE SENDER ---
 def send_qr_to_user(chat_id, pack_id):
     if pack_id not in packs_db:
@@ -199,13 +218,12 @@ def send_qr_to_user(chat_id, pack_id):
     except Exception as e:
         bot.send_message(chat_id, f"{caption}\n\n⚠️ QR Error: {e}")
 
-# --- MESSAGE & SCREENSHOT HANDLER (FIXED REPLY LOGIC) ---
+# --- MESSAGE & SCREENSHOT HANDLER ---
 @bot.message_handler(content_types=['text', 'photo', 'audio', 'document'])
 def handle_incoming_messages(message):
     if message.chat.id == ADMIN_ID:
         if message.reply_to_message:
             original_text = message.reply_to_message.text or message.reply_to_message.caption or ""
-            # Yeh line ab kisi bhi tarah ki User ID ko asani se dhoond legi
             match = re.search(r'User ID[:\s]*(\d+)', original_text, re.IGNORECASE)
             if match:
                 target_user_id = int(match.group(1))
@@ -223,7 +241,7 @@ def handle_incoming_messages(message):
                 except Exception as e:
                     bot.reply_to(message, f"⚠️ Jawab bhejne mein error: {e}")
             else:
-                bot.reply_to(message, "⚠️ Is message mein User ID nahi mili. Kripya us message par reply karein jo bot ne bheja tha.")
+                bot.reply_to(message, "⚠️ Is message mein User ID nahi mili. Kripya niche diye gaye 'Reply' button ka use karein.")
         return
 
     if message.photo:
@@ -237,6 +255,7 @@ def handle_incoming_messages(message):
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton(f"🟢 Approve Pack {pack_id}", callback_data=f"approve_{pack_id}_{user.id}"))
         markup.add(types.InlineKeyboardButton("🔴 Reject", callback_data=f"reject_{user.id}"))
+        markup.add(types.InlineKeyboardButton("💬 Reply to User", callback_data=f"promptreply_{user.id}"))
         
         try:
             bot.send_photo(ADMIN_ID, message.photo[-1].file_id, caption=caption, reply_markup=markup)
@@ -248,8 +267,12 @@ def handle_incoming_messages(message):
         bot.reply_to(message, "📩 Aapka message admin tak bhej diya gaya hai. Jald hi aapko jawab milega!")
         
         text_to_admin = f"💬 **NEW USER MESSAGE**\n\n• Name: {user.first_name}\n• User ID: {user.id}\n• Username: @{user.username if user.username else 'None'}\n\n**Message:** {message.text}"
+        
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton("💬 Reply to User", callback_data=f"promptreply_{user.id}"))
+        
         try:
-            bot.send_message(ADMIN_ID, text_to_admin)
+            bot.send_message(ADMIN_ID, text_to_admin, reply_markup=markup)
         except Exception as e:
             print(f"Error forwarding message to admin: {e}")
 
@@ -264,6 +287,12 @@ def handle_callbacks(call):
     try:
         if call.data.startswith("buy_"):
             send_qr_to_user(call.message.chat.id, call.data.split("_")[1])
+            
+        elif call.data.startswith("promptreply_"):
+            target_id = call.data.split("_")[1]
+            if call.from_user.id != ADMIN_ID:
+                return
+            bot.send_message(ADMIN_ID, f"✍️ Reply karne ke liye yeh command bhejéin:\n\n`/reply {target_id} Aapka message yahan likhein`", parse_mode="Markdown")
             
         elif call.data.startswith("approve_"):
             parts = call.data.split("_")
@@ -309,4 +338,5 @@ if __name__ == '__main__':
     
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+    t)
     

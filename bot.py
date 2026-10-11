@@ -1,259 +1,97 @@
 import os
 from flask import Flask, request
-import requests
+import telebot
 
+# Bot Token directly set kar diya gaya hai
+TOKEN = '8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU'
+bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
 
-# --- CONFIGURATION ---
-TOKEN = os.getenv("BOT_TOKEN", "8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU")
-CHANNEL_ID = os.getenv("CHANNEL_ID", "-1004382767346")
-ADMIN_ID = int(os.getenv("ADMIN_ID", "6817248389"))
-RENDER_URL = os.getenv("RENDER_URL", "https://badmash-4k97.onrender.com")
+ADMIN_ID = 6817248389
+CHANNEL_ID = -1004382767346
+UPI_ID = 'Badmashromeo0007@okaxis'
 
-TELEGRAM_API = f"https://api.telegram.org/bot{TOKEN}"
 
-# Default Database variables
-TOTAL_EPISODES = "3623 - 3630"
-PACK_PRICE = 160
-CHANNEL_LINK = "https://t.me/+2Bq6yb6hSeBhOTJI"
-
-# --- ROOT ROUTE ---
-@app.route("/", methods=["GET"])
+@app.route('/')
 def home():
-    return "Bot is active and running successfully!", 200
+  return 'Bot is running successfully!'
 
-# --- WEBHOOK ROUTE ---
-@app.route(f"/{TOKEN}", methods=["POST"])
-def webhook():
-    update = request.get_json()
-    if update:
-        handle_update(update)
-    return "OK", 200
 
-def handle_update(update):
-    global TOTAL_EPISODES, PACK_PRICE, CHANNEL_LINK
-    
-    # 1. Callback Query (Inline Buttons)
-    if "callback_query" in update:
-        cq = update["callback_query"]
-        data = cq["data"]
-        chat_id = cq["message"]["chat"]["id"]
-        message_id = cq["message"]["message_id"]
-        
-        if data == "buy_episodes":
-            upi_id = "Badmashromeo0007@okaxis"
-            amount = PACK_PRICE if PACK_PRICE > 0 else 160
-            qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=upi://pay?pa={upi_id}&pn=Romeo&am={amount}&cu=INR"
-            
-            caption = (
-                f"🛍 PAYMENT DETAILS\n\n"
-                f"📦 Episodes Pack: {TOTAL_EPISODES}\n"
-                f"💰 Total Amount: ₹{amount}\n\n"
-                f"📱 Scan the QR code above using any UPI app (GPay, PhonePe, Paytm).\n"
-                f"⚠️ Payment ke baad screenshot ishi bot ko bhej dein verification ke liye!"
-            )
-            send_photo(chat_id, qr_url, caption)
-            
-        elif data.startswith("approve_"):
-            user_id = data.split("_")[1]
-            send_message(user_id, f"🎉 Aapka payment verify ho gaya hai! Yeh raha channel ka link:\n\n{CHANNEL_LINK}")
-            edit_message_text(chat_id, message_id, "✅ Payment Approved Successfully by Admin.")
-            
-        elif data.startswith("reject_"):
-            user_id = data.split("_")[1]
-            send_message(user_id, "❌ Aapka payment reject kar diya gaya hai. Kripya sahi screenshot ya valid payment bhejien.")
-            edit_message_text(chat_id, message_id, "❌ Payment Rejected.")
-            
-        elif data.startswith("reply_user_"):
-            target_user = data.split("_")[2]
-            send_message(chat_id, f"✍️ Us user ko jawab dene ke liye yeh command use karein:\n/reply {target_user} Aapka message...")
-            
-        return
+# /start command handler
+@bot.message_handler(commands=['start'])
+def send_welcome(message):
+  markup = telebot.types.InlineKeyboardMarkup()
+  # UPI Intent Link
+  pay_btn = telebot.types.InlineKeyboardButton(
+      '💳 Pay via UPI', url=f'upi://pay?pa={UPI_ID}&pn=Romeo&cu=INR'
+  )
+  markup.add(pay_btn)
 
-    # 2. Message Handling
-    if "message" in update:
-        message = update["message"]
-        chat_id = message["chat"]["id"]
-        user_id = message["from"]["id"]
-        text = message.get("text", "")
-        
-        # --- UPDATE PACK & PRICE VIA /addpack OR /setpack ---
-        if (text.startswith("/addpack") or text.startswith("/setpack")) and user_id == ADMIN_ID:
-            try:
-                if "|" in text:
-                    parts = [p.strip() for p in text.replace("/addpack", "").replace("/setpack", "").split("|")]
-                    episode_range = parts[1]
-                    price = int(parts[2])
-                    new_link = parts[3]
-                else:
-                    parts = text.split(" ")
-                    episode_range = parts[1]
-                    price = int(parts[2])
-                    new_link = parts[3]
-                
-                TOTAL_EPISODES = episode_range
-                PACK_PRICE = price
-                CHANNEL_LINK = new_link
-                
-                send_message(chat_id, 
-                    f"✅ Pack successfully update ho gaya hai!\n\n"
-                    f"📦 Episodes: {TOTAL_EPISODES}\n"
-                    f"💰 Price: ₹{PACK_PRICE}\n"
-                    f"🔗 Link: {CHANNEL_LINK}"
-                )
-            except Exception:
-                send_message(chat_id, "⚠️ Format galat hai! Sahi tarika:\n/addpack 1 | 3623 - 3630 | 160 | https://t.me/+xxxx")
-            return
+  text = (
+      '🚀 **Paid Channel Access Bot**\n\n'
+      f'1️⃣ Diye gaye button se ya seedha is UPI ID par payment karein: `{UPI_ID}`\n'
+      '2️⃣ Payment karte samay **Note / Remarks** mein apni Telegram ID zaroor likhein, taaki system aapko pehchan sake!\n'
+      '3️⃣ Payment successful hote hi aapko channel ka link automatic mil jayega.'
+  )
+  bot.send_message(
+      message.chat.id, text, parse_mode='Markdown', reply_markup=markup
+  )
 
-        # --- MANUAL POST COMMAND (/post) ---
-        if text.startswith("/post") and user_id == ADMIN_ID:
-            post_content = text.replace("/post", "").strip()
-            if not post_content:
-                post_content = (
-                    f"𝗘𝗣𝗜𝗦𝗢𝗗𝗘 — {TOTAL_EPISODES}\n\n"
-                    f"📦 𝗧𝗢𝗧𝗔𝗟 — {TOTAL_EPISODES}\n\n"
-                    f"💰 𝗣𝗥𝗜𝗖𝗘 — ₹{PACK_PRICE} ✅\n\n"
-                    f"⚡️ पेमेंट करके स्क्रीनशॉट DM करें。\n"
-                    f"🚀 पेमेंट कन्फर्म होते ही एपिसोड तुरंत मिल जाएगा।"
-                )
-            
-            keyboard = {
-                "inline_keyboard": [
-                    [{"text": f"🟢 Buy Episodes | EP ({TOTAL_EPISODES} - ₹{PACK_PRICE})", "callback_data": "buy_episodes"}]
-                ]
-            }
-            send_message_with_keyboard(CHANNEL_ID, post_content, keyboard)
-            send_message(chat_id, "✅ Post successfully channel par bhej di gayi hai!")
-            return
 
-        # --- INTERACTIVE REPLY SYSTEM (/reply) ---
-        if text.startswith("/reply") and user_id == ADMIN_ID:
-            try:
-                parts = text.split(" ", 2)
-                target_user_id = parts[1]
-                reply_text = parts[2]
-                send_message(target_user_id, f"💬 Admin Message:\n\n{reply_text}")
-                send_message(chat_id, "✅ Message user tak pahunch gaya hai.")
-            except Exception:
-                send_message(chat_id, "⚠️ Format: /reply [user_id] [message]")
-            return
+# AlertBox Webhook Endpoint (Payment detect hone par yahan request aayegi)
+@app.route('/alertbox-webhook', methods=['POST'])
+def alertbox_webhook():
+  try:
+    data = request.json
+    if not data:
+      return 'No data', 400
 
-        # --- DIRECT AUDIO / DOCUMENT / VOICE POSTING TO CHANNEL ---
-        if user_id == ADMIN_ID and ("audio" in message or "document" in message or "voice" in message):
-            file_id = message.get("audio", {}).get("file_id") or \
-                      message.get("document", {}).get("file_id") or \
-                      message.get("voice", {}).get("file_id")
-            
-            user_caption = message.get("caption")
-            if not user_caption:
-                user_caption = f"EPISODE — {TOTAL_EPISODES}"
+    amount = data.get('amount', '0')
+    sender = data.get('sender', 'Unknown')
+    note = (
+        data.get('note', '') or ''
+    )  # User UPI note me apni Telegram ID daalega
 
-            caption = (
-                f"🎧 {user_caption}\n\n"
-                f"📦 TOTAL — {TOTAL_EPISODES}\n"
-                f"💰 PRICE — ₹{PACK_PRICE} ✅\n\n"
-                f"⚡️ पेमेंट करके स्क्रीनशॉट DM करें。\n"
-                f"🚀 पेमेंट कन्फर्म होते ही एपिसोड तुरंत मिल जाएगा।"
-            )
-            
-            keyboard = {
-                "inline_keyboard": [
-                    [{"text": f"🟢 Buy Episodes | EP ({TOTAL_EPISODES} - ₹{PACK_PRICE})", "callback_data": "buy_episodes"}]
-                ]
-            }
-            
-            # Direct send to channel
-            res = send_audio_to_channel(CHANNEL_ID, file_id, caption, keyboard)
-            if res.get("ok"):
-                send_message(chat_id, "✅ Audio file seedha channel par post ho gayi hai!")
-            else:
-                err_desc = res.get("description", "Unknown error")
-                send_message(chat_id, f"❌ Channel par post nahi ho paya!\nReason: {err_desc}")
-            return
+    # Agar note me Telegram Chat ID di gayi hai
+    if note and note.isdigit():
+      target_chat_id = int(note)
 
-        # --- PAYMENT SCREENSHOT FORWARDING (For Users) ---
-        if user_id != ADMIN_ID and ("photo" in message or "document" in message):
-            forward_to_admin(message, user_id)
-            send_message(chat_id, "⏳ Aapka payment screenshot admin ke paas bhej diya gaya hai. Kripya verification ka wait karein.")
-            return
+      # Channel ka ek baar use hone wala invite link generate karein
+      invite_link = bot.create_chat_invite_link(
+          CHANNEL_ID, member_limit=1
+      ).invite_link
 
-        # --- START COMMAND ---
-        if text == "__disabled_start" or text == "/start":
-            welcome_msg = (
-                f"𝗘𝗣𝗜𝗦𝗢𝗗𝗘 — {TOTAL_EPISODES}\n\n"
-                f"📦 𝗧𝗢𝗧𝗔𝗟 — {TOTAL_EPISODES}\n\n"
-                f"💰 𝗣𝗥𝗜𝗖𝗘 — ₹{PACK_PRICE} ✅\n\n"
-                f"⚡️ पेमेंट करके स्क्रीनशॉट DM करें。\n"
-                f"🚀 पेमेंट कन्फर्म होते ही एपिसोड तुरंत मिल जाएगा。"
-            )
-            keyboard = {
-                "inline_keyboard": [
-                    [{"text": f"🟢 Buy Episodes | EP ({TOTAL_EPISODES} - ₹{PACK_PRICE})", "callback_data": "buy_episodes"}]
-                ]
-            }
-            send_message_with_keyboard(chat_id, welcome_msg, keyboard)
+      # User ko link bhejein
+      bot.send_message(
+          target_chat_id,
+          f'✅ **Payment Successful! (₹{amount})**\n\n'
+          f'Aapka payment receive ho gaya hai. Yahan aapka private channel link hai (Yeh link sirf ek baar use hoga):\n{invite_link}',
+          parse_mode='Markdown',
+      )
+    else:
+      # Agar note me ID nahi mili, toh Admin ko alert bhejein
+      bot.send_message(
+          ADMIN_ID,
+          f'💰 **Naya Payment Aaya (Lekin ID match nahi hui)**\n\n'
+          f'Amount: ₹{amount}\nSender: {sender}\nNote: {note}',
+      )
 
-# --- HELPER FUNCTIONS ---
-def send_message(chat_id, text):
-    url = f"{TELEGRAM_API}/sendMessage"
-    payload = {"chat_id": chat_id, "text": text}
-    requests.post(url, json=payload)
+    return 'OK', 200
+  except Exception as e:
+    print('Error:', e)
+    return 'Error', 500
 
-def send_message_with_keyboard(chat_id, text, keyboard):
-    url = f"{TELEGRAM_API}/sendMessage"
-    payload = {"chat_id": chat_id, "text": text, "reply_markup": keyboard}
-    requests.post(url, json=payload)
 
-def send_photo(chat_id, photo_url, caption):
-    url = f"{TELEGRAM_API}/sendPhoto"
-    payload = {"chat_id": chat_id, "photo": photo_url, "caption": caption}
-    requests.post(url, json=payload)
+# Telegram Webhook Endpoint
+@app.route('/webhook', methods=['POST'])
+def telegram_webhook():
+  json_string = request.get_data().decode('utf-8')
+  update = telebot.types.Update.de_json(json_string)
+  bot.process_new_updates([update])
+  return '!', 200
 
-def edit_message_text(chat_id, message_id, text):
-    url = f"{TELEGRAM_API}/editMessageText"
-    payload = {"chat_id": chat_id, "message_id": message_id, "text": text}
-    requests.post(url, json=payload)
 
-def forward_to_admin(message, user_id):
-    url = f"{TELEGRAM_API}/forwardMessage"
-    payload = {
-        "chat_id": ADMIN_ID,
-        "from_chat_id": user_id,
-        "message_id": message["message_id"]
-    }
-    requests.post(url, json=payload)
-    
-    keyboard = {
-        "inline_keyboard": [
-            [
-                {"text": "✅ Approve", "callback_data": f"approve_{user_id}"},
-                {"text": "❌ Reject", "callback_data": f"reject_{user_id}"}
-            ],
-            [
-                {"text": "💬 Reply to User", "callback_data": f"reply_user_{user_id}"}
-            ]
-        ]
-    }
-    send_message_with_keyboard(ADMIN_ID, f"🔔 New Payment Screenshot received from user ID: {user_id}", keyboard)
-
-def send_audio_to_channel(channel_id, file_id, caption, keyboard):
-    url = f"{TELEGRAM_API}/sendAudio"
-    payload = {
-        "chat_id": channel_id,
-        "audio": file_id,
-        "caption": caption,
-        "reply_markup": keyboard
-    }
-    res = requests.post(url, json=payload)
-    return res.json()
-
-# --- WEBHOOK SETTER ---
-@app.route("/set_webhook", methods=["GET"])
-def set_webhook():
-    webhook_url = f"{RENDER_URL}/{TOKEN}"
-    response = requests.get(f"{TELEGRAM_API}/setWebhook?url={webhook_url}")
-    return response.json()
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
+if __name__ == '__main__':
+  port = int(os.environ.get('PORT', 5000))
+  app.run(host='0.0.0.0', port=port)
     

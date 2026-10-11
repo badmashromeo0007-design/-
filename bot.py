@@ -2,7 +2,6 @@ import os
 from flask import Flask, request
 import telebot
 
-# Bot Token directly set kar diya gaya hai
 TOKEN = '8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU'
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
@@ -10,6 +9,12 @@ app = Flask(__name__)
 ADMIN_ID = 6817248389
 CHANNEL_ID = -1004382767346
 UPI_ID = 'Badmashromeo0007@okaxis'
+
+# Yahan apne Render App ka naam daalein (jaise: https://aapka-app-name.onrender.com)
+# Render automatic 'RENDER_EXTERNAL_URL' bhi deta hai
+RENDER_URL = os.environ.get(
+    'RENDER_EXTERNAL_URL', 'https://YOUR_RENDER_APP_NAME.onrender.com'
+)
 
 
 @app.route('/')
@@ -21,7 +26,6 @@ def home():
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
   markup = telebot.types.InlineKeyboardMarkup()
-  # UPI Intent Link
   pay_btn = telebot.types.InlineKeyboardButton(
       '💳 Pay via UPI', url=f'upi://pay?pa={UPI_ID}&pn=Romeo&cu=INR'
   )
@@ -38,7 +42,7 @@ def send_welcome(message):
   )
 
 
-# AlertBox Webhook Endpoint (Payment detect hone par yahan request aayegi)
+# AlertBox Webhook Endpoint
 @app.route('/alertbox-webhook', methods=['POST'])
 def alertbox_webhook():
   try:
@@ -48,31 +52,23 @@ def alertbox_webhook():
 
     amount = data.get('amount', '0')
     sender = data.get('sender', 'Unknown')
-    note = (
-        data.get('note', '') or ''
-    )  # User UPI note me apni Telegram ID daalega
+    note = data.get('note', '') or ''
 
-    # Agar note me Telegram Chat ID di gayi hai
     if note and note.isdigit():
       target_chat_id = int(note)
-
-      # Channel ka ek baar use hone wala invite link generate karein
       invite_link = bot.create_chat_invite_link(
           CHANNEL_ID, member_limit=1
       ).invite_link
-
-      # User ko link bhejein
       bot.send_message(
           target_chat_id,
           f'✅ **Payment Successful! (₹{amount})**\n\n'
-          f'Aapka payment receive ho gaya hai. Yahan aapka private channel link hai (Yeh link sirf ek baar use hoga):\n{invite_link}',
+          f'Aapka payment receive ho gaya hai. Yahan aapka private channel link hai:\n{invite_link}',
           parse_mode='Markdown',
       )
     else:
-      # Agar note me ID nahi mili, toh Admin ko alert bhejein
       bot.send_message(
           ADMIN_ID,
-          f'💰 **Naya Payment Aaya (Lekin ID match nahi hui)**\n\n'
+          f'💰 **Naya Payment Aaya (ID match nahi hui)**\n\n'
           f'Amount: ₹{amount}\nSender: {sender}\nNote: {note}',
       )
 
@@ -92,6 +88,12 @@ def telegram_webhook():
 
 
 if __name__ == '__main__':
+  # Automatic Webhook Set karein
+  bot.remove_webhook()
+  webhook_url = f'{RENDER_URL}/webhook'
+  bot.set_webhook(url=webhook_url)
+  print(f'Webhook successfully set to: {webhook_url}')
+
   port = int(os.environ.get('PORT', 5000))
   app.run(host='0.0.0.0', port=port)
-    
+  

@@ -9,17 +9,30 @@ app = Flask(__name__)
 ADMIN_ID = 6817248389
 CHANNEL_ID = -1004382767346
 UPI_ID = 'Badmashromeo0007@okaxis'
-
-# Yahan apne Render App ka naam daalein (jaise: https://aapka-app-name.onrender.com)
-# Render automatic 'RENDER_EXTERNAL_URL' bhi deta hai
-RENDER_URL = os.environ.get(
-    'RENDER_EXTERNAL_URL', 'https://YOUR_RENDER_APP_NAME.onrender.com'
-)
+RENDER_URL = 'https://badmash-4k97.onrender.com'
 
 
 @app.route('/')
 def home():
-  return 'Bot is running successfully!'
+  return (
+      'Bot is running successfully! Webhook set karne ke liye browser mein'
+      ' /set_webhook kholein.'
+  )
+
+
+# Ek click par Telegram webhook set karne ka rasta
+@app.route('/set_webhook')
+def set_webhook():
+  try:
+    webhook_url = f'{RENDER_URL}/webhook'
+    bot.remove_webhook()
+    s = bot.set_webhook(url=webhook_url)
+    if s:
+      return f'✅ Webhook successfully set to: {webhook_url}'
+    else:
+      return '❌ Webhook setup failed!', 400
+  except Exception as e:
+    return f'Error: {str(e)}', 500
 
 
 # /start command handler
@@ -88,12 +101,5 @@ def telegram_webhook():
 
 
 if __name__ == '__main__':
-  # Automatic Webhook Set karein
-  bot.remove_webhook()
-  webhook_url = f'{RENDER_URL}/webhook'
-  bot.set_webhook(url=webhook_url)
-  print(f'Webhook successfully set to: {webhook_url}')
-
-  port = int(os.environ.get('PORT', 5000))
-  app.run(host='0.0.0.0', port=port)
-  
+  app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+    

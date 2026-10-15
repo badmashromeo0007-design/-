@@ -40,4 +40,3 @@ while True:
   except Exception as e:
     print('Polling error:', e)
     time.sleep(5)
-    

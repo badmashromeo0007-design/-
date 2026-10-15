@@ -92,13 +92,14 @@ def alertbox_webhook():
 def telegram_webhook():
   try:
     json_string = request.get_data().decode('utf-8')
+    print('Incoming Telegram Update:', json_string)
     update = telebot.types.Update.de_json(json_string)
     bot.process_new_updates([update])
+    return '', 200
   except Exception as e:
-    print('Webhook error:', e)
-  return '!', 200
+    print('Webhook error:', str(e))
+    return 'Error', 500
 
 
 if __name__ == '__main__':
   app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
-  

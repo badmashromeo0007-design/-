@@ -1,4 +1,3 @@
-import os
 import time
 import telebot
 
@@ -8,6 +7,13 @@ bot = telebot.TeleBot(TOKEN)
 ADMIN_ID = 6817248389
 CHANNEL_ID = -1004382767346
 UPI_ID = 'Badmashromeo0007@okaxis'
+
+# Purana webhook turant delete karein taaki Error 409 (Conflict) na aaye
+try:
+  bot.remove_webhook()
+  print('Purana webhook successfully hata diya gaya hai.')
+except Exception as e:
+  print('Webhook remove error:', e)
 
 
 # /start command handler
@@ -33,7 +39,6 @@ def send_welcome(message):
 
 print('Bot polling shuru ho rahi hai...')
 
-# Webhook hata kar direct polling chalu karna
 while True:
   try:
     bot.infinity_polling(timeout=60, long_polling_timeout=60)

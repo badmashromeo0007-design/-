@@ -3,3 +3,7 @@ Flask
 APScheduler
 Pillow
 
+torch
+TTS
+python-telegram-bot
+requests

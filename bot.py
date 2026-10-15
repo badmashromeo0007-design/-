@@ -1,208 +1,91 @@
 import os
-from flask import Flask, request
-import telebot
-
-TOKEN = "8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU"
-bot = telebot.TeleBot(TOKEN)
-app = Flask(__name__)
-
-ADMIN_ID = 6817248389
-CHANNEL_ID = -1004382767346
-UPI_ID = "Badmashromeo0007@okaxis"
-RENDER_URL = (
-    "https://badmash-4k97.onrender.com"  # Apne Render URL se replace karein
+import torch
+from telegram import Update
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    ContextTypes,
+    MessageHandler,
+    filters,
 )
+from TTS.api import TTS
 
-# User ki selected episode store karne ke liye temporary dictionary
-pending_orders = {}
+# Aapka Telegram Bot Token
+TELEGRAM_BOT_TOKEN = "8831853256:AAGnh4_otfUHxAxU2QgXUIPtZVZut5FPVJU"
 
+# Aapki 13-minute wali studio audio file ka naam (Isko isi folder me rakhna hai)
+REFERENCE_AUDIO_PATH = "my_studio_voice.wav"
 
-@app.route("/")
-def home():
-  return "Bot is running successfully with all features!"
-
-
-@app.route("/set_webhook")
-def set_webhook():
-  try:
-    webhook_url = f"{RENDER_URL}/webhook"
-    bot.remove_webhook()
-    s = bot.set_webhook(url=webhook_url)
-    if s:
-      return f"✅ Webhook successfully set to: {webhook_url}"
-    else:
-      return "❌ Webhook setup failed!", 400
-  except Exception as e:
-    return f"Error: {str(e)}", 500
+print("AI Voice Model load ho raha hai, kripya intezaar karein...")
+device = "cuda" if torch.cuda.is_available() else "cpu"
+# Coqui XTTS v2 multilingual model load ho raha hai
+tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to(device)
+print("Model successfully load ho gaya hai!")
 
 
-# /start command handler (Episodes & Prices list)
-@bot.message_handler(commands=["start"])
-def send_welcome(message):
-  markup = telebot.types.InlineKeyboardMarkup()
-  btn1 = telebot.types.InlineKeyboardButton(
-      "🎬 Episode 3724-3728 - ₹20", callback_data="buy_ep_3724_3728"
-  )
-  btn2 = telebot.types.InlineKeyboardButton(
-      "🎬 Episode 3729-3733 - ₹20", callback_data="buy_ep_3729_3733"
-  )
-  markup.add(btn1)
-  markup.add(btn2)
-
-  text = (
-      "🚀 *Super Yoddha Paid Channel Bot*\n\n"
-      "Neeche diye gaye episodes mein se select karein jise aap purchase karna chahte hain:"
-  )
-  bot.send_message(
-      message.chat.id, text, parse_mode="Markdown", reply_markup=markup
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+  await update.message.reply_text(
+      "🎙 *Super Yoddha Voice Cloning Bot me Aapka Swagat Hai!*\n\n"
+      "Aap jo bhi text message bhejenge, bot use aapki **13-minute wali"
+      " studio audio** (Super Yoddha narrator aawaz) me convert karke audio"
+      " message bhej dega!"
   )
 
 
-# Callback query for episode selection
-@bot.callback_query_handler(func=lambda call: call.data.startswith("buy_ep_"))
-def handle_buy(call):
-  ep_name = call.data.replace("buy_ep_", "").replace("_", "-")
-  price = "20"
+async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+  user_text = update.message.text
+  chat_id = update.message.chat_id
 
-  pending_orders[call.from_user.id] = ep_name
-
-  text = (
-      f"📦 *Selected Episode:* {ep_name}\n"
-      f"💰 *Price:* ₹{price}\n\n"
-      f"1️⃣ Is UPI ID par payment karein: `{UPI_ID}`\n"
-      "2️⃣ Payment karne ke baad **Payment ka Screenshot** ishi bot par bhej dein.\n"
-      "3️⃣ Screenshot bhejte hi admin ke paas approval ke liye chala jayega."
-  )
-  bot.answer_callback_query(call.id)
-  bot.send_message(call.message.chat.id, text, parse_mode="Markdown")
-
-
-# Handle Photos (Payment Screenshots) sent by users
-@bot.message_handler(content_types=["photo"])
-def handle_screenshot(message):
-  user_id = message.from_user.id
-  username = (
-      message.from_user.username
-      if message.from_user.username
-      else "No Username"
-  )
-  ep_name = pending_orders.get(user_id, "Custom Episode")
-
-  # Admin ke paas Approve / Reject buttons ke sath screenshot bhejna
-  markup = telebot.types.InlineKeyboardMarkup()
-  approve_btn = telebot.types.InlineKeyboardButton(
-      "✅ Approve", callback_data=f"app_{user_id}_{ep_name}"
-  )
-  reject_btn = telebot.types.InlineKeyboardButton(
-      "❌ Reject", callback_data=f"rej_{user_id}"
-  )
-  markup.add(approve_btn, reject_btn)
-
-  caption = (
-      f"💰 *Naya Payment Screenshot Aaya Hai!*\n\n"
-      f"👤 User: @{username} (ID: `{user_id}`)\n"
-      f"🎬 Episode: {ep_name}"
-  )
-
-  bot.send_photo(
-      ADMIN_ID,
-      message.photo[-1].file_id,
-      caption=caption,
-      parse_mode="Markdown",
-      reply_markup=markup,
-  )
-  bot.reply_to(
-      message,
-      "✅ Aapka screenshot admin ke paas bhej diya gaya hai. Approval ke baad"
-      " aapko link mil jayega!",
-  )
-
-
-# Admin Approval / Rejection Handler
-@bot.callback_query_handler(
-    func=lambda call: call.data.startswith("app_")
-    or call.data.startswith("rej_")
-)
-def handle_admin_action(call):
-  if call.from_user.id != ADMIN_ID:
-    bot.answer_callback_query(call.id, "Aap admin nahi hain!", show_alert=True)
-    return
-
-  data_parts = call.data.split("_")
-  action = data_parts[0]
-  target_user_id = int(data_parts[1])
-
-  if action == "app":
-    ep_name = data_parts[2]
-    try:
-      # Channel ka private invite link generate karna (1 use ke liye)
-      invite_link = bot.create_chat_invite_link(
-          CHANNEL_ID, member_limit=1
-      ).invite_link
-
-      # User ko link bhejna
-      bot.send_message(
-          target_user_id,
-          f"🎉 *Payment Approved!*\n\nAapka payment approve ho gaya hai. Yahan aapka private channel link hai:\n{invite_link}",
-          parse_mode="Markdown",
-      )
-      bot.answer_callback_query(call.id, "Approved & Link Sent!")
-      bot.edit_message_caption(
-          f"✅ *APPROVED* by Admin\nEpisode: {ep_name} for User `{target_user_id}`",
-          call.message.chat.id,
-          call.message.message_id,
-          parse_mode="Markdown",
-      )
-    except Exception as e:
-      bot.answer_callback_query(call.id, f"Error: {str(e)}", show_alert=True)
-
-  elif action == "rej":
-    bot.send_message(
-        target_user_id,
-        "❌ *Payment Rejected.*\n\nAapka payment screenshot reject kar diya gaya"
-        " hai. Kripya saaf screenshot ya sahi payment details bhejein.",
-        parse_mode="Markdown",
-    )
-    bot.answer_callback_query(call.id, "Rejected!")
-    bot.edit_message_caption(
-        f"❌ *REJECTED* by Admin for User `{target_user_id}`",
-        call.message.chat.id,
-        call.message.message_id,
-        parse_mode="Markdown",
-    )
-
-
-# 📢 Admin Command to Post directly to Main Channel: /post <message>
-@bot.message_handler(commands=["post"])
-def admin_post_to_channel(message):
-  if message.from_user.id != ADMIN_ID:
-    bot.reply_to(message, "Aap yeh command use nahi kar sakte.")
-    return
-
-  text_to_post = message.text.replace("/post", "").strip()
-  if not text_to_post:
-    bot.reply_to(
-        message,
-        "Kripya /post ke baad message likhein. Jaise:\n`/post New Episode"
-        " Uploaded!`",
-        parse_mode="Markdown",
+  if not os.path.exists(REFERENCE_AUDIO_PATH):
+    await update.message.reply_text(
+        f"❌ Error: '{REFERENCE_AUDIO_PATH}' file nahi mili! Kripya apni 13"
+        " minute ki studio audio file ka naam 'my_studio_voice.wav' karke isi"
+        " folder me rakhein."
     )
     return
+
+  msg = await update.message.reply_text(
+      "⏳ Cloned voice me audio generate ho raha hai, thoda waqt lag sakta"
+      " hai..."
+  )
+
+  output_path = f"output_{chat_id}.wav"
 
   try:
-    bot.send_message(CHANNEL_ID, text_to_post, parse_mode="Markdown")
-    bot.reply_to(message, "✅ Post successfully main channel par bhej di gayi hai!")
+    # XTTS v2 ka use karke text ko cloned aawaz me convert karna
+    tts.tts_to_file(
+        text=user_text,
+        speaker_wav=REFERENCE_AUDIO_PATH,  # Aapki 13-min studio file
+        language="hi",  # Hindi ke liye 'hi'
+        file_path=output_path,
+    )
+
+    # Telegram par audio file bhejna
+    await msg.delete()
+    with open(output_path, "rb") as audio:
+      await update.message.reply_audio(
+          audio=audio, title="Super Yoddha Cloned Voice"
+      )
+
+    # Temporary output file delete karna
+    if os.path.exists(output_path):
+      os.remove(output_path)
+
   except Exception as e:
-    bot.reply_to(message, f"❌ Error: {str(e)}")
+    await msg.edit_text(f"Audio generate karne me error aaya: {str(e)}")
 
 
-@app.route("/webhook", methods=["POST"])
-def webhook():
-  json_string = request.get_data().decode("utf-8")
-  update = telebot.types.Update.de_json(json_string)
-  bot.process_new_updates([update])
-  return "", 200
+def main():
+  app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
+
+  app.add_handler(CommandHandler("start", start))
+  app.add_handler(
+      MessageHandler(filters.TEXT & (~filters.COMMAND), handle_text)
+  )
+
+  print("Telegram Bot live aur active hai...")
+  app.run_polling()
 
 
 if __name__ == "__main__":
-  app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+  main()

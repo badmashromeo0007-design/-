@@ -6,44 +6,26 @@
     <title>Audio Script Generator</title>
     <style>
         body { font-family: Arial, sans-serif; background-color: #121212; color: #fff; padding: 20px; }
-        .container { max-width: 600px; margin: auto; background: #1e1e1e; padding: 20px; border-radius: 8px; }
-        label { display: block; margin-top: 10px; font-weight: bold; }
-        input, select, textarea { width: 100%; padding: 8px; margin-top: 5px; background: #2d2d2d; border: 1px solid #444; color: #fff; border-radius: 4px; box-sizing: border-box; }
-        button { margin-top: 15px; width: 100%; padding: 10px; background: #ff4757; color: white; border: none; font-size: 16px; border-radius: 4px; cursor: pointer; }
+        .container { max-width: 750px; margin: auto; background: #1e1e1e; padding: 20px; border-radius: 8px; }
+        label { display: block; margin-top: 10px; font-weight: bold; font-size: 16px; color: #ff4757; }
+        textarea { width: 100%; padding: 12px; margin-top: 8px; background: #2d2d2d; border: 1px solid #444; color: #fff; border-radius: 4px; box-sizing: border-box; font-size: 14px; }
+        button { margin-top: 15px; width: 100%; padding: 12px; background: #ff4757; color: white; border: none; font-size: 16px; border-radius: 4px; cursor: pointer; font-weight: bold; }
         button:hover { background: #ff6b81; }
-        .result { margin-top: 20px; background: #2d2d2d; padding: 15px; border-radius: 4px; white-space: pre-wrap; }
+        .result { margin-top: 20px; background: #2d2d2d; padding: 15px; border-radius: 4px; white-space: pre-wrap; font-size: 14px; line-height: 1.6; border-left: 4px solid #ff4757; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>Audio Script Generator</h2>
+        <h2>Audio & Video Script Generator</h2>
         <form method="POST">
-            <label>Chapter Title:</label>
-            <input type="text" name="chapter_title" placeholder="e.g. The Awakening" required>
-
-            <label>System Name:</label>
-            <input type="text" name="system_name" placeholder="e.g. Yoddha System" required>
-
-            <label>Character 1 Name:</label>
-            <input type="text" name="char1_name" placeholder="e.g. Dhruv" required>
-
-            <label>Character 1 Rank:</label>
-            <input type="text" name="char1_rank" placeholder="e.g. Shunya" required>
-
-            <label>Character 2 Name:</label>
-            <input type="text" name="char2_name" placeholder="e.g. Lara" required>
-
-            <label>Character 2 Rank:</label>
-            <input type="text" name="char2_rank" placeholder="e.g. Ambar Dal Leader" required>
-
-            <label>Story Context / Details:</label>
-            <textarea name="story_context" rows="5" placeholder="Apni kahani ya chapter ke details yahan likhein..."></textarea>
+            <label>Apni Story / Scene Details Yahan Likhein:</label>
+            <textarea name="story_input" rows="10" placeholder="Yahan apni story, characters, fight scenes, aur unki powers seedhe likh dein..." required></textarea>
 
             <button type="submit">Generate Script</button>
         </form>
 
         {% if generated_script %}
-            <h3>Generated Script:</h3>
+            <h3>Generated Cinematic Script:</h3>
             <div class="result">{{ generated_script }}</div>
         {% endif %}
     </div>

@@ -3,8 +3,8 @@ from openai import OpenAI
 
 app = Flask(__name__)
 
-# Yahan poori key seedhe set kar di hai, ab kahin se bhi cut nahi hogi
-client = OpenAI(api_key="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")
+# Nayi aur sahi format wali OpenAI API key
+client = OpenAI(api_key="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")
 
 @app.route('/')
 def home():

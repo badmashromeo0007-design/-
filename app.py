@@ -25,8 +25,8 @@ def generate():
         return jsonify({"error": "Prompt zaroori hai!"}), 400
 
     try:
-        # Use stable Gemini model for script generation
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        # Updated to use the correct available model
+        model = genai.GenerativeModel('gemini-2.5-flash')
         response = model.generate_content(
             f"Act as a 3D Cinematic Audio Drama Director. Create a high-intensity, dramatic script/dialogue for SUPER YODDHA (सुपर योद्धा) based on this concept: {prompt}"
         )

@@ -1,86 +1,40 @@
-<!DOCTYPE html>
-<html lang="hi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Yoddha Studio</title>
-    <style>
-        body { font-family: Arial, sans-serif; background: #121212; color: #fff; padding: 20px; }
-        .container { max-width: 600px; margin: auto; background: #1e1e1e; padding: 20px; border-radius: 8px; }
-        textarea, input { width: 100%; padding: 10px; margin: 10px 0; background: #2d2d2d; border: 1px solid #444; color: #fff; border-radius: 4px; box-sizing: border-box; }
-        button { background: #ff4757; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 4px; font-weight: bold; width: 100%; }
-        button:hover { background: #ff6b81; }
-        pre { background: #2d2d2d; padding: 15px; border-radius: 4px; white-space: pre-wrap; word-wrap: break-word; }
-        .char-box { background: #252525; padding: 10px; margin-bottom: 10px; border-radius: 5px; border-left: 3px solid #ff4757; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h2>Super Yoddha Studio</h2>
-        <label>Concept / Storyline:</label>
-        <textarea id="concept" rows="3" placeholder="Enter story concept..."></textarea>
-        
-        <label>Chapter No:</label>
-        <input type="text" id="chapter_no" value="1">
-        
-        <label>Chapter Title:</label>
-        <input type="text" id="chapter_title" value="The Awakening">
-        
-        <label>System Name:</label>
-        <input type="text" id="system_name" value="Yoddha System">
+import os
+from google import genai
 
-        <div class="char-box">
-            <label>Character 1 Name:</label>
-            <input type="text" id="char1_name" placeholder="e.g. Dhruv">
-            <label>Character 1 Rank:</label>
-            <input type="text" id="char1_rank" placeholder="e.g. Bronze">
-        </div>
+client = genai.Client()
 
-        <div class="char-box">
-            <label>Character 2 Name:</label>
-            <input type="text" id="char2_name" placeholder="e.g. Aryan">
-            <label>Character 2 Rank:</label>
-            <input type="text" id="char2_rank" placeholder="e.g. Silver">
-        </div>
-        
-        <button onclick="generateScript()">Generate Script</button>
-        
-        <h3>Generated Script:</h3>
-        <pre id="output">Your script will appear here...</pre>
-    </div>
+def generate_script(chapter_title, system_name, char1_name, char1_rank, char2_name, char2_rank):
+    # Prompt mein dynamic ranks ko handle kiya gaya hai
+    prompt = f"""
+    Create an engaging audio chapter script based on the current character status:
+    - Chapter Title: {chapter_title}
+    - System Name: {system_name}
+    - Character 1: {char1_name} (Current Rank: {char1_rank})
+    - Character 2: {char2_name} (Current Rank: {char2_rank})
+    
+    Reflect the current rank and power dynamics accurately in the dialogues and scene progression.
+    """
+    
+    response = client.models.generate_content(
+        model='gemini-1.5-flash',
+        contents=prompt,
+    )
+    
+    return response.text
 
-    <script>
-        async function generateScript() {
-            const output = document.getElementById('output');
-            output.innerText = "Generating script...";
-            
-            const data = {
-                concept: document.getElementById('concept').value,
-                chapter_no: document.getElementById('chapter_no'.value),
-                chapter_title: document.getElementById('chapter_title').value,
-                system_name: document.getElementById('system_name').value,
-                char1_name: document.getElementById('char1_name').value,
-                char1_rank: document.getElementById('char1_rank').value,
-                char2_name: document.getElementById('char2_name').value,
-                char2_rank: document.getElementById('char2_rank').value
-            };
-
-            try {
-                const response = await fetch('/generate-script', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-                const result = await response.json();
-                if(result.status === 'success') {
-                    output.innerText = result.script;
-                } else {
-                    output.innerText = "Error: " + result.message;
-                }
-            } catch (err) {
-                output.innerText = "Failed to connect to server.";
-            }
-        }
-    </script>
-</body>
-</html>
+if __name__ == "__main__":
+    # Aap in values ko variables mein rakh kar chapter-by-chapter update kar sakte hain
+    chapter_title = "Chapter 2: The Fall and Rise"
+    system_name = "Yoddha System"
+    
+    char1_name = "Dhruv"
+    char1_current_rank = "Shunya" # Jab rank change ho, yahan neri value daal dein
+    
+    char2_name = "Lara"
+    char2_current_rank = "Ambar Dal Leader"
+    
+    print("Generating script for current ranks...")
+    result = generate_script(chapter_title, system_name, char1_name, char1_current_rank, char2_name, char2_current_rank)
+    print("\n--- Generated Script ---\n")
+    print(result)
+    

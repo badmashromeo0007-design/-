@@ -33,15 +33,15 @@ def generate_script():
         - Unique System Name: {system_name}
         - Dhruv Current Rank: {dhruv_rank}
         - Concept / Storyline: {concept}
-        
+
         Write an engaging audio drama script in Hindi with cinematic scene descriptions and visual video prompts.
         """
 
         response = model.generate_content(prompt)
         script_text = response.text
-        
+
         return jsonify({'status': 'success', 'script': script_text})
-        
+
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 

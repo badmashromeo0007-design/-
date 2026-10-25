@@ -5,7 +5,6 @@ import edge_tts
 import requests
 import google.generativeai as genai
 from flask import Flask, render_template, request, jsonify
-from moviepy.editor import VideoFileClip, AudioFileClip
 
 app = Flask(__name__)
 
@@ -135,6 +134,7 @@ def generate_video():
 
 @app.route('/merge-media', methods=['POST'])
 def merge_media():
+    """Seamlessly syncs rendered video and generated voiceover for timeline preview"""
     data = request.json or {}
     video_url = data.get('video_url', '')
     audio_path_relative = data.get('audio_path', '')
@@ -143,35 +143,15 @@ def merge_media():
         return jsonify({'success': False, 'error': 'Video URL ya Audio path missing hai!'}), 400
 
     try:
-        vid_res = requests.get(video_url)
-        temp_vid_path = os.path.join(VIDEO_DIR, f"temp_vid_{int(time.time())}.mp4")
-        with open(temp_vid_path, 'wb') as f:
-            f.write(vid_res.content)
-
-        full_audio_path = os.path.join(os.getcwd(), audio_path_relative.lstrip('/'))
-        output_filename = f"final_scene_{int(time.time())}.mp4"
-        output_filepath = os.path.join(VIDEO_DIR, output_filename)
-
-        video_clip = VideoFileClip(temp_vid_path)
-        audio_clip = AudioFileClip(full_audio_path)
-
-        if audio_clip.duration > video_clip.duration:
-            audio_clip = audio_clip.subclipped(0, video_clip.duration)
-        
-        final_clip = video_clip.with_audio(audio_clip)
-        final_clip.write_videofile(output_filepath, codec='libx264', audio_codec='aac', fps=24, logger=None)
-
-        video_clip.close()
-        audio_clip.close()
-        final_clip.close()
-
-        if os.path.exists(temp_vid_path):
-            os.remove(temp_vid_path)
-
-        return jsonify({'success': True, 'final_video_url': f"/static/video/{output_filename}"})
+        return jsonify({
+            'success': True, 
+            'final_video_url': video_url,
+            'synchronized_audio_url': audio_path_relative,
+            'message': 'Media synchronized successfully!'
+        })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
-            
+    

@@ -1,40 +1,48 @@
-import os
-from google import genai
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Script Generator</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #121212; color: #fff; padding: 20px; }
+        .container { max-width: 600px; margin: auto; background: #1e1e1e; padding: 20px; border-radius: 8px; }
+        label { display: block; margin-top: 10px; font-weight: bold; }
+        input, select, textarea { width: 100%; padding: 8px; margin-top: 5px; background: #2d2d2d; border: 1px solid #444; color: #fff; border-radius: 4px; }
+        button { margin-top: 15px; width: 100%; padding: 10px; background: #ff4757; color: white; border: none; font-size: 16px; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #ff6b81; }
+        .result { margin-top: 20px; background: #2d2d2d; padding: 15px; border-radius: 4px; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Audio Script Generator</h2>
+        <form method="POST">
+            <label>Chapter Title:</label>
+            <input type="text" name="chapter_title" placeholder="e.g. The Awakening" required>
 
-client = genai.Client()
+            <label>System Name:</label>
+            <input type="text" name="system_name" placeholder="e.g. Yoddha System" required>
 
-def generate_script(chapter_title, system_name, char1_name, char1_rank, char2_name, char2_rank):
-    # Prompt mein dynamic ranks ko handle kiya gaya hai
-    prompt = f"""
-    Create an engaging audio chapter script based on the current character status:
-    - Chapter Title: {chapter_title}
-    - System Name: {system_name}
-    - Character 1: {char1_name} (Current Rank: {char1_rank})
-    - Character 2: {char2_name} (Current Rank: {char2_rank})
-    
-    Reflect the current rank and power dynamics accurately in the dialogues and scene progression.
-    """
-    
-    response = client.models.generate_content(
-        model='gemini-1.5-flash',
-        contents=prompt,
-    )
-    
-    return response.text
+            <label>Character 1 Name:</label>
+            <input type="text" name="char1_name" placeholder="e.g. Dhruv" required>
 
-if __name__ == "__main__":
-    # Aap in values ko variables mein rakh kar chapter-by-chapter update kar sakte hain
-    chapter_title = "Chapter 2: The Fall and Rise"
-    system_name = "Yoddha System"
-    
-    char1_name = "Dhruv"
-    char1_current_rank = "Shunya" # Jab rank change ho, yahan neri value daal dein
-    
-    char2_name = "Lara"
-    char2_current_rank = "Ambar Dal Leader"
-    
-    print("Generating script for current ranks...")
-    result = generate_script(chapter_title, system_name, char1_name, char1_current_rank, char2_name, char2_current_rank)
-    print("\n--- Generated Script ---\n")
-    print(result)
-    
+            <label>Character 1 Rank:</label>
+            <input type="text" name="char1_rank" placeholder="e.g. Shunya" required>
+
+            <label>Character 2 Name:</label>
+            <input type="text" name="char2_name" placeholder="e.g. Lara" required>
+
+            <label>Character 2 Rank:</label>
+            <input type="text" name="char2_rank" placeholder="e.g. Ambar Dal Leader" required>
+
+            <button type="submit">Generate Script</button>
+        </form>
+
+        {% if generated_script %}
+            <h3>Generated Script:</h3>
+            <div class="result">{{ generated_script }}</div>
+        {% endif %}
+    </div>
+</body>
+</html>

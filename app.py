@@ -5,7 +5,7 @@ from flask import Flask, render_template, request, jsonify
 app = Flask(__name__)
 
 genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
-model = genai.GenerativeModel('gemini-2.5-flash')
+model = genai.GenerativeModel('gemini-3.8-flash')
 
 @app.route('/')
 def index():
@@ -50,8 +50,9 @@ def generate():
     try:
         response = model.generate_content(prompt)
         return jsonify({'success': True, 'result': response.text})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+    except Exception as g_err:
+        return jsonify({'error': str(g_err)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
+    

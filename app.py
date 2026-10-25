@@ -1,11 +1,16 @@
 import os
+import time
+import requests
 import google.generativeai as genai
 from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
 
+# Configure Gemini API
 genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 model = genai.GenerativeModel('gemini-3.8-flash')
+
+REPLICATE_API_TOKEN = os.environ.get("REPLICATE_API_TOKEN", "")
 
 @app.route('/')
 def index():
@@ -18,31 +23,36 @@ def generate():
     ch_num = data.get('chapter_number', '1')
     ch_title = data.get('chapter_title', 'Chapter')
     scenes = data.get('num_scenes', '5')
+    dhruv_rank = data.get('dhruv_rank', '3rd Star (Shunya Rank)')
+    system_name = data.get('system_name', 'DIVINE SOUL SYSTEM')
 
     prompt = f"""
-    You are an expert Lead 3D Animation Director, Master Sound Designer, and Screenwriter combining the powerful progression style of 'Battle Through The Heavens' (Doupo Cangqiong) with the 'Super Yoddha' universe script.
+    You are an expert Lead 3D Animation Director, Master Sound Designer, and Screenwriter combining the powerful progression style of 'Battle Through The Heavens' with the 'Super Yoddha' universe.
+
+    UNIQUE SYSTEM INTEGRATION:
+    - Active System Name: [{system_name}]
+    - Every time Dhruv faces a crisis, a breakthrough, or a powerful opponent, the [{system_name}] must trigger a holographic digital notification box in the script detailing his status, rewards, power gaps, or warning alerts.
 
     FUSION CHARACTERS & WORLD CONTEXT:
-    - Dhruv (Protagonist / Xiao Yan vibe): Currently humiliated, stuck at 3rd Star (Shunya Rank), but harbors a secret ring mentor and immense hidden potential.
-    - Lara Zayan (Nalan Yanran / Queen Medusa vibe): Proud Ambar Dal leader who broke her engagement and challenged Dhruv with a 3-year ultimatum.
-    - Arendra: Supportive father and Shorye Dal leader.
-    - Ira: Loyal childhood friend (Xun Er vibe).
-    - Acharya Vidur / Yao Lao: Mysterious spiritual mentor residing in the ring.
+    - Dhruv (Protagonist): Current Rank: {dhruv_rank}, linked with [{system_name}] and holding a secret ring mentor (Acharya Vidur).
+    - Lara Zayan: Proud Ambar Dal leader, High Rank Warrior.
+    - Acharya Vidur / Yao Lao: Spiritual mentor inside the ring.
+
+    STRICT CINEMATIC & SYSTEM RULES:
+    1. CHARACTER NAME & RANK TAG: Explicitly define on-screen visual intro tags ([TEXT OVERLAY: DHRUV | Rank: 3rd Star Shunya]).
+    2. SYSTEM NOTIFICATION POP-UPS: Include glowing system status boxes in dialogues/scenes (e.g., [SYSTEM ALERT: Energy fluctuation detected! Enemy Rank: Dou Wang. Survival Probability: 12%]).
+    3. ISOLATED / SOLO SCENE EXPOSITION: Use environmental pressure, system warnings, and inner monologues.
 
     Task:
-    Generate a detailed 3D Cinematic Animation Script and Storyboard for Chapter {ch_num}: {ch_title} ({scenes} scenes).
+    Generate a detailed 3D Cinematic Animation Script, Subtitles (.SRT format cues), and Storyboard with [{system_name}] logs for Chapter {ch_num}: {ch_title} ({scenes} scenes).
 
-    STRICT GUIDELINES:
-    1. 3D ANIMATION VISUALS: Unreal Engine 5 render style, high-poly stylized characters with rich Indian/Eastern fantasy features, volumetric cinematic lighting, raytracing, and particle VFX (glowing flames, energy auras).
-    2. CINEMATIC INDIAN-FUSION BGM & SFX: Background music must blend traditional Indian classical notes (sitar/bansuri) with heavy Hans Zimmer-style orchestral battle beats, changing dynamically with scene moods.
-    3. NARRATIVE FLOW: Dramatic dialogues, intense emotions, and smooth location transitions.
-
-    For EACH Scene (1 to {scenes}), provide:
+    STRICT FORMAT FOR EACH SCENE (1 to {scenes}):
     - SCENE HEADER & LOCATION
-    - ACTIVE CHARACTERS & EMOTION/MOOD
-    - DYNAMIC CINEMATIC BGM & SFX CUES (Detailed music progression)
+    - ACTIVE CHARACTERS & ON-SCREEN NAME/RANK TAGS
+    - [{system_name}] NOTIFICATION LOGS & POWER EXPOSITION
+    - DYNAMIC CINEMATIC BGM & SFX CUES
     - HINDI / HINGLISH VOICE-OVER & DIALOGUES (With delivery tags)
-    - 3D ANIMATION VIDEO PROMPT (English prompt for Sora/Runway specifying 3D cinematic style, camera angles, lighting, and VFX)
+    - 3D ANIMATION VIDEO PROMPT (English prompt for Sora/Runway/Luma specifying Unreal Engine 5 style, volumetric lighting, particle aura)
     
     Story Input: {summary}
     """
@@ -50,8 +60,48 @@ def generate():
     try:
         response = model.generate_content(prompt)
         return jsonify({'success': True, 'result': response.text})
-    except Exception as g_err:
-        return jsonify({'error': str(g_err)}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/generate-video', methods=['POST'])
+def generate_video():
+    data = request.json or {}
+    prompt_text = data.get('prompt', '')
+
+    if not REPLICATE_API_TOKEN:
+        return jsonify({'success': False, 'error': 'REPLICATE_API_TOKEN is not set.'}), 400
+
+    headers = {
+        "Authorization": f"Token {REPLICATE_API_TOKEN}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "version": "luma/ray",
+        "input": {
+            "prompt": f"3D Unreal Engine 5 cinematic animation style, high quality, 4k, dark fantasy, dynamic camera movement, {prompt_text}",
+            "aspect_ratio": "16:9"
+        }
+    }
+
+    try:
+        res = requests.post("https://api.replicate.com/v1/predictions", json=payload, headers=headers)
+        res_data = res.json()
+        
+        if "id" in res_data:
+            prediction_id = res_data["id"]
+            for _ in range(30):
+                time.sleep(3)
+                check_res = requests.get(f"https://api.replicate.com/v1/predictions/{prediction_id}", headers=headers)
+                check_data = check_res.json()
+                if check_data.get("status") == "succeeded":
+                    return jsonify({'success': True, 'video_url': check_data['output']})
+                elif check_data.get("status") == "failed":
+                    return jsonify({'success': False, 'error': 'Video generation failed.'})
+
+        return jsonify({'success': False, 'error': 'Video generation timed out.'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

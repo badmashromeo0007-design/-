@@ -1,118 +1,122 @@
-
 <!DOCTYPE html>
-<html lang="en">
+<html lang="hi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SUPER YODDHA - 3D Cinematic Audio Studio</title>
+    <title>SUPER YODDHA STUDIO</title>
     <style>
         body {
-            background-color: #0b0b0b;
-            color: #f3f3f3;
+            background-color: #0f0f0f;
+            color: #f1f1f1;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 20px;
+            display: flex;
+            justify-content: center;
         }
         .container {
-            max-width: 800px;
-            margin: 40px auto;
-            background: #141414;
-            border: 2px solid #d4af37;
-            border-radius: 12px;
-            padding: 30px;
-            box-shadow: 0 0 20px rgba(212, 175, 55, 0.2);
+            width: 100%;
+            max-width: 600px;
+            background: #181818;
+            border: 2px solid #ffd700;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.3);
         }
         h1 {
-            text-align: center;
             color: #ff3333;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            text-shadow: 0 2px 4px rgba(255, 51, 51, 0.4);
+            text-align: center;
+            text-shadow: 0 0 5px rgba(255, 0, 0, 0.5);
+        }
+        h3 {
+            color: #ffd700;
+            text-align: center;
+            font-size: 14px;
+        }
+        label {
+            display: block;
+            margin-top: 15px;
+            color: #ccc;
         }
         textarea {
             width: 100%;
             height: 120px;
-            background: #1f1f1f;
-            border: 1px solid #444;
+            background: #222;
             color: #fff;
-            padding: 12px;
-            border-radius: 6px;
-            font-size: 16px;
-            margin-bottom: 15px;
+            border: 1px solid #444;
+            border-radius: 5px;
+            padding: 10px;
             resize: vertical;
-        }
-        textarea:focus {
-            border-color: #d4af37;
-            outline: none;
+            box-sizing: border-box;
         }
         button {
-            background: linear-gradient(135deg, #ff3333, #b30000);
+            width: 100%;
+            background-color: #e50914;
             color: white;
             border: none;
-            padding: 12px 24px;
+            padding: 12px;
             font-size: 16px;
             font-weight: bold;
-            border-radius: 6px;
+            border-radius: 5px;
             cursor: pointer;
-            width: 100%;
-            transition: 0.3s;
+            margin-top: 15px;
+            transition: background 0.3s;
         }
         button:hover {
-            background: linear-gradient(135deg, #ff4d4d, #cc0000);
-            box-shadow: 0 0 10px rgba(255, 51, 51, 0.5);
+            background-color: #b20710;
         }
-        .output-box {
-            margin-top: 25px;
-            background: #1a1a1a;
-            border-left: 4px solid #d4af37;
-            padding: 20px;
-            border-radius: 4px;
+        #result {
+            margin-top: 20px;
+            background: #111;
+            border: 1px solid #333;
+            padding: 15px;
+            border-radius: 5px;
             white-space: pre-wrap;
-            line-height: 1.6;
+            line-height: 1.5;
+            color: #e0e0e0;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Super Yoddha Studio</h1>
-        <p style="text-align: center; color: #d4af37;">3D Cinematic Audio Drama Script & Prompt Generator</p>
+        <h1>SUPER YODDHA STUDIO</h1>
+        <h3>3D Cinematic Audio Drama Script & Prompt Generator</h3>
         
-        <label for="prompt">Enter Audio Drama Concept:</label>
-        <textarea id="prompt" placeholder="E.g., Scene 1: Yoddha enters the dark valley facing the shadow beast..."></textarea>
+        <label for="concept">Enter Audio Drama Concept:</label>
+        <textarea id="concept" placeholder="Yahan apna concept likhein..."></textarea>
         
         <button onclick="generateScript()">Generate Script</button>
         
-        <div id="output" class="output-box" style="display: none;"></div>
+        <div id="result"></div>
     </div>
 
     <script>
         async function generateScript() {
-            const promptText = document.getElementById('prompt').value;
-            const outputDiv = document.getElementById('output');
+            const concept = document.getElementById('concept').value;
+            const resultDiv = document.getElementById('result');
             
-            if (!promptText) {
-                alert('Please enter a prompt!');
+            if (!concept.trim()) {
+                alert('Kripya pehle concept darj karein!');
                 return;
             }
 
-            outputDiv.style.display = 'block';
-            outputDiv.innerText = 'Generating cinematic experience... Please wait...';
+            resultDiv.innerText = 'Generating script, kripya intezaar karein...';
 
             try {
                 const response = await fetch('/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt: promptText })
+                    body: JSON.stringify({ concept: concept })
                 });
-                
+
                 const data = await response.json();
                 if (response.ok) {
-                    outputDiv.innerText = data.result;
+                    resultDiv.innerText = data.script;
                 } else {
-                    outputDiv.innerText = 'Error: ' + (data.error || 'Something went wrong');
+                    resultDiv.innerText = 'Error: ' + (data.error || 'Kuch gadbad ho gayi.');
                 }
             } catch (err) {
-                outputDiv.innerText = 'Network Error: ' + err.message;
+                resultDiv.innerText = 'Network Error: ' + err.message;
             }
         }
     </script>

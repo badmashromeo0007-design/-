@@ -13,7 +13,7 @@ model = genai.GenerativeModel("models/gemini-3.8-flash")
 
 @app.route('/')
 def home():
-    return "Super Yoddha Studio API is running!"
+    return render_template('index.html')
 
 @app.route('/generate-script', methods=['POST'])
 def generate_script():

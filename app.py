@@ -1,38 +1,38 @@
 import os
-from flask import Flask, render_template, request, jsonify
-from google import genai
+import google.generativeai as genai
 
-app = Flask(__name__)
+# अपनी API की सेटिंग्स यहाँ करें
+genai.configure(api_key="YOUR_API_KEY")
 
-# Initialize Gemini client securely using environment variable
-api_key = os.environ.get("GEMINI_API_KEY")
-client = genai.Client(api_key=api_key) if api_key else None
+# मॉडल का नाम यहाँ अपडेट किया गया है ताकि 404 Error न आए
+generation_config = {
+  "temperature": 0.7,
+  "top_p": 0.95,
+  "top_k": 40,
+  "max_output_tokens": 8192,
+}
 
-@app.route('/')
-def index():
-    return render_template('index.html')
+model = genai.GenerativeModel(
+  model_name="models/gemini-3.8-flash", #[span_1](start_span)[span_1](end_span) यहाँ नया मॉडल सेट किया गया है
+  generation_config=generation_config,
+)
 
-@app.route('/generate', methods=['POST'])
-def generate():
-    if not client:
-        return jsonify({"error": "Gemini API key configured nahi hai!"}), 500
-    
-    data = request.get_json()
-    prompt = data.get('prompt', '')
-    
-    if not prompt:
-        return jsonify({"error": "Prompt zaroori hai!"}), 400
-
+# ऑडियो ड्रामा स्क्रिप्ट या प्रॉम्प्ट जनरेट करने का फंक्शन
+def generate_audio_script(prompt_text):
     try:
-        # Generate cinematic content using standard gemini model
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=f"Act as a 3D Cinematic Audio Drama Director. Create a high-intensity, dramatic script/dialogue for SUPER YODDHA (सुपर योद्धा) based on this concept: {prompt}"
-        )
-        return jsonify({"result": response.text})
+        response = model.generate_content(prompt_text)
+        return response.text
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return f"Error occurred: {str(e)}"
 
-if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+# उदाहरण के लिए प्रॉम्प्ट:
+audio_concept = """
+क्या ध्रुव अपनी मंगेतर लारा की शर्त मानेगा? 
+आखिर क्या वजह है कि ध्रुव की शक्तियां पिछले 3 सालों से आगे नहीं बढ़ पा रही थीं? 
+कैसे लड़ेगा ध्रुव अपने से शक्तिशाली लारा से?
+"""
+
+if __name__ == "__main__":
+    script_output = generate_audio_script(audio_concept)
+    print(script_output)
+    

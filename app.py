@@ -1,15 +1,12 @@
 import os
+import google.generativeai as genai
 from flask import Flask, render_template_string, request, jsonify
 
 app = Flask(__name__)
 
-# Aapki Gemini API Key yahan set karein ya environment variable se lein
-# os.environ["GEMINI_API_KEY"] = "YOUR_GEMINI_API_KEY"
-client = genai.Client() if 'genai' in globals() else None
-
-# Agar google-genai import karna ho:
-from google import genai
-client = genai.Client()
+# Configure Gemini API using the standard library compatible with google-generativeai==0.8.3
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+model = genai.GenerativeModel('gemini-2.5-flash')
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -71,112 +68,4 @@ HTML_TEMPLATE = """
         <div id="outputSection" class="hidden red-glow bg-gray-900/90 rounded-2xl p-6 md:p-8 backdrop-blur-md">
             <div class="flex justify-between items-center mb-4 border-b border-gray-800 pb-3">
                 <h2 class="text-lg md:text-xl font-bold text-amber-400">Cinematic Script & Audio/Visual Storyboard</h2>
-                <button onclick="copyOutput()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs px-3 py-1.5 rounded border border-gray-600">Copy Script 📋</button>
-            </div>
-            <div id="resultContent" class="pl-4 border-l-4 border-red-500 whitespace-pre-wrap text-gray-200 leading-relaxed font-mono text-xs md:text-sm"></div>
-        </div>
-    </div>
-
-    <script>
-        async function generateScript() {
-            const story_summary = document.getElementById('story_summary').value;
-            const chapter_number = document.getElementById('chapter_number').value;
-            const chapter_title = document.getElementById('chapter_title').value;
-            const num_scenes = document.getElementById('num_scenes').value;
-            const btn = document.getElementById('genBtn');
-            const outputSection = document.getElementById('outputSection');
-            const resultContent = document.getElementById('resultContent');
-
-            if (!story_summary.trim()) {
-                alert('Kripya episode ka concept ya summary daalein!');
-                return;
-            }
-
-            btn.disabled = true;
-            btn.innerText = 'Creating 3D Script & Cinematic Music Cues...';
-            outputSection.classList.add('hidden');
-
-            try {
-                const response = await fetch('/generate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ story_summary, chapter_number, chapter_title, num_scenes })
-                });
-
-                const data = await response.json();
-                if (data.success) {
-                    resultContent.innerText = data.result;
-                    outputSection.classList.remove('hidden');
-                } else {
-                    alert('Error: ' + data.error);
-                }
-            } catch (err) {
-                alert('Kuch galat ho gaya! Check connection.');
-                console.error(err);
-            } finally {
-                btn.disabled = false;
-                btn.innerText = 'GENERATE 3D CINEMATIC SCRIPT & PROMPTS 🎬✨';
-            }
-        }
-
-        function copyOutput() {
-            navigator.clipboard.writeText(document.getElementById('resultContent').innerText);
-            alert('Script copied to clipboard!');
-        }
-    </script>
-</body>
-</html>
-"""
-
-@app.route('/')
-def index():
-    return render_template_string(HTML_TEMPLATE)
-
-@app.route('/generate', methods=['POST'])
-def generate():
-    data = request.json or {}
-    summary = data.get('story_summary', '')
-    ch_num = data.get('chapter_number', '1')
-    ch_title = data.get('chapter_title', 'Chapter')
-    scenes = data.get('num_scenes', '5')
-
-    prompt = f"""
-    You are an expert Lead 3D Animation Director, Master Sound Designer, and Screenwriter combining the powerful progression style of 'Battle Through The Heavens' (Doupo Cangqiong) with the 'Super Yoddha' universe script.
-
-    FUSION CHARACTERS & WORLD CONTEXT:
-    - Dhruv (Protagonist / Xiao Yan vibe): Currently humiliated, stuck at 3rd Star (Shunya Rank), but harbors a secret ring mentor and immense hidden potential.
-    - Lara Zayan (Nalan Yanran / Queen Medusa vibe): Proud Ambar Dal leader who broke her engagement and challenged Dhruv with a 3-year ultimatum.
-    - Arendra: Supportive father and Shorye Dal leader.
-    - Ira: Loyal childhood friend (Xun Er vibe).
-    - Acharya Vidur / Yao Lao: Mysterious spiritual mentor residing in the ring.
-
-    Task:
-    Generate a detailed 3D Cinematic Animation Script and Storyboard for Chapter {ch_num}: {ch_title} ({scenes} scenes).
-
-    STRICT GUIDELINES:
-    1. 3D ANIMATION VISUALS: Unreal Engine 5 render style, high-poly stylized characters with rich Indian/Eastern fantasy features, volumetric cinematic lighting, raytracing, and particle VFX (glowing flames, energy auras).
-    2. CINEMATIC INDIAN-FUSION BGM & SFX: Background music must blend traditional Indian classical notes (sitar/bansuri) with heavy Hans Zimmer-style orchestral battle beats, changing dynamically with scene moods.
-    3. NARRATIVE FLOW: Dramatic dialogues, intense emotions, and smooth location transitions.
-
-    For EACH Scene (1 to {scenes}), provide:
-    - SCENE HEADER & LOCATION
-    - ACTIVE CHARACTERS & EMOTION/MOOD
-    - DYNAMIC CINEMATIC BGM & SFX CUES (Detailed music progression)
-    - HINDI / HINGLISH VOICE-OVER & DIALOGUES (With delivery tags)
-    - 3D ANIMATION VIDEO PROMPT (English prompt for Sora/Runway specifying 3D cinematic style, camera angles, lighting, and VFX)
-    
-    Story Input: {summary}
-    """
-
-    try:
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=prompt,
-        )
-        return jsonify({'success': True, 'result': response.text})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
-    
+                <button onclick="copyOutput()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs px-

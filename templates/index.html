@@ -11,13 +11,14 @@
         button { background: #ff4757; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 4px; font-weight: bold; width: 100%; }
         button:hover { background: #ff6b81; }
         pre { background: #2d2d2d; padding: 15px; border-radius: 4px; white-space: pre-wrap; word-wrap: break-word; }
+        .char-box { background: #252525; padding: 10px; margin-bottom: 10px; border-radius: 5px; border-left: 3px solid #ff4757; }
     </style>
 </head>
 <body>
     <div class="container">
         <h2>Super Yoddha Studio</h2>
         <label>Concept / Storyline:</label>
-        <textarea id="concept" rows="4" placeholder="Enter story concept..."></textarea>
+        <textarea id="concept" rows="3" placeholder="Enter story concept..."></textarea>
         
         <label>Chapter No:</label>
         <input type="text" id="chapter_no" value="1">
@@ -27,9 +28,20 @@
         
         <label>System Name:</label>
         <input type="text" id="system_name" value="Yoddha System">
-        
-        <label>Dhruv Rank:</label>
-        <input type="text" id="dhruv_rank" value="Bronze">
+
+        <div class="char-box">
+            <label>Character 1 Name:</label>
+            <input type="text" id="char1_name" placeholder="e.g. Dhruv">
+            <label>Character 1 Rank:</label>
+            <input type="text" id="char1_rank" placeholder="e.g. Bronze">
+        </div>
+
+        <div class="char-box">
+            <label>Character 2 Name:</label>
+            <input type="text" id="char2_name" placeholder="e.g. Aryan">
+            <label>Character 2 Rank:</label>
+            <input type="text" id="char2_rank" placeholder="e.g. Silver">
+        </div>
         
         <button onclick="generateScript()">Generate Script</button>
         
@@ -47,7 +59,10 @@
                 chapter_no: document.getElementById('chapter_no').value,
                 chapter_title: document.getElementById('chapter_title').value,
                 system_name: document.getElementById('system_name').value,
-                dhruv_rank: document.getElementById('dhruv_rank').value
+                char1_name: document.getElementById('char1_name').value,
+                char1_rank: document.getElementById('char1_rank').value,
+                char2_name: document.getElementById('char2_name').value,
+                char2_rank: document.getElementById('char2_rank').value
             };
 
             try {

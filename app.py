@@ -1,11 +1,15 @@
 from flask import Flask, render_template, request, jsonify
-from openai import OpenAI
+import google.generativeai as genai
 import os
 
 app = Flask(__name__)
 
-# Render ke environment variable se key automatically uthegi
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+# Google Gemini API key configure karein
+GOOGLE_API_KEY = os.environ.get("GEMINI_API_KEY")
+genai.configure(api_key=GOOGLE_API_KEY)
+
+# Free aur fast model use kar rahe hain
+model = genai.GenerativeModel('gemini-1.5-flash')
 
 @app.route('/')
 def home():
@@ -33,15 +37,9 @@ def generate_script():
         Write an engaging audio drama script in Hindi with cinematic scene descriptions and visual video prompts.
         """
 
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "You are a professional 3D Cinematic Audio Drama Script Writer."},
-                {"role": "user", "content": prompt}
-            ]
-        )
+        response = model.generate_content(prompt)
+        script_text = response.text
         
-        script_text = response.choices[0].message.content
         return jsonify({'status': 'success', 'script': script_text})
         
     except Exception as e:

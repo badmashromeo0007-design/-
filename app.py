@@ -7,7 +7,8 @@ app = Flask(__name__)
 GOOGLE_API_KEY = os.environ.get("GEMINI_API_KEY")
 genai.configure(api_key=GOOGLE_API_KEY)
 
-model = genai.GenerativeModel('gemini-1.5-flash')
+# 404 error se bachne ke liye gemini-1.5-pro use kar rahe hain
+model = genai.GenerativeModel('gemini-1.5-pro')
 
 @app.route('/')
 def home():

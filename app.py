@@ -1,15 +1,10 @@
 from flask import Flask, render_template, request, jsonify
-import google.generativeai as genai
+from openai import OpenAI
 
 app = Flask(__name__)
 
-# Aapki di gayi API key yahan add kar di gayi hai
-GEMINI_API_KEY = "AQ.Ab8RN6IWgrb08CuMTHyr9SIzlGRj6U4H0SAAo2gBzfAcgSWBxA"
-
-genai.configure(api_key=GEMINI_API_KEY)
-
-# Updated Model Name
-model = genai.GenerativeModel("models/gemini-3.8-flash")
+# Aapki OpenAI API key yahan set kar di gayi hai
+client = OpenAI(api_key="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")
 
 @app.route('/')
 def home():
@@ -37,8 +32,16 @@ def generate_script():
         Write an engaging audio drama script in Hindi with cinematic scene descriptions and visual video prompts.
         """
 
-        response = model.generate_content(prompt)
-        return jsonify({'status': 'success', 'script': response.text})
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are a professional 3D Cinematic Audio Drama Script Writer."},
+                {"role": "user", "content": prompt}
+            ]
+        )
+        
+        script_text = response.choices[0].message.content
+        return jsonify({'status': 'success', 'script': script_text})
         
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500

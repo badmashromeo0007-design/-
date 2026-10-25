@@ -12,17 +12,17 @@ def index():
         story_input = request.form.get("story_input")
         
         prompt = f"""
-        Aap ek expert cinematic anime scriptwriter hain. Niche di gayi story/details ke adhar par ek high-level audio/video screenplay script taiyar karni hai. 
-        Vibe aur tone bilkul 'Battle Through The Heavens' (斗破苍穹) jaisa high-fantasy aur xianxia style hona chahiye.
+        Aap ek expert cinematic anime scriptwriter hain. Niche di gayi story ke adhar par ek ultra-realistic aur high-level audio/video screenplay script taiyar karni hai. 
+        Vibe, characters aur tone bilkul 'Battle Through The Heavens' (斗破苍穹) universe ke original characters (jaise Xiao Yan, Yao Lao, Xun Er, Medusa) ke hisab se honi chahiye.
 
-        AUTOMATIC CHARACTER & DYNAMIC POWER RULEBOOK:
-        1. **Auto Character Extraction & Introduction:** Story ke text ko analyze karke khud-ba-khud 'Battle Through The Heavens' universe ke matching characters (jaise Xiao Yan, Yao Lao, Xun Er, Medusa ya story ke naye characters) ko detect karein aur unke roles ko script mein dynamically shamil karein. Jaise-jaise story aage badhe, naye characters automatically introduce hone chahiye.
-        2. **Dynamic Power Ranks & Aura Control:** Characters ki powers aur aura pressure ko story ke sequence ke hisab se scale up/down karein. Agar koi powerful entity aas-paas ke area ko control karti hai, toh uska impact saaf dikhe.
-        3. **Audience Clarity (VFX, SFX & System Alerts):** Audience ko power levels aur darr samajhne ke liye har scene mein bracket `[ ]` mein clear cues likhein:
-           - [Visual: Aura pressure shaking the ground / Space distortion]
-           - [SFX: Heavy thunder bass / High energy hum]
-           - [System / Mentor Alert]: Yao Lao ya system voice ki tarah telepathic warning ho jo Dhruv aur audience ko samne wale ki power rank turant bataye.
-        4. **Cinematic BGM:** Har mood aur fight ke hisab se background music transitions mention karein.
+        ULTRA-REALISTIC CHARACTER & CINEMATIC RULEBOOK:
+        1. **Strict BTTH Characters Only:** Story mein sirf 'Battle Through The Heavens' ke established characters aur unke power systems (Qi methods, Flame attributes) ka use ho.
+        2. **Hyper-Realistic Character Depth:** Characters artificial ya robotic nahi lagne chahiye. Unka reaction, ankhon ke bhav, saansein chalna, aura ka tharthrana, aur darr ya gussa bilkul real-life human emotions aur high-end cinematic standards ke mutabiq likha ho.
+        3. **Real Visual & Audio Experience (VFX/SFX):** Video bilkul real aur heavy-impact lagni chahiye. Har scene ke sath brackets mein clear visual aur sound cues likhein:
+           - [Visual: Realistic sweat dropping, micro-expressions, space distortion, ground shattering under pressure, intense soul aura glowing]
+           - [SFX: Heavy bass thunder, realistic footsteps, high-frequency energy hum, sharp weapon clashing sound]
+           - [System / Mentor Alert]: Yao Lao ki telepathic voice ya system alert jo Dhruv aur audience ko samne wale ki power rank turant bataye.
+        4. **Cinematic BGM:** Har fight aur emotional moment par heavy orchestral aur suspenseful background music ka transition ho.
 
         Story Input / Raw Context:
         {story_input}
@@ -30,7 +30,7 @@ def index():
         
         try:
             response = client.models.generate_content(
-                model='gemini-1.5-flash',
+                model='gemini-2.5-flash',
                 contents=prompt,
             )
             generated_script = response.text

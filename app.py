@@ -1,10 +1,11 @@
 from flask import Flask, render_template, request, jsonify
 from openai import OpenAI
+import os
 
 app = Flask(__name__)
 
-# Nayi aur sahi format wali OpenAI API key
-client = OpenAI(api_key="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")
+# Render ke environment variable se key automatically uthegi
+client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 @app.route('/')
 def home():

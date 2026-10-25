@@ -5,6 +5,7 @@ import edge_tts
 import requests
 import google.generativeai as genai
 from flask import Flask, render_template, request, jsonify, send_from_directory
+from moviepy.editor import VideoFileClip, AudioFileClip
 
 app = Flask(__name__)
 
@@ -14,9 +15,11 @@ model = genai.GenerativeModel('gemini-3.8-flash')
 
 REPLICATE_API_TOKEN = os.environ.get("REPLICATE_API_TOKEN", "")
 
-# Ensure audio directory exists
+# Ensure directories exist
 AUDIO_DIR = os.path.join(os.getcwd(), "static", "audio")
+VIDEO_DIR = os.path.join(os.getcwd(), "static", "video")
 os.makedirs(AUDIO_DIR, exist_ok=True)
+os.makedirs(VIDEO_DIR, exist_ok=True)
 
 @app.route('/')
 def index():
@@ -33,36 +36,11 @@ def generate():
     system_name = data.get('system_name', 'DIVINE SOUL SYSTEM')
 
     prompt = f"""
-    You are an expert Lead 3D Animation Director, Master Sound Designer, and Screenwriter combining the powerful progression style of 'Battle Through The Heavens' with the 'Super Yoddha' universe.
-
-    UNIQUE SYSTEM INTEGRATION:
-    - Active System Name: [{system_name}]
-    - Every time Dhruv faces a crisis, a breakthrough, or a powerful opponent, the [{system_name}] must trigger a holographic digital notification box in the script detailing his status, rewards, power gaps, or warning alerts.
-
-    FUSION CHARACTERS & WORLD CONTEXT:
-    - Dhruv (Protagonist): Current Rank: {dhruv_rank}, linked with [{system_name}] and holding a secret ring mentor (Acharya Vidur).
-    - Lara Zayan: Proud Ambar Dal leader, High Rank Warrior.
-    - Acharya Vidur / Yao Lao: Spiritual mentor inside the ring.
-
-    STRICT CINEMATIC & SYSTEM RULES:
-    1. CHARACTER NAME & RANK TAG: Explicitly define on-screen visual intro tags ([TEXT OVERLAY: DHRUV | Rank: 3rd Star Shunya]).
-    2. SYSTEM NOTIFICATION POP-UPS: Include glowing system status boxes in dialogues/scenes (e.g., [SYSTEM ALERT: Energy fluctuation detected! Enemy Rank: Dou Wang. Survival Probability: 12%]).
-    3. ISOLATED / SOLO SCENE EXPOSITION: Use environmental pressure, system warnings, and inner monologues.
-
-    Task:
-    Generate a detailed 3D Cinematic Animation Script, Subtitles (.SRT format cues), and Storyboard with [{system_name}] logs for Chapter {ch_num}: {ch_title} ({scenes} scenes).
-
-    STRICT FORMAT FOR EACH SCENE (1 to {scenes}):
-    - SCENE HEADER & LOCATION
-    - ACTIVE CHARACTERS & ON-SCREEN NAME/RANK TAGS
-    - [{system_name}] NOTIFICATION LOGS & POWER EXPOSITION
-    - DYNAMIC CINEMATIC BGM & SFX CUES
-    - HINDI / HINGLISH VOICE-OVER & DIALOGUES (With delivery tags)
-    - 3D ANIMATION VIDEO PROMPT (English prompt for Sora/Runway/Luma specifying Unreal Engine 5 style, volumetric lighting, particle aura)
-    
+    You are an expert Lead 3D Animation Director, Master Sound Designer, and Screenwriter combining progression style of 'Battle Through The Heavens' with 'Super Yoddha'.
+    Active System: [{system_name}], Dhruv Rank: {dhruv_rank}.
+    Generate detailed 3D Cinematic Script with [{system_name}] logs for Chapter {ch_num}: {ch_title} ({scenes} scenes) including character voice lines and Unreal Engine 5 video prompts.
     Story Input: {summary}
     """
-
     try:
         response = model.generate_content(prompt)
         return jsonify({'success': True, 'result': response.text})
@@ -71,13 +49,12 @@ def generate():
 
 @app.route('/generate-audio', methods=['POST'])
 def generate_audio():
-    """Generates Hindi Voiceover MP3 using Edge TTS"""
     data = request.json or {}
     text = data.get('text', '')
-    voice_type = data.get('voice_type', 'hi-IN-MadhurNeural') # Madhur (Male) or Swara (Female)
+    voice_type = data.get('voice_type', 'hi-IN-MadhurNeural')
 
     if not text.strip():
-        return jsonify({'success': False, 'error': 'Voiceover text khali hai!'}), 400
+        return jsonify({'success': False, 'error': 'Text khali hai!'}), 400
 
     filename = f"voice_{int(time.time())}.mp3"
     filepath = os.path.join(AUDIO_DIR, filename)
@@ -98,7 +75,7 @@ def generate_video():
     prompt_text = data.get('prompt', '')
 
     if not REPLICATE_API_TOKEN:
-        return jsonify({'success': False, 'error': 'REPLICATE_API_TOKEN is not set.'}), 400
+        return jsonify({'success': False, 'error': 'REPLICATE_API_TOKEN set nahi hai.'}), 400
 
     headers = {
         "Authorization": f"Token {REPLICATE_API_TOKEN}",
@@ -126,9 +103,56 @@ def generate_video():
                 if check_data.get("status") == "succeeded":
                     return jsonify({'success': True, 'video_url': check_data['output']})
                 elif check_data.get("status") == "failed":
-                    return jsonify({'success': False, 'error': 'Video generation failed.'})
+                    return jsonify({'success': False, 'error': 'Video failed.'})
 
-        return jsonify({'success': False, 'error': 'Video generation timed out.'})
+        return jsonify({'success': False, 'error': 'Timeout.'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/merge-media', methods=['POST'])
+def merge_media():
+    """Auto-merges rendered 3D video URL and generated Audio MP3 file into one final video"""
+    data = request.json or {}
+    video_url = data.get('video_url', '')
+    audio_path_relative = data.get('audio_path', '')
+
+    if not video_url or not audio_path_relative:
+        return jsonify({'success': False, 'error': 'Video URL ya Audio path missing hai!'}), 400
+
+    try:
+        # Download remote video locally temporarily
+        vid_res = requests.get(video_url)
+        temp_vid_path = os.path.join(VIDEO_DIR, f"temp_vid_{int(time.time())}.mp4")
+        with open(temp_vid_path, 'wb') as f:
+            f.write(vid_res.content)
+
+        # Full path for audio
+        full_audio_path = os.path.join(os.getcwd(), audio_path_relative.lstrip('/'))
+        output_filename = f"final_scene_{int(time.time())}.mp4"
+        output_filepath = os.path.join(VIDEO_DIR, output_filename)
+
+        # MoviePy combining video and audio
+        video_clip = VideoFileClip(temp_vid_path)
+        audio_clip = AudioFileClip(full_audio_path)
+
+        # Match durations seamlessly
+        if audio_clip.duration > video_clip.duration:
+            # Loop or extend video slightly if audio is longer, or trim audio
+            audio_clip = audio_clip.subclipped(0, video_clip.duration)
+        
+        final_clip = video_clip.with_audio(audio_clip)
+        final_clip.write_videofile(output_filepath, codec='libx264', audio_codec='aac', fps=24, logger=None)
+
+        # Close clips
+        video_clip.close()
+        audio_clip.close()
+        final_clip.close()
+
+        # Remove temp source
+        if os.path.exists(temp_vid_path):
+            os.remove(temp_vid_path)
+
+        return jsonify({'success': True, 'final_video_url': f"/static/video/{output_filename}"})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 

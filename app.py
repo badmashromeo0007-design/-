@@ -4,7 +4,7 @@ import asyncio
 import edge_tts
 import requests
 import google.generativeai as genai
-from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask import Flask, render_template, request, jsonify
 from moviepy.editor import VideoFileClip, AudioFileClip
 
 app = Flask(__name__)
@@ -21,6 +21,14 @@ VIDEO_DIR = os.path.join(os.getcwd(), "static", "video")
 os.makedirs(AUDIO_DIR, exist_ok=True)
 os.makedirs(VIDEO_DIR, exist_ok=True)
 
+# Character Presets for Instant Hyper-Realistic Video Generation
+CHARACTER_PRESETS = {
+    "dhruv": "Hyper-realistic 3D cinematic close-up of a young male warrior inspired by BTTH, sharp determined eyes, long dark hair tied back, wearing traditional high-fantasy black profound robes with intricate silver embroidery, mysterious black ring on his right hand, green lotus flame aura swirling around his fingers, Unreal Engine 5 render, 8k resolution, photorealistic skin texture, dramatic studio lighting.",
+    "vidur": "A wise elderly sage mentor with flowing white hair and beard, wearing ancient mystic scholar robes, translucent ethereal spiritual glow, glowing blue energy aura, standing inside a magical realm, hyper-realistic 3D character design, movie-quality rendering, 8k.",
+    "lara": "Stunning high-fantasy female warrior, fierce expression, elegant traditional battle robes with metallic armor accents, sharp facial features, realistic human skin and hair strands blowing in the wind, dramatic cinematic lighting, 3D animation masterpiece style, Unreal Engine 5.",
+    "beast": "Massive mythical dark fantasy beast monster, glowing red eyes, scales with hyper-detailed texture, volumetric smoke and fire background, epic cinematic 3D render, Unreal Engine 5, 8k."
+}
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -36,9 +44,18 @@ def generate():
     system_name = data.get('system_name', 'DIVINE SOUL SYSTEM')
 
     prompt = f"""
-    You are an expert Lead 3D Animation Director, Master Sound Designer, and Screenwriter combining progression style of 'Battle Through The Heavens' with 'Super Yoddha'.
-    Active System: [{system_name}], Dhruv Rank: {dhruv_rank}.
-    Generate detailed 3D Cinematic Script with [{system_name}] logs for Chapter {ch_num}: {ch_title} ({scenes} scenes) including character voice lines and Unreal Engine 5 video prompts.
+    You are an expert Lead 3D Animation Director, Master Sound Designer, and Screenwriter combining the progression style of 'Battle Through The Heavens' with 'Super Yoddha'.
+
+    UNIQUE SYSTEM INTEGRATION:
+    - Active System Name: [{system_name}]
+    - Whenever Dhruv faces a crisis, breakthrough, or new encounter, trigger [{system_name}] holographic notification boxes.
+
+    STRICT RULES FOR SCRIPT & NEW CHARACTERS:
+    1. If any new character appears in the story, explicitly describe their hyper-realistic appearance (face, clothing, aura).
+    2. For EVERY scene, you MUST generate a dedicated, ready-to-use **3D Animation Video Prompt (English)** optimized for Luma/Replicate (Unreal Engine 5 style, hyper-realistic skin texture, 8k, volumetric lighting, dynamic camera).
+
+    Generate a detailed cinematic script with [{system_name}] logs for Chapter {ch_num}: {ch_title} ({scenes} scenes).
+
     Story Input: {summary}
     """
     try:
@@ -46,6 +63,13 @@ def generate():
         return jsonify({'success': True, 'result': response.text})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/get-preset', methods=['POST'])
+def get_preset():
+    data = request.json or {}
+    char_key = data.get('character', 'dhruv')
+    prompt = CHARACTER_PRESETS.get(char_key, CHARACTER_PRESETS['dhruv'])
+    return jsonify({'success': True, 'prompt': prompt})
 
 @app.route('/generate-audio', methods=['POST'])
 def generate_audio():
@@ -85,7 +109,7 @@ def generate_video():
     payload = {
         "version": "luma/ray",
         "input": {
-            "prompt": f"3D Unreal Engine 5 cinematic animation style, high quality, 4k, dark fantasy, dynamic camera movement, {prompt_text}",
+            "prompt": prompt_text,
             "aspect_ratio": "16:9"
         }
     }
@@ -111,7 +135,6 @@ def generate_video():
 
 @app.route('/merge-media', methods=['POST'])
 def merge_media():
-    """Auto-merges rendered 3D video URL and generated Audio MP3 file into one final video"""
     data = request.json or {}
     video_url = data.get('video_url', '')
     audio_path_relative = data.get('audio_path', '')
@@ -120,35 +143,28 @@ def merge_media():
         return jsonify({'success': False, 'error': 'Video URL ya Audio path missing hai!'}), 400
 
     try:
-        # Download remote video locally temporarily
         vid_res = requests.get(video_url)
         temp_vid_path = os.path.join(VIDEO_DIR, f"temp_vid_{int(time.time())}.mp4")
         with open(temp_vid_path, 'wb') as f:
             f.write(vid_res.content)
 
-        # Full path for audio
         full_audio_path = os.path.join(os.getcwd(), audio_path_relative.lstrip('/'))
         output_filename = f"final_scene_{int(time.time())}.mp4"
         output_filepath = os.path.join(VIDEO_DIR, output_filename)
 
-        # MoviePy combining video and audio
         video_clip = VideoFileClip(temp_vid_path)
         audio_clip = AudioFileClip(full_audio_path)
 
-        # Match durations seamlessly
         if audio_clip.duration > video_clip.duration:
-            # Loop or extend video slightly if audio is longer, or trim audio
             audio_clip = audio_clip.subclipped(0, video_clip.duration)
         
         final_clip = video_clip.with_audio(audio_clip)
         final_clip.write_videofile(output_filepath, codec='libx264', audio_codec='aac', fps=24, logger=None)
 
-        # Close clips
         video_clip.close()
         audio_clip.close()
         final_clip.close()
 
-        # Remove temp source
         if os.path.exists(temp_vid_path):
             os.remove(temp_vid_path)
 
@@ -158,4 +174,4 @@ def merge_media():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
-    
+            

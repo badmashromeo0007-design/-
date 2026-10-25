@@ -1,38 +1,84 @@
-async function generateScript() {
-    const concept = document.querySelector('textarea').value;
-    const inputs = document.querySelectorAll('input[type="text"]');
-    const chapter_no = inputs[0] ? inputs[0].value : '1';
-    const chapter_title = inputs[1] ? inputs[1].value : 'Episode 1';
-    const system_name = inputs[2] ? inputs[2].value : 'DIVINE SOUL SYSTEM';
-    const dhruv_rank = document.querySelector('select') ? document.querySelector('select').value : '';
-
-    if (!concept) {
-        alert("Kripya Episode Concept likhein!");
-        return;
-    }
-
-    const btn = document.querySelector('button');
-    btn.innerText = "Generating Script... Please Wait ⏳";
-
-    try {
-        const response = await fetch('/generate-script', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ concept, chapter_no, chapter_title, system_name, dhruv_rank })
-        });
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Yoddha Studio</title>
+    <style>
+        body { background-color: #121212; color: #fff; font-family: Arial, sans-serif; padding: 20px; }
+        .container { max-width: 600px; margin: auto; background: #1e1e1e; padding: 20px; border-radius: 8px; border: 1px solid #333; }
+        input, textarea, select { width: 100%; padding: 10px; margin: 10px 0; background: #2d2d2d; border: 1px solid #444; color: #fff; border-radius: 4px; box-sizing: border-box; }
+        button { background: #ff4757; color: white; border: none; padding: 12px; width: 100%; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 4px; margin-top: 10px; }
+        button:hover { background: #ff6b81; }
+        #result { margin-top: 20px; white-space: pre-wrap; background: #2d2d2d; padding: 15px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>CINEMATIC 3D AUDIO DRAMA & VIDEO STUDIO</h2>
         
-        const data = await response.json();
-        btn.innerText = "GENERATE SCRIPT WITH UNIQUE SYSTEM 🎬✨";
-        
-        if (data.status === 'success') {
-            alert("Script generated successfully!");
-            console.log(data.script);
-            // Aap is output ko kisi div mein dikha sakte hain
-        } else {
-            alert("Error: " + data.message);
+        <label>Episode Concept / Next Storyline *</label>
+        <textarea rows="4" placeholder="Apna concept yahan likhein..."></textarea>
+
+        <label>Chapter No.</label>
+        <input type="text" value="1">
+
+        <label>Chapter Title</label>
+        <input type="text" value="Episode 1">
+
+        <label>Unique System Name</label>
+        <input type="text" value="DIVINE SOUL SYSTEM">
+
+        <label>Dhruv Current Rank</label>
+        <select>
+            <option>3rd Star (Shunya Rank)</option>
+            <option>Dou Shi Stage (Master Level)</option>
+        </select>
+
+        <button onclick="generateScript()">GENERATE SCRIPT WITH UNIQUE SYSTEM 🎬✨</button>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        async function generateScript() {
+            const concept = document.querySelector('textarea').value;
+            const inputs = document.querySelectorAll('input[type="text"]');
+            const chapter_no = inputs[0] ? inputs[0].value : '1';
+            const chapter_title = inputs[1] ? inputs[1].value : 'Episode 1';
+            const system_name = inputs[2] ? inputs[2].value : 'DIVINE SOUL SYSTEM';
+            const dhruv_rank = document.querySelector('select') ? document.querySelector('select').value : '';
+            const resultDiv = document.getElementById('result');
+
+            if (!concept) {
+                alert("Kripya Episode Concept likhein!");
+                return;
+            }
+
+            const btn = document.querySelector('button');
+            btn.innerText = "Generating Script... Please Wait ⏳";
+            resultDiv.innerText = "Generating script, please wait...";
+
+            try {
+                const response = await fetch('/generate-script', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ concept, chapter_no, chapter_title, system_name, dhruv_rank })
+                });
+                
+                const data = await response.json();
+                btn.innerText = "GENERATE SCRIPT WITH UNIQUE SYSTEM 🎬✨";
+                
+                if (data.status === 'success') {
+                    resultDiv.innerText = data.script;
+                } else {
+                    resultDiv.innerText = "Error: " + data.message;
+                }
+            } catch (err) {
+                btn.innerText = "GENERATE SCRIPT WITH UNIQUE SYSTEM 🎬✨";
+                resultDiv.innerText = "Request failed: " + err;
+            }
         }
-    } catch (err) {
-        btn.innerText = "GENERATE SCRIPT WITH UNIQUE SYSTEM 🎬✨";
-        alert("Failed to fetch: " + err);
-    }
-}
+    </script>
+</body>
+</html>

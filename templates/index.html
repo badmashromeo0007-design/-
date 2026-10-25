@@ -5,78 +5,65 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Super Yoddha Studio</title>
     <style>
-        body { background-color: #121212; color: #fff; font-family: Arial, sans-serif; padding: 20px; }
-        .container { max-width: 600px; margin: auto; background: #1e1e1e; padding: 20px; border-radius: 8px; border: 1px solid #333; }
-        input, textarea, select { width: 100%; padding: 10px; margin: 10px 0; background: #2d2d2d; border: 1px solid #444; color: #fff; border-radius: 4px; box-sizing: border-box; }
-        button { background: #ff4757; color: white; border: none; padding: 12px; width: 100%; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 4px; margin-top: 10px; }
+        body { font-family: Arial, sans-serif; background: #121212; color: #fff; padding: 20px; }
+        .container { max-width: 600px; margin: auto; background: #1e1e1e; padding: 20px; border-radius: 8px; }
+        textarea, input { width: 100%; padding: 10px; margin: 10px 0; background: #2d2d2d; border: 1px solid #444; color: #fff; border-radius: 4px; box-sizing: border-box; }
+        button { background: #ff4757; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 4px; font-weight: bold; width: 100%; }
         button:hover { background: #ff6b81; }
-        #result { margin-top: 20px; white-space: pre-wrap; background: #2d2d2d; padding: 15px; border-radius: 4px; }
+        pre { background: #2d2d2d; padding: 15px; border-radius: 4px; white-space: pre-wrap; word-wrap: break-word; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>CINEMATIC 3D AUDIO DRAMA & VIDEO STUDIO</h2>
+        <h2>Super Yoddha Studio</h2>
+        <label>Concept / Storyline:</label>
+        <textarea id="concept" rows="4" placeholder="Enter story concept..."></textarea>
         
-        <label>Episode Concept / Next Storyline *</label>
-        <textarea rows="4" placeholder="Apna concept yahan likhein..."></textarea>
-
-        <label>Chapter No.</label>
-        <input type="text" value="1">
-
-        <label>Chapter Title</label>
-        <input type="text" value="Episode 1">
-
-        <label>Unique System Name</label>
-        <input type="text" value="DIVINE SOUL SYSTEM">
-
-        <label>Dhruv Current Rank</label>
-        <select>
-            <option>3rd Star (Shunya Rank)</option>
-            <option>Dou Shi Stage (Master Level)</option>
-        </select>
-
-        <button onclick="generateScript()">GENERATE SCRIPT WITH UNIQUE SYSTEM 🎬✨</button>
-
-        <div id="result"></div>
+        <label>Chapter No:</label>
+        <input type="text" id="chapter_no" value="1">
+        
+        <label>Chapter Title:</label>
+        <input type="text" id="chapter_title" value="The Awakening">
+        
+        <label>System Name:</label>
+        <input type="text" id="system_name" value="Yoddha System">
+        
+        <label>Dhruv Rank:</label>
+        <input type="text" id="dhruv_rank" value="Bronze">
+        
+        <button onclick="generateScript()">Generate Script</button>
+        
+        <h3>Generated Script:</h3>
+        <pre id="output">Your script will appear here...</pre>
     </div>
 
     <script>
         async function generateScript() {
-            const concept = document.querySelector('textarea').value;
-            const inputs = document.querySelectorAll('input[type="text"]');
-            const chapter_no = inputs[0] ? inputs[0].value : '1';
-            const chapter_title = inputs[1] ? inputs[1].value : 'Episode 1';
-            const system_name = inputs[2] ? inputs[2].value : 'DIVINE SOUL SYSTEM';
-            const dhruv_rank = document.querySelector('select') ? document.querySelector('select').value : '';
-            const resultDiv = document.getElementById('result');
-
-            if (!concept) {
-                alert("Kripya Episode Concept likhein!");
-                return;
-            }
-
-            const btn = document.querySelector('button');
-            btn.innerText = "Generating Script... Please Wait ⏳";
-            resultDiv.innerText = "Generating script, please wait...";
+            const output = document.getElementById('output');
+            output.innerText = "Generating script...";
+            
+            const data = {
+                concept: document.getElementById('concept').value,
+                chapter_no: document.getElementById('chapter_no').value,
+                chapter_title: document.getElementById('chapter_title').value,
+                system_name: document.getElementById('system_name').value,
+                dhruv_rank: document.getElementById('dhruv_rank').value
+            };
 
             try {
                 const response = await fetch('/generate-script', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ concept, chapter_no, chapter_title, system_name, dhruv_rank })
+                    body: JSON.stringify(data)
                 });
-                
-                const data = await response.json();
-                btn.innerText = "GENERATE SCRIPT WITH UNIQUE SYSTEM 🎬✨";
-                
-                if (data.status === 'success') {
-                    resultDiv.innerText = data.script;
+                const result = await response.json();
+                if(result.status === 'success') {
+                    output.innerText = result.script;
                 } else {
-                    resultDiv.innerText = "Error: " + data.message;
+                    output.innerText = "Error: " + result.message;
                 }
             } catch (err) {
-                btn.innerText = "GENERATE SCRIPT WITH UNIQUE SYSTEM 🎬✨";
-                resultDiv.innerText = "Request failed: " + err;
+                output.innerText = "Failed to connect to server.";
             }
         }
     </script>

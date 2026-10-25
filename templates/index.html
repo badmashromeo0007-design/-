@@ -3,121 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SUPER YODDHA STUDIO</title>
+    <title>3D Cinematic Audio Drama Studio - BTTH x Super Yoddha</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body {
-            background-color: #0f0f0f;
-            color: #f1f1f1;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-        }
-        .container {
-            width: 100%;
-            max-width: 600px;
-            background: #181818;
-            border: 2px solid #ffd700;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 0 15px rgba(255, 0, 0, 0.3);
-        }
-        h1 {
-            color: #ff3333;
-            text-align: center;
-            text-shadow: 0 0 5px rgba(255, 0, 0, 0.5);
-        }
-        h3 {
-            color: #ffd700;
-            text-align: center;
-            font-size: 14px;
-        }
-        label {
-            display: block;
-            margin-top: 15px;
-            color: #ccc;
-        }
-        textarea {
-            width: 100%;
-            height: 120px;
-            background: #222;
-            color: #fff;
-            border: 1px solid #444;
-            border-radius: 5px;
-            padding: 10px;
-            resize: vertical;
-            box-sizing: border-box;
-        }
-        button {
-            width: 100%;
-            background-color: #e50914;
-            color: white;
-            border: none;
-            padding: 12px;
-            font-size: 16px;
-            font-weight: bold;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-top: 15px;
-            transition: background 0.3s;
-        }
-        button:hover {
-            background-color: #b20710;
-        }
-        #result {
-            margin-top: 20px;
-            background: #111;
-            border: 1px solid #333;
-            padding: 15px;
-            border-radius: 5px;
-            white-space: pre-wrap;
-            line-height: 1.5;
-            color: #e0e0e0;
-        }
+        body { background-color: #08080c; color: #f3f4f6; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .red-glow { border: 1px solid rgba(220, 38, 38, 0.4); box-shadow: 0 0 30px rgba(220, 38, 38, 0.15); }
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #0f0f15; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #ef4444; }
     </style>
 </head>
-<body>
-    <div class="container">
-        <h1>SUPER YODDHA STUDIO</h1>
-        <h3>3D Cinematic Audio Drama Script & Prompt Generator</h3>
-        
-        <label for="concept">Enter Audio Drama Concept:</label>
-        <textarea id="concept" placeholder="Yahan apna concept likhein..."></textarea>
-        
-        <button onclick="generateScript()">Generate Script</button>
-        
-        <div id="result"></div>
+<body class="min-h-screen py-8 px-4 custom-scrollbar">
+    <div class="max-w-5xl mx-auto">
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-2xl md:text-4xl font-black text-red-600 tracking-wider">CINEMATIC 3D AUDIO DRAMA STUDIO</h1>
+            <p class="text-gray-400 text-xs md:text-sm mt-2">Battle Through The Heavens × Super Yoddha Fusion Generator</p>
+        </header>
+
+        <!-- Control Panel -->
+        <div class="red-glow bg-gray-900/90 rounded-2xl p-6 md:p-8 backdrop-blur-md mb-8">
+            <div class="mb-5">
+                <label class="block text-sm font-bold text-amber-400 mb-2">Episode Concept / Next Storyline *</label>
+                <textarea id="story_summary" rows="4" class="w-full bg-black/80 border border-gray-700 rounded-xl p-3.5 text-white focus:outline-none focus:border-red-500 text-sm" placeholder="Example: Episode 2 - Dhruv ka 3 saal ka safar aur training. Angoothi ke andar se Acharya Vidur ka milna, aur Ambar Dal ki leader Lara Zayan ke khilaf taiyari shuru karna..."></textarea>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-300 mb-1.5">Episode / Chapter No.</label>
+                    <input type="number" id="chapter_number" value="2" class="w-full bg-black/80 border border-gray-700 rounded-lg p-3 text-white text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-300 mb-1.5">Episode Title</label>
+                    <input type="text" id="chapter_title" value="Episode 2: Aakhri Shart aur Nayi Taqat" class="w-full bg-black/80 border border-gray-700 rounded-lg p-3 text-white text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-300 mb-1.5">Scenes Count</label>
+                    <select id="num_scenes" class="w-full bg-black/80 border border-gray-700 rounded-lg p-3 text-white text-sm">
+                        <option value="3">3 Scenes</option>
+                        <option value="5" selected>5 Scenes</option>
+                        <option value="8">8 Scenes</option>
+                    </select>
+                </div>
+            </div>
+
+            <button onclick="generateScript()" id="genBtn" class="w-full bg-red-600 hover:bg-red-700 text-white font-extrabold py-3.5 px-6 rounded-xl transition tracking-wide shadow-lg shadow-red-950/80 text-sm md:text-base">
+                GENERATE 3D CINEMATIC SCRIPT & PROMPTS 🎬✨
+            </button>
+        </div>
+
+        <!-- Output Section -->
+        <div id="outputSection" class="hidden red-glow bg-gray-900/90 rounded-2xl p-6 md:p-8 backdrop-blur-md">
+            <div class="flex justify-between items-center mb-4 border-b border-gray-800 pb-3">
+                <h2 class="text-lg md:text-xl font-bold text-amber-400">Cinematic Script & Audio/Visual Storyboard</h2>
+                <button onclick="copyOutput()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs px-3 py-1.5 rounded border border-gray-600">Copy Script 📋</button>
+            </div>
+            <div id="resultContent" class="pl-4 border-l-4 border-red-500 whitespace-pre-wrap text-gray-200 leading-relaxed font-mono text-xs md:text-sm"></div>
+        </div>
     </div>
 
     <script>
         async function generateScript() {
-            const concept = document.getElementById('concept').value;
-            const resultDiv = document.getElementById('result');
-            
-            if (!concept.trim()) {
-                alert('Kripya pehle concept darj karein!');
+            const story_summary = document.getElementById('story_summary').value;
+            const chapter_number = document.getElementById('chapter_number').value;
+            const chapter_title = document.getElementById('chapter_title').value;
+            const num_scenes = document.getElementById('num_scenes').value;
+            const btn = document.getElementById('genBtn');
+            const outputSection = document.getElementById('outputSection');
+            const resultContent = document.getElementById('resultContent');
+
+            if (!story_summary.trim()) {
+                alert('Kripya episode ka concept ya summary daalein!');
                 return;
             }
 
-            resultDiv.innerText = 'Generating script, kripya intezaar karein...';
+            btn.disabled = true;
+            btn.innerText = 'Creating 3D Script & Cinematic Music Cues...';
+            outputSection.classList.add('hidden');
 
             try {
                 const response = await fetch('/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ concept: concept })
+                    body: JSON.stringify({ story_summary, chapter_number, chapter_title, num_scenes })
                 });
 
                 const data = await response.json();
-                if (response.ok) {
-                    resultDiv.innerText = data.script;
+                if (data.success) {
+                    resultContent.innerText = data.result;
+                    outputSection.classList.remove('hidden');
                 } else {
-                    resultDiv.innerText = 'Error: ' + (data.error || 'Kuch gadbad ho gayi.');
+                    alert('Error: ' + data.error);
                 }
             } catch (err) {
-                resultDiv.innerText = 'Network Error: ' + err.message;
+                alert('Kuch galat ho gaya! Check connection.');
+                console.error(err);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'GENERATE 3D CINEMATIC SCRIPT & PROMPTS 🎬✨';
             }
+        }
+
+        function copyOutput() {
+            navigator.clipboard.writeText(document.getElementById('resultContent').innerText);
+            alert('Script copied to clipboard!');
         }
     </script>
 </body>

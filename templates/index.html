@@ -1,3 +1,14 @@
+import os
+import google.generativeai as genai
+from flask import Flask, render_template_string, request, jsonify
+
+app = Flask(__name__)
+
+# Configure Gemini API securely using Render Environment Variable
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+model = genai.GenerativeModel('gemini-2.5-flash')
+
+HTML_TEMPLATE = r"""
 <!DOCTYPE html>
 <html lang="hi">
 <head>
@@ -112,3 +123,53 @@
     </script>
 </body>
 </html>
+"""
+
+@app.route('/')
+def index():
+    return render_template_string(HTML_TEMPLATE)
+
+@app.route('/generate', methods=['POST'])
+def generate():
+    data = request.json or {}
+    summary = data.get('story_summary', '')
+    ch_num = data.get('chapter_number', '1')
+    ch_title = data.get('chapter_title', 'Chapter')
+    scenes = data.get('num_scenes', '5')
+
+    prompt = f"""
+    You are an expert Lead 3D Animation Director, Master Sound Designer, and Screenwriter combining the powerful progression style of 'Battle Through The Heavens' (Doupo Cangqiong) with the 'Super Yoddha' universe script.
+
+    FUSION CHARACTERS & WORLD CONTEXT:
+    - Dhruv (Protagonist / Xiao Yan vibe): Currently humiliated, stuck at 3rd Star (Shunya Rank), but harbors a secret ring mentor and immense hidden potential.
+    - Lara Zayan (Nalan Yanran / Queen Medusa vibe): Proud Ambar Dal leader who broke her engagement and challenged Dhruv with a 3-year ultimatum.
+    - Arendra: Supportive father and Shorye Dal leader.
+    - Ira: Loyal childhood friend (Xun Er vibe).
+    - Acharya Vidur / Yao Lao: Mysterious spiritual mentor residing in the ring.
+
+    Task:
+    Generate a detailed 3D Cinematic Animation Script and Storyboard for Chapter {ch_num}: {ch_title} ({scenes} scenes).
+
+    STRICT GUIDELINES:
+    1. 3D ANIMATION VISUALS: Unreal Engine 5 render style, high-poly stylized characters with rich Indian/Eastern fantasy features, volumetric cinematic lighting, raytracing, and particle VFX (glowing flames, energy auras).
+    2. CINEMATIC INDIAN-FUSION BGM & SFX: Background music must blend traditional Indian classical notes (sitar/bansuri) with heavy Hans Zimmer-style orchestral battle beats, changing dynamically with scene moods.
+    3. NARRATIVE FLOW: Dramatic dialogues, intense emotions, and smooth location transitions.
+
+    For EACH Scene (1 to {scenes}), provide:
+    - SCENE HEADER & LOCATION
+    - ACTIVE CHARACTERS & EMOTION/MOOD
+    - DYNAMIC CINEMATIC BGM & SFX CUES (Detailed music progression)
+    - HINDI / HINGLISH VOICE-OVER & DIALOGUES (With delivery tags)
+    - 3D ANIMATION VIDEO PROMPT (English prompt for Sora/Runway specifying 3D cinematic style, camera angles, lighting, and VFX)
+    
+    Story Input: {summary}
+    """
+
+    try:
+        response = model.generate_content(prompt)
+        return jsonify({'success': True, 'result': response.text})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)

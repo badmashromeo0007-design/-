@@ -4,11 +4,11 @@ import google.generativeai as genai
 
 app = Flask(__name__)
 
-# Render ya environment se API Key automatic uthane ke liye
+# Render Environment Variable se API Key automatic uthane ke liye
 api_key = os.environ.get("GEMINI_API_KEY")
 genai.configure(api_key=api_key)
 
-# Model ko configure karein (updated model name)
+# Updated Model Name taaki 404 Error na aaye
 model = genai.GenerativeModel("models/gemini-3.8-flash")
 
 @app.route('/')
@@ -25,13 +25,17 @@ def generate_script():
         system_name = data.get('system_name', '')
         dhruv_rank = data.get('dhruv_rank', '')
 
-        # Gemini ke liye prompt taiyar karein
+        # Prompt setup
         prompt = f"""
-        Create a 3D Cinematic Audio Drama Script based on the following details:
-        Chapter: {chapter_no} - {chapter_title}
-        System Name: {system_name}
-        Dhruv Rank: {dhruv_rank}
-        Concept / Storyline: {concept}
+        Act as a professional 3D Cinematic Audio Drama Script Writer.
+        Create a detailed Hindi script & prompts based on:
+        - Chapter No: {chapter_no}
+        - Chapter Title: {chapter_title}
+        - Unique System Name: {system_name}
+        - Dhruv Current Rank: {dhruv_rank}
+        - Concept / Storyline: {concept}
+        
+        Write an engaging audio drama script in Hindi with cinematic scene descriptions and visual video prompts.
         """
 
         response = model.generate_content(prompt)

@@ -1,8 +1,10 @@
 import os
 import time
+import asyncio
+import edge_tts
 import requests
 import google.generativeai as genai
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
 
 app = Flask(__name__)
 
@@ -11,6 +13,10 @@ genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 model = genai.GenerativeModel('gemini-3.8-flash')
 
 REPLICATE_API_TOKEN = os.environ.get("REPLICATE_API_TOKEN", "")
+
+# Ensure audio directory exists
+AUDIO_DIR = os.path.join(os.getcwd(), "static", "audio")
+os.makedirs(AUDIO_DIR, exist_ok=True)
 
 @app.route('/')
 def index():
@@ -62,6 +68,29 @@ def generate():
         return jsonify({'success': True, 'result': response.text})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/generate-audio', methods=['POST'])
+def generate_audio():
+    """Generates Hindi Voiceover MP3 using Edge TTS"""
+    data = request.json or {}
+    text = data.get('text', '')
+    voice_type = data.get('voice_type', 'hi-IN-MadhurNeural') # Madhur (Male) or Swara (Female)
+
+    if not text.strip():
+        return jsonify({'success': False, 'error': 'Voiceover text khali hai!'}), 400
+
+    filename = f"voice_{int(time.time())}.mp3"
+    filepath = os.path.join(AUDIO_DIR, filename)
+
+    async def _save_audio():
+        communicate = edge_tts.Communicate(text, voice_type)
+        await communicate.save(filepath)
+
+    try:
+        asyncio.run(_save_audio())
+        return jsonify({'success': True, 'audio_url': f"/static/audio/{filename}"})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/generate-video', methods=['POST'])
 def generate_video():

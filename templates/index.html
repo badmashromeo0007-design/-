@@ -18,7 +18,7 @@
     <div class="max-w-5xl mx-auto">
         <!-- Header -->
         <header class="text-center mb-8">
-            <h1 class="text-2xl md:text-4xl font-black text-red-600 tracking-wider">CINEMATIC 3D AUDIO DRAMA STUDIO</h1>
+            <h1 class="text-2xl md:text-4xl font-black text-red-600 tracking-wider">CINEMATIC 3D AUDIO DRAMA & VIDEO STUDIO</h1>
             <p class="text-gray-400 text-xs md:text-sm mt-2">Battle Through The Heavens × Super Yoddha Fusion Generator</p>
         </header>
 
@@ -26,37 +26,57 @@
         <div class="red-glow bg-gray-900/90 rounded-2xl p-6 md:p-8 backdrop-blur-md mb-8">
             <div class="mb-5">
                 <label class="block text-sm font-bold text-amber-400 mb-2">Episode Concept / Next Storyline *</label>
-                <textarea id="story_summary" rows="4" class="w-full bg-black/80 border border-gray-700 rounded-xl p-3.5 text-white focus:outline-none focus:border-red-500 text-sm" placeholder="Example: Episode 2 - Dhruv ka 3 saal ka safar aur training..."></textarea>
+                <textarea id="story_summary" rows="4" class="w-full bg-black/80 border border-gray-700 rounded-xl p-3.5 text-white focus:outline-none focus:border-red-500 text-sm" placeholder="Example: Dhruv jungle mein akela hai, achanak system alert aata hai ki ek khatarnak shakti kareeb aa rahi hai..."></textarea>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 <div>
-                    <label class="block text-xs font-semibold text-gray-300 mb-1.5">Episode / Chapter No.</label>
+                    <label class="block text-xs font-semibold text-gray-300 mb-1.5">Chapter No.</label>
                     <input type="number" id="chapter_number" value="2" class="w-full bg-black/80 border border-gray-700 rounded-lg p-3 text-white text-sm">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-gray-300 mb-1.5">Episode Title</label>
-                    <input type="text" id="chapter_title" value="Episode 2: Aakhri Shart aur Nayi Taqat" class="w-full bg-black/80 border border-gray-700 rounded-lg p-3 text-white text-sm">
+                    <label class="block text-xs font-semibold text-gray-300 mb-1.5">Chapter Title</label>
+                    <input type="text" id="chapter_title" value="Episode 2: System Awakening" class="w-full bg-black/80 border border-gray-700 rounded-lg p-3 text-white text-sm">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-gray-300 mb-1.5">Scenes Count</label>
-                    <select id="num_scenes" class="w-full bg-black/80 border border-gray-700 rounded-lg p-3 text-white text-sm">
-                        <option value="3">3 Scenes</option>
-                        <option value="5" selected>5 Scenes</option>
-                        <option value="8">8 Scenes</option>
+                    <label class="block text-xs font-semibold text-gray-300 mb-1.5">Unique System Name</label>
+                    <input type="text" id="system_name" value="DIVINE SOUL SYSTEM" class="w-full bg-black/80 border border-gray-700 rounded-lg p-3 text-white text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-300 mb-1.5">Dhruv Current Rank</label>
+                    <select id="dhruv_rank" class="w-full bg-black/80 border border-gray-700 rounded-lg p-3 text-white text-sm">
+                        <option value="3rd Star (Shunya Rank)">3rd Star (Shunya Rank)</option>
+                        <option value="5th Star (Awakening Stage)">5th Star (Awakening Stage)</option>
+                        <option value="Dou Zhe Stage (Initial Warrior)">Dou Zhe Stage (Initial Warrior)</option>
+                        <option value="Dou Shi Stage (Master Level)">Dou Shi Stage (Master Level)</option>
                     </select>
                 </div>
             </div>
 
             <button onclick="generateScript()" id="genBtn" class="w-full bg-red-600 hover:bg-red-700 text-white font-extrabold py-3.5 px-6 rounded-xl transition tracking-wide shadow-lg shadow-red-950/80 text-sm md:text-base">
-                GENERATE 3D CINEMATIC SCRIPT & PROMPTS 🎬✨
+                GENERATE SCRIPT WITH UNIQUE SYSTEM 🎬✨
             </button>
+        </div>
+
+        <!-- AI Video Rendering Studio -->
+        <div class="red-glow bg-gray-900/90 rounded-2xl p-6 backdrop-blur-md mb-8">
+            <h2 class="text-lg font-bold text-amber-400 mb-3">AI 3D Video Render Generator</h2>
+            <div class="flex flex-col md:flex-row gap-3">
+                <input type="text" id="video_prompt_input" placeholder="Paste 3D Animation Video Prompt here..." class="flex-1 bg-black/80 border border-gray-700 rounded-lg p-3 text-white text-xs md:text-sm">
+                <button onclick="generateVideo()" id="vidBtn" class="bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 px-6 rounded-lg text-xs md:text-sm transition">
+                    Render 3D Clip 🎥
+                </button>
+            </div>
+            <div id="videoContainer" class="mt-4 hidden text-center">
+                <p class="text-xs text-green-400 mb-2">3D Video Render Complete!</p>
+                <video id="renderedVideo" controls class="w-full max-w-xl mx-auto rounded-xl border border-red-500 shadow-xl"></video>
+            </div>
         </div>
 
         <!-- Output Section -->
         <div id="outputSection" class="hidden red-glow bg-gray-900/90 rounded-2xl p-6 md:p-8 backdrop-blur-md">
             <div class="flex justify-between items-center mb-4 border-b border-gray-800 pb-3">
-                <h2 class="text-lg md:text-xl font-bold text-amber-400">Cinematic Script & Audio/Visual Storyboard</h2>
+                <h2 class="text-lg md:text-xl font-bold text-amber-400">Cinematic Script & System Logs</h2>
                 <button onclick="copyOutput()" class="bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs px-3 py-1.5 rounded border border-gray-600">Copy Script 📋</button>
             </div>
             <div id="resultContent" class="pl-4 border-l-4 border-red-500 whitespace-pre-wrap text-gray-200 leading-relaxed font-mono text-xs md:text-sm"></div>
@@ -68,6 +88,8 @@
             const story_summary = document.getElementById('story_summary').value;
             const chapter_number = document.getElementById('chapter_number').value;
             const chapter_title = document.getElementById('chapter_title').value;
+            const system_name = document.getElementById('system_name').value;
+            const dhruv_rank = document.getElementById('dhruv_rank').value;
             const num_scenes = document.getElementById('num_scenes').value;
             const btn = document.getElementById('genBtn');
             const outputSection = document.getElementById('outputSection');
@@ -79,14 +101,14 @@
             }
 
             btn.disabled = true;
-            btn.innerText = 'Creating 3D Script & Cinematic Music Cues...';
+            btn.innerText = 'Creating Script with Unique System Logs...';
             outputSection.classList.add('hidden');
 
             try {
                 const response = await fetch('/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ story_summary, chapter_number, chapter_title, num_scenes })
+                    body: JSON.stringify({ story_summary, chapter_number, chapter_title, system_name, dhruv_rank, num_scenes })
                 });
 
                 const data = await response.json();
@@ -97,11 +119,47 @@
                     alert('Error: ' + data.error);
                 }
             } catch (err) {
-                alert('Kuch galat ho gaya! Check connection.');
+                alert('Connection Error!');
                 console.error(err);
             } finally {
                 btn.disabled = false;
-                btn.innerText = 'GENERATE 3D CINEMATIC SCRIPT & PROMPTS 🎬✨';
+                btn.innerText = 'GENERATE SCRIPT WITH UNIQUE SYSTEM 🎬✨';
+            }
+        }
+
+        async function generateVideo() {
+            const prompt = document.getElementById('video_prompt_input').value;
+            const btn = document.getElementById('vidBtn');
+            const container = document.getElementById('videoContainer');
+            const videoElem = document.getElementById('renderedVideo');
+
+            if (!prompt.trim()) {
+                alert('Kripya Video Prompt paste karein!');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = 'Rendering 3D Clip... (1-2 mins)';
+
+            try {
+                const response = await fetch('/generate-video', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt })
+                });
+
+                const data = await response.json();
+                if (data.success && data.video_url) {
+                    videoElem.src = data.video_url;
+                    container.classList.remove('hidden');
+                } else {
+                    alert('Video Render Error: ' + (data.error || 'API Token Required on Render'));
+                }
+            } catch (err) {
+                alert('Video Render Failed!');
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Render 3D Clip 🎥';
             }
         }
 

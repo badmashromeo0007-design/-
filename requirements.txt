@@ -2,4 +2,3 @@ flask
 google-generativeai
 edge-tts
 requests
-moviepy

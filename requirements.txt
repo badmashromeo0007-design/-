@@ -1,4 +1,5 @@
-flask
-openai
+Flask
+google-generativeai
 edge-tts
 requests
+gunicorn

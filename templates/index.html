@@ -4,7 +4,6 @@ from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__)
 
-# Configure Gemini API securely using Render Environment Variable
 genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 model = genai.GenerativeModel('gemini-2.5-flash')
 

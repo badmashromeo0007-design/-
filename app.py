@@ -4,12 +4,11 @@ import os
 
 app = Flask(__name__)
 
-# Google Gemini API key configure karein
 GOOGLE_API_KEY = os.environ.get("GEMINI_API_KEY")
 genai.configure(api_key=GOOGLE_API_KEY)
 
-# Free aur fast model use kar rahe hain
-model = genai.GenerativeModel('gemini-1.5-flash')
+# Yahan gemini-pro model use kar rahe hain taaki 404 error na aaye
+model = genai.GenerativeModel('gemini-pro')
 
 @app.route('/')
 def home():
@@ -23,18 +22,22 @@ def generate_script():
         chapter_no = data.get('chapter_no', '1')
         chapter_title = data.get('chapter_title', '')
         system_name = data.get('system_name', '')
-        dhruv_rank = data.get('dhruv_rank', '')
+        char1_name = data.get('char1_name', '')
+        char1_rank = data.get('char1_rank', '')
+        char2_name = data.get('char2_name', '')
+        char2_rank = data.get('char2_rank', '')
 
         prompt = f"""
         Act as a professional 3D Cinematic Audio Drama Script Writer.
-        Create a detailed Hindi script & prompts based on:
+        Create a detailed Hindi script & dialogue prompts based on:
         - Chapter No: {chapter_no}
         - Chapter Title: {chapter_title}
         - Unique System Name: {system_name}
-        - Dhruv Current Rank: {dhruv_rank}
+        - Character 1: {char1_name} (Rank: {char1_rank})
+        - Character 2: {char2_name} (Rank: {char2_rank})
         - Concept / Storyline: {concept}
 
-        Write an engaging audio drama script in Hindi with cinematic scene descriptions and visual video prompts.
+        Write an engaging audio drama script in Hindi including character names, individual ranks, cinematic scene descriptions, and visual video prompts.
         """
 
         response = model.generate_content(prompt)

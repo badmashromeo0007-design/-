@@ -18,7 +18,7 @@
     <div class="max-w-5xl mx-auto">
         <!-- Header -->
         <header class="text-center mb-8">
-            <h1 class="text-2xl md:text-4xl font-black text-red-600 tracking-wider">CINEMATIC 3D AUDIO DRAMA & VIDEO STUDIO</h1>
+            <h1 class="text-2xl md:text-4xl font-black text-red-600 tracking-wider">CINEMATIC 3D AUDIO DRAMA & STUDIO</h1>
             <p class="text-gray-400 text-xs md:text-sm mt-2">Battle Through The Heavens × Super Yoddha Fusion Generator</p>
         </header>
 
@@ -56,6 +56,27 @@
             <button onclick="generateScript()" id="genBtn" class="w-full bg-red-600 hover:bg-red-700 text-white font-extrabold py-3.5 px-6 rounded-xl transition tracking-wide shadow-lg shadow-red-950/80 text-sm md:text-base">
                 GENERATE SCRIPT WITH UNIQUE SYSTEM 🎬✨
             </button>
+        </div>
+
+        <!-- AI Voiceover Studio (Edge TTS) -->
+        <div class="red-glow bg-gray-900/90 rounded-2xl p-6 backdrop-blur-md mb-8">
+            <h2 class="text-lg font-bold text-amber-400 mb-3">AI Voiceover Generator (Free Edge TTS)</h2>
+            <div class="space-y-3">
+                <textarea id="voice_text_input" rows="3" placeholder="Yahan script ka dialogue ya voiceover text paste karein (Hindi/Hinglish)..." class="w-full bg-black/80 border border-gray-700 rounded-lg p-3 text-white text-xs md:text-sm"></textarea>
+                <div class="flex flex-col md:flex-row gap-3 items-center">
+                    <select id="voice_type" class="w-full md:w-1/3 bg-black/80 border border-gray-700 rounded-lg p-3 text-white text-xs md:text-sm">
+                        <option value="hi-IN-MadhurNeural">Madhur (Deep Male Voice)</option>
+                        <option value="hi-IN-SwaraNeural">Swara (Female Voice)</option>
+                    </select>
+                    <button onclick="generateAudio()" id="audBtn" class="w-full md:w-2/3 bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg text-xs md:text-sm transition">
+                        Generate Voiceover MP3 🎙️
+                    </button>
+                </div>
+            </div>
+            <div id="audioContainer" class="mt-4 hidden text-center">
+                <p class="text-xs text-green-400 mb-2">Voiceover MP3 Ready!</p>
+                <audio id="renderedAudio" controls class="w-full max-w-xl mx-auto rounded-xl border border-red-500 shadow-xl"></audio>
+            </div>
         </div>
 
         <!-- AI Video Rendering Studio -->
@@ -127,6 +148,44 @@
             }
         }
 
+        async function generateAudio() {
+            const text = document.getElementById('voice_text_input').value;
+            const voice_type = document.getElementById('voice_type').value;
+            const btn = document.getElementById('audBtn');
+            const container = document.getElementById('audioContainer');
+            const audioElem = document.getElementById('renderedAudio');
+
+            if (!text.trim()) {
+                alert('Kripya voiceover ke liye text daalein!');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = 'Generating Voiceover MP3...';
+
+            try {
+                const response = await fetch('/generate-audio', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, voice_type })
+                });
+
+                const data = await response.json();
+                if (data.success && data.audio_url) {
+                    audioElem.src = data.audio_url;
+                    container.classList.remove('hidden');
+                    audioElem.play();
+                } else {
+                    alert('Audio Error: ' + (data.error || 'Failed'));
+                }
+            } catch (err) {
+                alert('Audio Generation Failed!');
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Generate Voiceover MP3 🎙️';
+            }
+        }
+
         async function generateVideo() {
             const prompt = document.getElementById('video_prompt_input').value;
             const btn = document.getElementById('vidBtn');
@@ -170,3 +229,4 @@
     </script>
 </body>
 </html>
+

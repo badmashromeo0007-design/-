@@ -84,13 +84,14 @@
             </div>
         </div>
 
-        <!-- Auto Merge Studio -->
+        <!-- Auto Sync Studio -->
         <div class="red-glow bg-gray-900/90 rounded-2xl p-6 backdrop-blur-md mb-8 text-center">
-            <h2 class="text-lg font-bold text-amber-400 mb-3">3. Auto-Merge Video & Audio (Perfect Sync)</h2>
-            <button onclick="mergeMedia()" id="mergeBtn" class="bg-green-600 hover:bg-green-700 text-white font-extrabold py-3 px-8 rounded-xl text-sm">MERGE VIDEO & AUDIO NOW ⚡</button>
-            <div id="finalContainer" class="mt-4 hidden">
-                <p class="text-xs text-green-400 mb-2">Final Synchronized Video Ready!</p>
+            <h2 class="text-lg font-bold text-amber-400 mb-3">3. Sync Video & Audio (Perfect Match)</h2>
+            <button onclick="mergeMedia()" id="mergeBtn" class="bg-green-600 hover:bg-green-700 text-white font-extrabold py-3 px-8 rounded-xl text-sm">SYNC & PREVIEW MEDIA ⚡</button>
+            <div id="finalContainer" class="mt-4 hidden space-y-3">
+                <p class="text-xs text-green-400">Synchronized Media Ready for Playback!</p>
                 <video id="finalVideo" controls class="w-full max-w-xl mx-auto rounded-xl border border-green-500 shadow-2xl"></video>
+                <audio id="finalAudioSync" controls class="w-full max-w-md mx-auto"></audio>
             </div>
         </div>
 
@@ -180,7 +181,7 @@
                 return;
             }
             const btn = document.getElementById('mergeBtn');
-            btn.innerText = 'Merging Video & Audio...';
+            btn.innerText = 'Syncing Media...';
             
             const res = await fetch('/merge-media', {
                 method: 'POST',
@@ -191,11 +192,15 @@
             if(data.success) {
                 const finalVid = document.getElementById('finalVideo');
                 finalVid.src = data.final_video_url;
+                
+                const finalAud = document.getElementById('finalAudioSync');
+                finalAud.src = data.synchronized_audio_url;
+
                 document.getElementById('finalContainer').classList.remove('hidden');
-                btn.innerText = 'MERGE SUCCESSFUL ✅';
+                btn.innerText = 'SYNCHRONIZATION SUCCESSFUL ✅';
             } else {
-                alert('Merge Error: ' + data.error);
-                btn.innerText = 'MERGE VIDEO & AUDIO NOW ⚡';
+                alert('Error: ' + data.error);
+                btn.innerText = 'SYNC & PREVIEW MEDIA ⚡';
             }
         }
     </script>

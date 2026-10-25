@@ -12,11 +12,20 @@ def index():
         story_input = request.form.get("story_input")
         
         prompt = f"""
-        Aapko niche di gayi story/details ke adhar par ek engaging audio chapter script (Screenplay Format) taiyar karni hai:
-        
+        Aap ek expert cinematic anime scriptwriter hain. Niche di gayi story/details ke adhar par ek high-level audio/video screenplay script taiyar karni hai. 
+        Vibe aur tone bilkul 'Battle Through The Heavens' (斗破苍穹) jaisa high-fantasy aur xianxia style hona chahiye.
+
+        AUTOMATIC CHARACTER & DYNAMIC POWER RULEBOOK:
+        1. **Auto Character Extraction & Introduction:** Story ke text ko analyze karke khud-ba-khud 'Battle Through The Heavens' universe ke matching characters (jaise Xiao Yan, Yao Lao, Xun Er, Medusa ya story ke naye characters) ko detect karein aur unke roles ko script mein dynamically shamil karein. Jaise-jaise story aage badhe, naye characters automatically introduce hone chahiye.
+        2. **Dynamic Power Ranks & Aura Control:** Characters ki powers aur aura pressure ko story ke sequence ke hisab se scale up/down karein. Agar koi powerful entity aas-paas ke area ko control karti hai, toh uska impact saaf dikhe.
+        3. **Audience Clarity (VFX, SFX & System Alerts):** Audience ko power levels aur darr samajhne ke liye har scene mein bracket `[ ]` mein clear cues likhein:
+           - [Visual: Aura pressure shaking the ground / Space distortion]
+           - [SFX: Heavy thunder bass / High energy hum]
+           - [System / Mentor Alert]: Yao Lao ya system voice ki tarah telepathic warning ho jo Dhruv aur audience ko samne wale ki power rank turant bataye.
+        4. **Cinematic BGM:** Har mood aur fight ke hisab se background music transitions mention karein.
+
+        Story Input / Raw Context:
         {story_input}
-        
-        Dialogue progression, character power dynamics aur scene ka tone bilkul natural aur professional hona chahiye.
         """
         
         try:

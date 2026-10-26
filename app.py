@@ -29,15 +29,24 @@ def index():
         """
         
         try:
+            # Automatic model selection taaki 404 error na aaye
             response = client.models.generate_content(
                 model='gemini-2.0-flash',
                 contents=prompt,
             )
             generated_script = response.text
         except Exception as e:
-            generated_script = f"Error generating script: {str(e)}"
+            try:
+                response = client.models.generate_content(
+                    model='gemini-1.5-flash',
+                    contents=prompt,
+                )
+                generated_script = response.text
+            except Exception as e2:
+                generated_script = f"Error generating script: {str(e2)}"
             
     return render_template("index.html", generated_script=generated_script)
 
 if __name__ == "__main__":
     app.run(debug=True)
+    

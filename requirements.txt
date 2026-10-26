@@ -1,4 +1,6 @@
-flask
-google-genai
+Flask
+google-generativeai
+edge-tts
+requests
+moviepy
 gunicorn
-gemini-1.5-flash

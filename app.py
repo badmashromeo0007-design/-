@@ -1,9 +1,11 @@
 import os
 from flask import Flask, render_template, request
-from google import genai
+import google.generativeai as genai
 
 app = Flask(__name__)
-client = genai.Client()
+
+# API Key configure karein (Render ke Environment Variables se utha lega)
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -29,23 +31,14 @@ def index():
         """
         
         try:
-            # Automatic model selection taaki 404 error na aaye
-            response = client.models.generate_content(
-                model='gemini-2.0-flash',
-                contents=prompt,
-            )
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            response = model.generate_content(prompt)
             generated_script = response.text
         except Exception as e:
-            try:
-                response = client.models.generate_content(
-                    model='gemini-1.5-flash',
-                    contents=prompt,
-                )
-                generated_script = response.text
-            except Exception as e2:
-                generated_script = f"Error generating script: {str(e2)}"
+            generated_script = f"Error generating script: {str(e)}"
             
     return render_template("index.html", generated_script=generated_script)
 
 if __name__ == "__main__":
     app.run(debug=True)
+    

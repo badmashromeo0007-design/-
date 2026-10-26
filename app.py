@@ -4,7 +4,7 @@ import google.generativeai as genai
 
 app = Flask(__name__)
 
-# API Key configure karein (Render ke Environment Variables se utha lega)
+# API Key configure karein
 genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 
 @app.route("/", methods=["GET", "POST"])
@@ -31,7 +31,8 @@ def index():
         """
         
         try:
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            # Sabse stable aur tested model
+            model = genai.GenerativeModel('gemini-pro')
             response = model.generate_content(prompt)
             generated_script = response.text
         except Exception as e:

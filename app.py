@@ -4,8 +4,8 @@ from groq import Groq
 
 app = Flask(__name__)
 
-# Groq client initialize karein (Render Environment Variable se key utha lega)
-client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+# Direct API Key configured
+client = Groq(api_key="Gsk_nu3BFBJIfnizOt6yV3OOWGdyb3FYTO2mjX2rnlu7L4A8eNscmmUM")
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -31,9 +31,10 @@ def index():
         """
         
         try:
+            # Updated to Groq's stable default model name
             chat_completion = client.chat.completions.create(
                 messages=[{"role": "user", "content": prompt}],
-                model="llama-3.3-70b-versatile",
+                model="llama3-70b-8192",
             )
             generated_script = chat_completion.choices[0].message.content
         except Exception as e:

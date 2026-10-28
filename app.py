@@ -97,29 +97,38 @@ def db_connection():
 
 def init_db():
     with db_connection() as conn:
+        # Added session_id column for basic user script isolation
         conn.execute("""
             CREATE TABLE IF NOT EXISTS vault (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id TEXT NOT NULL,
                 title TEXT NOT NULL,
                 script_content TEXT NOT NULL,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
         """)
         conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_vault_created
-            ON vault(id DESC)
+            CREATE INDEX IF NOT EXISTS idx_vault_session
+            ON vault(session_id, id DESC)
         """)
 
 init_db()
 
+def get_user_session_id():
+    if "user_session_id" not in session:
+        session["user_session_id"] = secrets.token_hex(16)
+    return session["user_session_id"]
+
 def get_saved_scripts():
+    sess_id = get_user_session_id()
     with db_connection() as conn:
         rows = conn.execute("""
             SELECT id, title, script_content
             FROM vault
+            WHERE session_id = ?
             ORDER BY id DESC
             LIMIT 10
-        """).fetchall()
+        """, (sess_id,)).fetchall()
 
     return [
         {"id": row[0], "title": row[1], "content": row[2]}
@@ -164,9 +173,6 @@ def get_video_path(filename):
     return safe_name
 
 def parse_script_into_scenes(script_text):
-    """
-    Parses script into distinct scenes based on [SCENE ...] tags and VISUAL: cues.
-    """
     scenes = []
     current_scene = {
         "title": "Scene 1",
@@ -256,9 +262,6 @@ def parse_script_into_scenes(script_text):
     return scenes
 
 def get_mood_color_from_visual(visual_text):
-    """
-    Dynamically select background mood color based on VISUAL text cues.
-    """
     vt = visual_text.lower()
     if any(w in vt for w in ["fire", "crimson", "red", "anger", "blood", "flame", "battle", "fight"]):
         return (42, 18, 24)   # Deep Crimson
@@ -272,10 +275,6 @@ def get_mood_color_from_visual(visual_text):
         return (24, 28, 36)   # Default Charcoal/Slate
 
 async def create_audio_files(dialogues_to_generate, output_paths):
-    """
-    Generate audio files concurrently with bounded concurrency (Semaphore=3)
-    to prevent Edge-TTS rate limits or connection resets.
-    """
     semaphore = asyncio.Semaphore(3)
 
     async def generate_one(dialogue, voice, path):
@@ -360,6 +359,7 @@ def index():
 
     action = request.form.get("action", "").strip()
     story_input = request.form.get("story_input", "").strip()
+    sess_id = get_user_session_id()
 
     if action == "generate_script":
         if not story_input:
@@ -408,10 +408,10 @@ Story:
                 cursor = conn.cursor()
                 cursor.execute(
                     """
-                    INSERT INTO vault (title, script_content)
-                    VALUES (?, ?)
+                    INSERT INTO vault (session_id, title, script_content)
+                    VALUES (?, ?, ?)
                     """,
-                    (title or "Cinematic Script", generated_script),
+                    (sess_id, title or "Cinematic Script", generated_script),
                 )
                 current_script_id = cursor.lastrowid
 
@@ -440,11 +440,12 @@ Story:
 
         script_id = int(script_id_raw)
 
+        # Secure Ownership Check: Fetch script only if it matches current session_id
         try:
             with db_connection() as conn:
                 row = conn.execute(
-                    "SELECT script_content FROM vault WHERE id = ?",
-                    (script_id,),
+                    "SELECT script_content FROM vault WHERE id = ? AND session_id = ?",
+                    (script_id, sess_id),
                 ).fetchone()
         except Exception:
             app.logger.exception("Database query failed while fetching script for video.")
@@ -452,7 +453,7 @@ Story:
 
         if not row:
             return render_page(
-                error_message="Script not found in Vault. Please generate a script first."
+                error_message="Script not found or unauthorized access."
             ), 400
 
         script_text = row[0]
@@ -596,11 +597,12 @@ Story:
 
 @app.route("/load_vault/<int:script_id>")
 def load_vault(script_id):
+    sess_id = get_user_session_id()
     try:
         with db_connection() as conn:
             row = conn.execute(
-                "SELECT script_content FROM vault WHERE id = ?",
-                (script_id,),
+                "SELECT script_content FROM vault WHERE id = ? AND session_id = ?",
+                (script_id, sess_id),
             ).fetchone()
 
         if not row:
@@ -613,12 +615,4 @@ def load_vault(script_id):
 
     except sqlite3.Error:
         app.logger.exception("Failed to load a saved script.")
-        return render_page(
-            error_message="Could not load the saved script."
-        ), 500
-
-@app.route("/video/<path:filename>")
-def serve_video(filename):
-    safe_name = get_video_path(filename)
-    return send_from_directory(
-        s
+     

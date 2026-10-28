@@ -188,12 +188,14 @@
                     <label>Generated Screenplay Script</label>
                     <pre>{{ generated_script }}</pre>
 
+                    {% if current_script_id %}
                     <form method="POST" action="/" style="margin-top: 14px;">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <input type="hidden" name="action" value="generate_video">
                         <input type="hidden" name="script_id" value="{{ current_script_id }}">
                         <button type="submit" class="video-button">Render Audio & Dynamic Multi-Scene MP4</button>
                     </form>
+                    {% endif %}
                 </div>
                 {% endif %}
 

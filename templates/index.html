@@ -2,96 +2,227 @@
 <html lang="hi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BTTH Cinematic Script Generator</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Cinematic Script Forge</title>
+
     <style>
+        :root {
+            color-scheme: dark;
+            --bg: #0d0f12;
+            --card: #161b22;
+            --border: #30363d;
+            --text: #e5e7eb;
+            --muted: #9ca3af;
+            --gold: #f59e0b;
+        }
+
+        * { box-sizing: border-box; }
+
         body {
-            background-color: #121212;
-            color: #e0e0e0;
-            font-family: Arial, sans-serif;
             margin: 0;
             padding: 20px;
-            display: flex;
-            justify-content: center;
+            background: var(--bg);
+            color: var(--text);
+            font-family: Arial, sans-serif;
         }
-        .container {
+
+        .main-container {
             width: 100%;
-            max-width: 600px;
-            background: #1e1e1e;
+            max-width: 1100px;
+            margin: auto;
+        }
+
+        header {
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        header .eyebrow {
+            color: var(--gold);
+            font-size: 12px;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+
+        h1 { margin: 8px 0; font-size: 30px; }
+        p { color: var(--muted); line-height: 1.6; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr);
+            gap: 20px;
+            align-items: start;
+        }
+
+        .card {
+            min-width: 0;
             padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
         }
-        h2 {
-            color: #ff5252;
-            text-align: center;
-            margin-bottom: 20px;
-        }
+
         label {
-            font-weight: bold;
-            color: #ff8a80;
             display: block;
-            margin-bottom: 8px;
-        }
-        textarea {
-            width: 100%;
-            height: 120px;
-            background: #2c2c2c;
-            color: #fff;
-            border: 1px solid #444;
-            border-radius: 5px;
-            padding: 10px;
-            font-size: 14px;
-            resize: vertical;
-            box-sizing: border-box;
-        }
-        button {
-            width: 100%;
-            background: #ff5252;
-            color: white;
-            border: none;
-            padding: 12px;
-            font-size: 16px;
+            margin: 12px 0 8px;
             font-weight: bold;
-            border-radius: 5px;
+        }
+
+        textarea {
+            display: block;
+            width: 100%;
+            min-height: 150px;
+            padding: 12px;
+            background: #0d1117;
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font: inherit;
+            line-height: 1.5;
+            resize: vertical;
+        }
+
+        textarea:focus {
+            outline: 2px solid var(--gold);
+            outline-offset: 1px;
+        }
+
+        button, .download-link {
+            display: block;
+            width: 100%;
+            margin-top: 14px;
+            padding: 12px 16px;
+            border: 0;
+            border-radius: 6px;
+            background: #b45309;
+            color: white;
+            font-weight: bold;
+            font-size: 15px;
+            text-align: center;
+            text-decoration: none;
             cursor: pointer;
-            margin-top: 15px;
-            transition: background 0.3s;
         }
-        button:hover {
-            background: #ff1744;
+
+        button:hover, .download-link:hover { opacity: 0.9; }
+        .video-button { background: #0369a1; }
+        .download-link { background: #047857; }
+
+        .alert {
+            padding: 12px;
+            margin-bottom: 18px;
+            border: 1px solid #991b1b;
+            border-radius: 6px;
+            background: #450a0a;
+            color: #fecaca;
         }
-        .output-section {
-            margin-top: 25px;
+
+        .script-output {
+            margin-top: 24px;
+            padding-top: 8px;
+            border-top: 1px solid var(--border);
         }
+
         pre {
-            background: #2c2c2c;
-            padding: 15px;
-            border-radius: 5px;
+            max-height: 420px;
+            overflow: auto;
+            padding: 14px;
+            background: #0d1117;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: #34d399;
             white-space: pre-wrap;
-            word-wrap: break-word;
-            color: #b9f6ca;
-            border: 1px solid #444;
-            max-height: 400px;
-            overflow-y: auto;
+            font: inherit;
+            font-size: 13px;
+        }
+
+        .video-box { margin-top: 24px; }
+        video { width: 100%; border-radius: 6px; border: 1px solid var(--border); }
+
+        .vault-item {
+            display: block;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: #0d1117;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--muted);
+            text-decoration: none;
+            word-break: break-word;
+        }
+
+        .vault-item:hover { border-color: var(--gold); }
+        .vault-item strong { display: block; color: var(--text); margin-bottom: 4px; }
+
+        @media (max-width: 768px) {
+            .grid { grid-template-columns: 100%; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h2>Audio & Video Script Generator</h2>
-        <form method="POST">
-            <label for="story_input">Apni Story / Scene Details Yahan Likhein:</label>
-            <textarea id="story_input" name="story_input" placeholder="Yahan apni story, characters, fight scenes, aur unki powers seedhe likh dein..." required>{{ request.form.get('story_input', '') }}</textarea>
-            <button type="submit">Generate Script</button>
-        </form>
+    <div class="main-container">
+        <header>
+            <span class="eyebrow">CINEMATIC SCRIPT FORGE</span>
+            <h1>AI Script & Multi-Scene Pipeline</h1>
+            <p>Convert raw storyline text into clean screenplay scripts, multi-voice dialogue tracks, and multi-scene dynamic MP4 files.</p>
+        </header>
 
-        {% if generated_script %}
-        <div class="output-section">
-            <label>Generated Cinematic Script:</label>
-            <pre>{{ generated_script }}</pre>
-        </div>
+        {% if error_message %}
+        <div class="alert"><strong>Notice:</strong> {{ error_message }}</div>
         {% endif %}
+
+        <div class="grid">
+            <main class="card">
+                <form method="POST" action="/">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="action" value="generate_script">
+                    
+                    <label for="story_input">Enter Storyline / Raw Input</label>
+                    <textarea id="story_input" name="story_input" placeholder="Type or paste your story here..." required maxlength="10000">{{ story_input }}</textarea>
+                    
+                    <button type="submit">Generate Screenplay Script</button>
+                </form>
+
+                {% if generated_script %}
+                <div class="script-output">
+                    <label>Generated Screenplay Script</label>
+                    <pre>{{ generated_script }}</pre>
+
+                    <form method="POST" action="/" style="margin-top: 14px;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="action" value="generate_video">
+                        <input type="hidden" name="script_id" value="{{ current_script_id }}">
+                        <button type="submit" class="video-button">Render Audio & Dynamic Multi-Scene MP4</button>
+                    </form>
+                </div>
+                {% endif %}
+
+                {% if video_ready and video_filename %}
+                <div class="video-box">
+                    <label>Rendered Video Preview</label>
+                    <video controls preload="metadata">
+                        <source src="{{ url_for('serve_video', filename=video_filename) }}" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                    <a class="download-link" href="{{ url_for('download_video', filename=video_filename) }}">Download MP4 Video</a>
+                </div>
+                {% endif %}
+            </main>
+
+            <aside class="card">
+                <h3 style="margin-top: 0; font-size: 16px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">Script Vault</h3>
+                {% if saved_scripts %}
+                    {% for item in saved_scripts %}
+                    <a class="vault-item" href="{{ url_for('load_vault', script_id=item.id) }}">
+                        <strong>{{ item.title }}</strong>
+                        <small>ID: {{ item.id }}</small>
+                    </a>
+                    {% endfor %}
+                {% else %}
+                    <p style="font-size: 13px;">No scripts saved yet.</p>
+                {% endif %}
+            </aside>
+        </div>
     </div>
 </body>
 </html>

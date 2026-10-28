@@ -1,6 +1,8 @@
 Flask
-google-generativeai
+groq
 edge-tts
 requests
 moviepy
 gunicorn
+
+

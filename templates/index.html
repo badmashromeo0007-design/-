@@ -168,7 +168,7 @@
         </header>
 
         {% if error_message %}
-        <div class="alert"><strong>Notice:</strong> {{ error_message }}</div>
+        <div class="alert"><strong>सूचना:</strong> {{ error_message }}</div>
         {% endif %}
 
         <div class="grid">
@@ -177,15 +177,15 @@
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" name="action" value="generate_script">
                     
-                    <label for="story_input">Enter Storyline / Raw Input</label>
-                    <textarea id="story_input" name="story_input" placeholder="Type or paste your story here..." required maxlength="10000">{{ story_input }}</textarea>
+                    <label for="story_input">कहानी या रॉ इनपुट दर्ज करें</label>
+                    <textarea id="story_input" name="story_input" placeholder="यहाँ अपनी कहानी टाइप या पेस्ट करें..." required maxlength="10000">{{ story_input }}</textarea>
                     
-                    <button type="submit">Generate Screenplay Script</button>
+                    <button type="submit">स्क्रीनप्ले स्क्रिप्ट जनरेट करें</button>
                 </form>
 
                 {% if generated_script %}
                 <div class="script-output">
-                    <label>Generated Screenplay Script</label>
+                    <label>जनरेट की गई स्क्रीनप्ले स्क्रिप्ट</label>
                     <pre>{{ generated_script }}</pre>
 
                     {% if current_script_id %}
@@ -193,7 +193,7 @@
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <input type="hidden" name="action" value="generate_video">
                         <input type="hidden" name="script_id" value="{{ current_script_id }}">
-                        <button type="submit" class="video-button">Render Audio & Dynamic Multi-Scene MP4</button>
+                        <button type="submit" class="video-button">ऑडियो और डायनेमिक मल्टी-सीन MP4 रेंडर करें</button>
                     </form>
                     {% endif %}
                 </div>
@@ -201,27 +201,27 @@
 
                 {% if video_ready and video_filename %}
                 <div class="video-box">
-                    <label>Rendered Video Preview</label>
+                    <label>रेंडर किया गया वीडियो पूर्वावलोकन</label>
                     <video controls preload="metadata">
                         <source src="{{ url_for('serve_video', filename=video_filename) }}" type="video/mp4">
-                        Your browser does not support the video tag.
+                        आपका ब्राउज़र वीडियो टैग का समर्थन नहीं करता है।
                     </video>
-                    <a class="download-link" href="{{ url_for('download_video', filename=video_filename) }}">Download MP4 Video</a>
+                    <a class="download-link" href="{{ url_for('download_video', filename=video_filename) }}">MP4 वीडियो डाउनलोड करें</a>
                 </div>
                 {% endif %}
             </main>
 
             <aside class="card">
-                <h3 style="margin-top: 0; font-size: 16px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">Script Vault</h3>
+                <h3 style="margin-top: 0; font-size: 16px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">स्क्रिप्ट वॉल्ट</h3>
                 {% if saved_scripts %}
                     {% for item in saved_scripts %}
                     <a class="vault-item" href="{{ url_for('load_vault', script_id=item.id) }}">
                         <strong>{{ item.title }}</strong>
-                        <small>ID: {{ item.id }}</small>
+                        <small>आईडी: {{ item.id }}</small>
                     </a>
                     {% endfor %}
                 {% else %}
-                    <p style="font-size: 13px;">No scripts saved yet.</p>
+                    <p style="font-size: 13px;">अभी तक कोई स्क्रिप्ट सहेजी नहीं गई है।</p>
                 {% endif %}
             </aside>
         </div>

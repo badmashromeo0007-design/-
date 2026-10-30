@@ -28,9 +28,10 @@ from moviepy.audio.io.AudioFileClip import AudioFileClip
 from moviepy.video.VideoClip import ColorClip
 from moviepy.video.compositing.concatenate import concatenate_videoclips
 
-# ==================================================
+
+# =========================================================
 # CONFIGURATION
-# ==================================================
+# =========================================================
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -65,9 +66,11 @@ app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
     SESSION_COOKIE_SECURE=(
-        os.environ.get("SESSION_COOKIE_SECURE", "true").lower()
-        == "true"
+        os.environ.get(
+            "SESSION_COOKIE_SECURE", "true"
+        ).lower() == "true"
     ),
+    PERMANENT_SESSION_LIFETIME=60 * 60 * 24 * 30,
 )
 
 logging.basicConfig(
@@ -92,12 +95,14 @@ VIDEO_PATTERN = re.compile(
     r"[89ab][0-9a-f]{3}-[0-9a-f]{12}\.mp4$"
 )
 
-# ==================================================
-# DATABASE
-# ==================================================
+
+# =========================================================
+# DATABASE CONNECTION
+# =========================================================
 
 @contextmanager
 def db_connection():
+
     conn = sqlite3.connect(
         str(DB_PATH),
         timeout=20,
@@ -118,6 +123,11 @@ def db_connection():
     finally:
         conn.close()
 
+
+# =========================================================
+# DATABASE INITIALIZATION AND MIGRATION
+# =========================================================
+
 def init_db():
 
     with db_connection() as conn:
@@ -132,6 +142,21 @@ def init_db():
             )
         """)
 
+        # Migrate older vault tables safely.
+        columns = [
+            column[1]
+            for column in conn.execute(
+                "PRAGMA table_info(vault)"
+            ).fetchall()
+        ]
+
+        if "session_id" not in columns:
+
+            conn.execute("""
+                ALTER TABLE vault
+                ADD COLUMN session_id TEXT DEFAULT 'legacy_session'
+            """)
+
         conn.execute("""
             CREATE TABLE IF NOT EXISTS videos (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -141,21 +166,23 @@ def init_db():
             )
         """)
 
-        cursor = conn.execute(
-            "PRAGMA table_info(vault)"
-        )
-
-        columns = [
+        video_columns = [
             column[1]
-            for column in cursor.fetchall()
+            for column in conn.execute(
+                "PRAGMA table_info(videos)"
+            ).fetchall()
         ]
 
-        if "session_id" not in columns:
+        if "session_id" not in video_columns:
+            raise RuntimeError(
+                "Existing videos table has no session_id column. "
+                "Back up and migrate this table before starting."
+            )
 
-            conn.execute("""
-                ALTER TABLE vault
-                ADD COLUMN session_id TEXT DEFAULT 'legacy_session'
-            """)
+        if "filename" not in video_columns:
+            raise RuntimeError(
+                "Existing videos table has no filename column."
+            )
 
         conn.execute("""
             CREATE INDEX IF NOT EXISTS idx_vault_session
@@ -167,27 +194,30 @@ def init_db():
             ON videos(session_id, filename)
         """)
 
-        app.logger.info("Database initialization completed.")
+    app.logger.info("Database initialization completed.")
+
 
 init_db()
 
-# ==================================================
+
+# =========================================================
 # SESSION MANAGEMENT
-# ==================================================
+# =========================================================
 
 def get_user_session_id():
 
     session_id = session.get("user_session_id")
 
-    if not isinstance(session_id, str) or not re.fullmatch(
-        r"[0-9a-f]{32}", session_id
+    if (
+        not isinstance(session_id, str)
+        or not re.fullmatch(r"[0-9a-f]{32}", session_id)
     ):
 
         session_id = secrets.token_hex(16)
-
         session["user_session_id"] = session_id
 
     return session_id
+
 
 def get_saved_scripts():
 
@@ -212,20 +242,21 @@ def get_saved_scripts():
         for row in rows
     ]
 
-# ==================================================
+
+# =========================================================
 # CSRF PROTECTION
-# ==================================================
+# =========================================================
 
 @app.context_processor
 def inject_csrf_token():
 
     if "csrf_token" not in session:
-
         session["csrf_token"] = secrets.token_urlsafe(32)
 
     return {
         "csrf_token": session["csrf_token"]
     }
+
 
 def valid_csrf():
 
@@ -238,16 +269,20 @@ def valid_csrf():
         and secrets.compare_digest(submitted, expected)
     )
 
-# ==================================================
+
+# =========================================================
 # SECURITY HEADERS
-# ==================================================
+# =========================================================
 
 @app.after_request
 def add_security_headers(response):
 
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
-    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+
+    response.headers["Referrer-Policy"] = (
+        "strict-origin-when-cross-origin"
+    )
 
     response.headers["Permissions-Policy"] = (
         "camera=(), microphone=(), geolocation=()"
@@ -257,9 +292,10 @@ def add_security_headers(response):
 
     return response
 
-# ==================================================
-# PRIVATE VIDEO ACCESS
-# ==================================================
+
+# =========================================================
+# PRIVATE VIDEO OWNERSHIP
+# =========================================================
 
 def get_verified_video_path(filename):
 
@@ -277,7 +313,10 @@ def get_verified_video_path(filename):
             FROM videos
             WHERE filename = ?
               AND session_id = ?
-        """, (safe_name, sess_id)).fetchone()
+        """, (
+            safe_name,
+            sess_id,
+        )).fetchone()
 
     if not row:
         abort(404)
@@ -289,9 +328,10 @@ def get_verified_video_path(filename):
 
     return safe_name
 
-# ==================================================
-# SCRIPT PARSER
-# ==================================================
+
+# =========================================================
+# VOICE SELECTION
+# =========================================================
 
 def get_voice(character):
 
@@ -325,6 +365,11 @@ def get_voice(character):
         "hi-IN-MadhurNeural",
     )
 
+
+# =========================================================
+# SCRIPT PARSER
+# =========================================================
+
 def parse_script_into_scenes(script_text):
 
     scenes = []
@@ -334,6 +379,8 @@ def parse_script_into_scenes(script_text):
         "visual": "Atmospheric cinematic opening",
         "dialogues": [],
     }
+
+    total_dialogues = 0
 
     for raw_line in script_text.splitlines():
 
@@ -354,12 +401,6 @@ def parse_script_into_scenes(script_text):
                 "visual": "Cinematic transition view",
                 "dialogues": [],
             }
-
-            if sum(
-                len(scene["dialogues"])
-                for scene in scenes
-            ) >= MAX_DIALOGUES:
-                break
 
             continue
 
@@ -391,12 +432,9 @@ def parse_script_into_scenes(script_text):
             (dialogue, get_voice(character))
         )
 
-        total = sum(
-            len(scene["dialogues"])
-            for scene in scenes
-        ) + len(current_scene["dialogues"])
+        total_dialogues += 1
 
-        if total >= MAX_DIALOGUES:
+        if total_dialogues >= MAX_DIALOGUES:
             break
 
     if current_scene["dialogues"]:
@@ -404,9 +442,10 @@ def parse_script_into_scenes(script_text):
 
     return scenes
 
-# ==================================================
+
+# =========================================================
 # VISUAL MOOD COLORS
-# ==================================================
+# =========================================================
 
 def get_mood_color_from_visual(visual_text):
 
@@ -438,9 +477,10 @@ def get_mood_color_from_visual(visual_text):
 
     return (24, 28, 36)
 
-# ==================================================
+
+# =========================================================
 # AUDIO GENERATION
-# ==================================================
+# =========================================================
 
 async def create_audio_files(dialogues, output_paths):
 
@@ -465,9 +505,10 @@ async def create_audio_files(dialogues, output_paths):
 
     await asyncio.gather(*tasks)
 
-# ==================================================
+
+# =========================================================
 # RESOURCE CLEANUP
-# ==================================================
+# =========================================================
 
 def close_quietly(resource):
 
@@ -478,15 +519,15 @@ def close_quietly(resource):
         resource.close()
 
     except Exception:
-
         app.logger.warning(
             "Could not close media resource.",
             exc_info=True,
         )
 
-# ==================================================
+
+# =========================================================
 # PAGE RENDERING
-# ==================================================
+# =========================================================
 
 def render_page(
     generated_script="",
@@ -510,7 +551,6 @@ def render_page(
         saved_scripts = []
 
         if not error_message:
-
             error_message = (
                 "Script Vault is temporarily unavailable."
             )
@@ -526,9 +566,10 @@ def render_page(
         saved_scripts=saved_scripts,
     )
 
-# ==================================================
+
+# =========================================================
 # ERROR HANDLERS
-# ==================================================
+# =========================================================
 
 @app.errorhandler(413)
 def request_too_large(error):
@@ -537,28 +578,53 @@ def request_too_large(error):
         error_message="Request too large. Shorten your story."
     ), 413
 
+
 @app.errorhandler(404)
 def not_found(error):
 
     return "Not found", 404
+
 
 @app.errorhandler(403)
 def forbidden(error):
 
     return "Access denied", 403
 
-# ==================================================
-# HEALTH CHECK
-# ==================================================
 
-@app.route("/health")
+@app.errorhandler(500)
+def internal_error(error):
+
+    app.logger.exception("Internal server error.")
+
+    return render_page(
+        error_message="An internal server error occurred."
+    ), 500
+
+
+# =========================================================
+# HEALTH CHECK
+# =========================================================
+
+@app.route("/health", methods=["GET"])
 def health():
 
-    return "OK", 200
+    try:
 
-# ==================================================
+        with db_connection() as conn:
+            conn.execute("SELECT 1").fetchone()
+
+        return "OK", 200
+
+    except sqlite3.Error:
+
+        app.logger.exception("Health check failed.")
+
+        return "Database unavailable", 503
+
+
+# =========================================================
 # MAIN ROUTE
-# ==================================================
+# =========================================================
 
 @app.route("/", methods=["GET", "POST"])
 def index():
@@ -574,7 +640,9 @@ def index():
             )
         ), 400
 
-    action = request.form.get("action", "").strip()
+    action = request.form.get(
+        "action", ""
+    ).strip()
 
     story_input = request.form.get(
         "story_input", ""
@@ -582,9 +650,9 @@ def index():
 
     sess_id = get_user_session_id()
 
-    # ----------------------------------------------
+    # -----------------------------------------------------
     # GENERATE SCRIPT
-    # ----------------------------------------------
+    # -----------------------------------------------------
 
     if action == "generate_script":
 
@@ -597,7 +665,9 @@ def index():
         if len(story_input) > MAX_STORY_LENGTH:
 
             return render_page(
-                error_message="Story limit is 10,000 characters.",
+                error_message=(
+                    "Story limit is 10,000 characters."
+                ),
                 story_input=story_input[:MAX_STORY_LENGTH],
             ), 400
 
@@ -608,12 +678,14 @@ Write a Hindi/Hinglish screenplay based on the user's story.
 
 Preserve character consistency, emotional tone and scene continuity.
 
-Format:
+Use this format:
 
 [SCENE 1: Scene Title]
 VISUAL: Scene description
 Narrator: Dialogue
 Character Name: Dialogue
+
+Make the screenplay cinematic and engaging.
 
 Story:
 {story_input}
@@ -634,6 +706,8 @@ Story:
                         "content": prompt,
                     }
                 ],
+                temperature=0.8,
+                max_tokens=6000,
             )
 
             generated_script = (
@@ -689,9 +763,9 @@ Story:
                 story_input=story_input,
             ), 500
 
-    # ----------------------------------------------
+    # -----------------------------------------------------
     # GENERATE VIDEO
-    # ----------------------------------------------
+    # -----------------------------------------------------
 
     if action == "generate_video":
 
@@ -757,7 +831,8 @@ Story:
                 generated_script=script_text,
                 current_script_id=script_id,
                 error_message=(
-                    "No valid dialogue found. Use Character: Dialogue format."
+                    "No valid dialogue found. "
+                    "Use Character: Dialogue format."
                 ),
             ), 400
 
@@ -771,72 +846,13 @@ Story:
         combined_audio_clips = []
         video_clips = []
 
+        scene_audio_clips = {}
         final_video = None
 
         try:
 
+            # Flatten dialogues and preserve scene mapping.
             flat_dialogues = []
             dialogue_mapping = []
 
-            for scene_index, scene in enumerate(scenes):
-
-                for dialogue_index, item in enumerate(
-                    scene["dialogues"]
-                ):
-
-                    flat_dialogues.append(item)
-
-                    dialogue_mapping.append(
-                        (scene_index, dialogue_index)
-                    )
-
-            audio_paths = []
-
-            for index in range(len(flat_dialogues)):
-
-                path = DATA_DIR / (
-                    f"temp_{job_id}_{index}.mp3"
-                )
-
-                temp_files.append(path)
-                audio_paths.append(path)
-
-            asyncio.run(
-                create_audio_files(
-                    flat_dialogues,
-                    audio_paths,
-                )
-            )
-
-            scene_audio_clips = {
-                index: []
-                for index in range(len(scenes))
-            }
-
-            for index, path in enumerate(audio_paths):
-
-                if not path.is_file() or path.stat().st_size == 0:
-
-                    raise RuntimeError(
-                        f"Audio file {index} is missing."
-                    )
-
-                scene_index, _ = dialogue_mapping[index]
-                aclip = AudioFileClip(str(path))
-                scene_audio_clips[scene_index].append(aclip)
-                source_audio_clips.append(aclip)
-
-            for scene_index, scene in enumerate(scenes):
-
-                s_audios = scene_audio_clips.get(scene_index, [])
-
-                if not s_audios:
-                    continue
-
-                scene_audio = concatenate_audioclips(s_audios)
-                combined_audio_clips.append(scene_audio)
-
-                scene_duration = scene_audio.duration
-
-                visual_desc = scene.get("visual", "")
-           
+            for scene_in
